@@ -198,6 +198,13 @@
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFcUH75N1o8JqQOcUmxnu2tjKtVBUpyFVyS0a-edF7ah9W2CbtzwbqR-6KzkNr2a5mb3ZWi_skQesjI9T2l5JDZYjQuYfTpCaqN_W62lIJ0Iw8Rii6KBbkHxETFlPJRJpNoYnklX251bxOGvrAi0X_wtWPk7yvf7nER0U_GWaaja1Z0AS3HmE6zRb3qTTU3phLN4NOcEfGG37YYsmUTQLnWAX2OHBrdyikqvQZFdEWtcmqUyfFcajqo2ygXdYFW8qV-rwsEpcItGXV"
               />
             </div>
+            <button
+              id="logoutBtn"
+              class="w-10 h-10 rounded-full flex items-center justify-center text-slate-600 hover:text-error hover:bg-error/5 transition-all"
+              title="Logout"
+            >
+              <span class="material-symbols-outlined">logout</span>
+            </button>
           </div>
         </div>
       </div>
@@ -675,6 +682,32 @@
       </div>
     </div>
     <script>
+      // Authentication check and logout logic
+      async function checkAuth() {
+        try {
+          const res = await fetch("/api/auth/me");
+          if (!res.ok) {
+            window.location.href = "/";
+            return;
+          }
+        } catch (err) {
+          window.location.href = "/";
+        }
+      }
+      checkAuth();
+
+      const logoutBtn = document.getElementById("logoutBtn");
+      if (logoutBtn) {
+        logoutBtn.addEventListener("click", async () => {
+          if (confirm("Are you sure you want to log out?")) {
+            const res = await fetch("/api/auth/logout", { method: "POST" });
+            if (res.ok) {
+              window.location.href = "/";
+            }
+          }
+        });
+      }
+
       // State
       let subjects = [];
       let milestones = [];
@@ -683,16 +716,14 @@
 
       async function loadSubjects() {
         try {
-
-            const userId =
-                localStorage.getItem("user_id");
-
-            const response = await fetch(
-                `/api/subjects/all/${userId}`
-            );
-
+            const response = await fetch("/api/subjects/all");
+            if (!response.ok) {
+              if (response.status === 401) {
+                window.location.href = "/";
+              }
+              return;
+            }
             const data = await response.json();
-
             console.log("Subjects API Data:", data);
 
             subjects = data.map(subject => ({
@@ -705,11 +736,10 @@
 
             renderSubjects();
             updateSubjectDropdown();
-
         } catch (error) {
             console.error("Error loading subjects:", error);
         }
-    }
+      }
 
       // UI Logic: Study Hours
       function updateStudyHours(val) {
@@ -777,21 +807,13 @@
 
       // Dynamic Subject Logic
       async function confirmAddSubject() {
+        const name = document.getElementById("modalSubjectName").value.trim();
+        if (!name) {
+          alert("Please enter a subject name.");
+          return;
+        }
 
-          const name =
-              document.getElementById("modalSubjectName").value.trim();
-
-          const userId =
-              localStorage.getItem("user_id");
-
-          console.log("userId =", userId);
-
-          console.log({
-              name: name,
-              difficulty: currentDifficulty,
-              user_id: parseInt(userId)
-          });
-
+        try {
           const response = await fetch(
               "/api/subjects/create",
               {
@@ -799,16 +821,23 @@
                   headers: {
                       "Content-Type": "application/json",
                   },
-
                   body: JSON.stringify({
                       name: name,
-                      difficulty: currentDifficulty,
-                      user_id: parseInt(userId)
+                      difficulty: currentDifficulty
                   })
               }
           );
 
-          const result = await response.json();
+          if (response.ok) {
+            toggleSubjectModal();
+            await loadSubjects();
+          } else {
+            const data = await response.json();
+            alert(data.detail || "Error adding subject");
+          }
+        } catch (error) {
+          console.error("Error adding subject:", error);
+        }
       }
 
       async function deleteSubject(id) {
@@ -935,19 +964,27 @@
       }
 
       async function loadMilestones() {
-        const response = await fetch("/api/milestones/all");
-        const data = await response.json();
-        console.log("Milestone API Data:", data);
+        try {
+          const response = await fetch("/api/milestones/all");
+          if (!response.ok) {
+            if (response.status === 401) {
+              window.location.href = "/";
+            }
+            return;
+          }
+          const data = await response.json();
+          console.log("Milestone API Data:", data);
 
-        milestones = data.map((m) => ({
-          id: m.id,
-          subjectId: m.subject_id.toString(),
-          subjectName: m.subject_name,
-          date: m.exam_date,
-        }));
-        const container = document.getElementById("milestoneContainer");
-
-        renderMilestones();
+          milestones = data.map((m) => ({
+            id: m.id,
+            subjectId: m.subject_id.toString(),
+            subjectName: m.subject_name,
+            date: m.exam_date,
+          }));
+          renderMilestones();
+        } catch (error) {
+          console.error("Error loading milestones:", error);
+        }
       }
 
       async function deleteMilestone(id) {

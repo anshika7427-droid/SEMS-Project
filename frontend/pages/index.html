@@ -797,10 +797,6 @@
           const data = await response.json();
 
           if (response.ok) {
-            localStorage.setItem(
-              "user_id",
-              data.user_id
-            );
             window.location.href = "/dashboard";
           } else {
             alert(data.detail);

@@ -1,10 +1,9 @@
 from pydantic import BaseModel, EmailStr
-from pydantic import BaseModel
+from typing import Optional
 
 class SubjectCreate(BaseModel):
     name: str
     difficulty: str
-    user_id: int
 
 class UserCreate(BaseModel):
     name: str
@@ -25,10 +24,6 @@ class MilestoneCreate(BaseModel):
     subject_id: int
     subject_name: str
     exam_date: str
-    user_id: int
-
-from pydantic import BaseModel
-from typing import Optional
 
 class SubjectResponse(BaseModel):
     id: int
@@ -38,4 +33,4 @@ class SubjectResponse(BaseModel):
     hours_per_week: Optional[int] = None
 
     class Config:
-        from_attributes = True  # Use orm_mode = True if on an older Pydantic version
+        from_attributes = True

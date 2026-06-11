@@ -1,7 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
+from starlette.middleware.sessions import SessionMiddleware
 from pathlib import Path
 
 # -----------------------------------
@@ -10,6 +11,7 @@ from pathlib import Path
 
 from app.database import engine
 from app.models import Base
+from app.config import SECRET_KEY
 
 # -----------------------------------
 # IMPORT ROUTES
@@ -23,7 +25,6 @@ from app.routes.resource_routes import router as resource_router
 from app.routes.schedule_routes import router as schedule_router
 from app.routes.subject_routes import router as subject_router
 from app.routes import milestone_routes
-
 
 # -----------------------------------
 # CREATE DATABASE TABLES
@@ -42,12 +43,27 @@ app = FastAPI(
 )
 
 # -----------------------------------
-# CORS CONFIG
+# SESSION MIDDLEWARE
 # -----------------------------------
 
 app.add_middleware(
+    SessionMiddleware,
+    secret_key=SECRET_KEY,
+    session_cookie="session",
+    max_age=14 * 24 * 3600  # 14 days
+)
+
+# -----------------------------------
+# CORS CONFIG
+# -----------------------------------
+
+# Using specific allowed origins rather than "*" to support credentials (session cookies)
+app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://127.0.0.1:8000",
+        "http://localhost:8000"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -86,17 +102,29 @@ async def landing_page():
     )
 
 # -----------------------------------
-# DASHBOARD ROUTE
+# DASHBOARD ROUTE (PROTECTED)
 # -----------------------------------
 
 @app.get("/dashboard")
-async def dashboard():
+async def dashboard(request: Request):
+    if not request.session.get("user_id"):
+        return RedirectResponse(url="/")
     return FileResponse(
         frontend_path / "pages" / "dashboard.html"
     )
+
+# -----------------------------------
+# SMART SCHEDULER ROUTE (PROTECTED)
+# -----------------------------------
+
 @app.get("/smart_scheduler")
-def smart_scheduler():
-    return FileResponse("frontend/pages/smart_scheduler.html")
+def smart_scheduler(request: Request):
+    if not request.session.get("user_id"):
+        return RedirectResponse(url="/")
+    return FileResponse(
+        frontend_path / "pages" / "smart_scheduler.html"
+    )
+
 # -----------------------------------
 # OPTIONAL PAGES
 # -----------------------------------
