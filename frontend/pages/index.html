@@ -1,0 +1,829 @@
+<!doctype html>
+
+<html class="light scroll-smooth" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>SEMS | AI Edu System</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@700;800&amp;display=swap"
+      rel="stylesheet"
+    />
+    <!-- Icons -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-surface": "#181c1f",
+              "inverse-primary": "#b3c5ff",
+              "surface-dim": "#d8dade",
+              "surface-variant": "#e0e3e6",
+              outline: "#727687",
+              "on-primary-container": "#f8f7ff",
+              "surface-variant": "#e0e3e6",
+              secondary: "#ae3100",
+              "on-tertiary-fixed-variant": "#6a3b00",
+              "on-secondary-fixed-variant": "#852400",
+              "surface-bright": "#f7f9fd",
+              "inverse-on-surface": "#eff1f5",
+              background: "#ffffff",
+              "surface-container": "#eceef2",
+              "on-primary": "#ffffff",
+              "secondary-fixed-dim": "#ffb59f",
+              "on-secondary": "#ffffff",
+              "on-tertiary-container": "#fff6f1",
+              "on-tertiary": "#ffffff",
+              surface: "#ffffff",
+              "on-secondary-fixed": "#3a0a00",
+              "tertiary-fixed-dim": "#ffb874",
+              "surface-tint": "#0054d6",
+              "secondary-fixed": "#ffdbd0",
+              "on-error-container": "#93000a",
+              "on-background": "#181c1f",
+              "secondary-container": "#fe6431",
+              "tertiary-fixed": "#ffdcbf",
+              "inverse-surface": "#2d3134",
+              "on-surface-variant": "#424656",
+              "tertiary-container": "#a86000",
+              "on-tertiary-fixed": "#2d1600",
+              "on-error": "#ffffff",
+              "on-secondary-container": "#5b1500",
+              "surface-container-highest": "#e0e3e6",
+              "surface-container-lowest": "#ffffff",
+              "on-primary-fixed": "#001849",
+              error: "#ba1a1a",
+              "error-container": "#ffdad6",
+              "primary-fixed": "#dae1ff",
+              "on-primary-fixed-variant": "#003fa4",
+              tertiary: "#854b00",
+              "primary-fixed-dim": "#b3c5ff",
+              "primary-container": "#0066ff",
+              primary: "#0050cb",
+              "surface-container-high": "#e6e8ec",
+              "outline-variant": "#c2c6d8",
+            },
+            borderRadius: {
+              DEFAULT: "0.25rem",
+              lg: "0.5rem",
+              xl: "0.75rem",
+              full: "9999px",
+            },
+            fontFamily: {
+              headline: ["Manrope"],
+              body: ["Inter"],
+              label: ["Inter"],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      .material-symbols-outlined {
+        font-variation-settings:
+          "FILL" 0,
+          "wght" 400,
+          "GRAD" 0,
+          "opsz" 24;
+        vertical-align: middle;
+      }
+      .glass-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+      }
+      .hero-bg-library {
+        background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuCrNww2a42V-HsJeMco36-oHcbKguUfH_H9ajGpYwCDWKNHBzF0XgPjvCWPjrTK0csbU0FpsEkhw7Q61-ZEXJ9Af2Ntj-0Df9GvDPB6m5hWkXjTEtdu-jiGdbsl8tT5mQcZ8DTYPOEEUqVLVM3LF06Rg5C0fxkW-xHOdDctt0Jmd8I-g1yL_3SegzdnUfZ5U4NEcaW8JOEMgG6apupmpurJ2BkT_zDBRMySxPR3S396LoOtm8Aj_R2-jKuAX0QdfMSMIZFzJyA9Fqos);
+        background-attachment: fixed;
+        background-position: center;
+        background-size: cover;
+        background-repeat: no-repeat;
+      }
+      a,
+      button {
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+      }
+      body {
+        min-height: max(884px, 100dvh);
+      }
+      .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(8px);
+        z-index: 100;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+      }
+      .modal-overlay.active {
+        display: flex;
+      }
+    </style>
+  </head>
+  <body class="bg-white text-on-surface font-body selection:bg-primary/10">
+    <!-- Auth Modals -->
+    <div class="modal-overlay" id="loginModal">
+      <div
+        class="glass-card w-full max-w-md p-8 rounded-[2rem] shadow-2xl relative"
+      >
+        <button
+          class="absolute top-6 right-6 text-on-surface-variant hover:text-on-surface"
+          onclick="closeModal('loginModal')"
+        >
+          <span class="material-symbols-outlined">close</span>
+        </button>
+        <h2 class="text-3xl font-headline font-bold mb-6">Welcome Back</h2>
+        <form id="loginForm" class="space-y-4" onsubmit="loginUser(event)">
+          <div>
+            <label class="block text-sm font-medium mb-1">Email</label>
+            <input
+              id="loginEmail"
+              class="w-full px-4 py-3 rounded-xl border border-outline-variant bg-white/50 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+              placeholder="name@example.com"
+              type="email"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Password</label>
+            <input
+              id="loginPassword"
+              class="w-full px-4 py-3 rounded-xl border border-outline-variant bg-white/50 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+              placeholder="••••••••"
+              type="password"
+            />
+          </div>
+          <button
+            class="w-full bg-primary text-on-primary py-4 rounded-xl font-bold mt-4 shadow-lg hover:opacity-90 active:scale-[0.98]"
+          >
+            Login
+          </button>
+        </form>
+      </div>
+    </div>
+    <div class="modal-overlay" id="signupModal">
+      <div
+        class="glass-card w-full max-w-md p-8 rounded-[2rem] shadow-2xl relative"
+      >
+        <button
+          class="absolute top-6 right-6 text-on-surface-variant hover:text-on-surface"
+          onclick="closeModal('signupModal')"
+        >
+          <span class="material-symbols-outlined">close</span>
+        </button>
+        <h2 class="text-3xl font-headline font-bold mb-6">Join SEMS</h2>
+        <form id="signupForm" class="space-y-4" onsubmit="signupUser(event)">
+          <div>
+            <label class="block text-sm font-medium mb-1">Name</label>
+            <input
+              id="signupName"
+              class="w-full px-4 py-3 rounded-xl border border-outline-variant bg-white/50 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+              placeholder="Your Name"
+              type="text"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Email</label>
+            <input
+              id="signupEmail"
+              class="w-full px-4 py-3 rounded-xl border border-outline-variant bg-white/50 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+              placeholder="name@example.com"
+              type="email"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Password</label>
+            <input
+              id="signupPassword"
+              class="w-full px-4 py-3 rounded-xl border border-outline-variant bg-white/50 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+              placeholder="••••••••"
+              type="password"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1"
+              >Confirm Password</label
+            >
+            <input
+              class="w-full px-4 py-3 rounded-xl border border-outline-variant bg-white/50 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+              placeholder="••••••••"
+              type="password"
+            />
+          </div>
+          <button
+            class="w-full bg-primary text-on-primary py-4 rounded-xl font-bold mt-4 shadow-lg hover:opacity-90 active:scale-[0.98]"
+          >
+            Create Account
+          </button>
+        </form>
+      </div>
+    </div>
+    <!-- TopAppBar -->
+    <header
+      class="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-xl shadow-blue-500/5 shadow-xl border-b border-white/20"
+    >
+      <nav
+        class="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto"
+      >
+        <div
+          class="flex items-center gap-2 cursor-pointer"
+          onclick="window.scrollTo({ top: 0, behavior: 'smooth' })"
+        >
+          <span
+            class="material-symbols-outlined text-blue-600 dark:text-blue-400"
+            data-icon="school"
+            >school</span
+          >
+          <span
+            class="text-2xl font-bold tracking-tighter text-slate-900 font-headline"
+            >SEMS</span
+          >
+        </div>
+        <!-- Desktop Nav -->
+        <div class="hidden md:flex items-center gap-8">
+          <a
+            class="text-slate-600 font-medium hover:text-blue-500 transition-colors duration-300"
+            href="#features"
+            >Features</a
+          >
+          <a
+            class="text-slate-600 font-medium hover:text-blue-500 transition-colors duration-300"
+            href="#how-it-works"
+            >How it Works</a
+          >
+          <button
+            class="text-slate-600 font-medium hover:text-blue-500 transition-colors duration-300"
+            onclick="openModal('loginModal')"
+          >
+            Login
+          </button>
+          <button
+            class="bg-gradient-to-r from-primary to-primary-container text-on-primary px-6 py-2.5 rounded-full font-semibold hover:opacity-90 hover:shadow-lg active:scale-95 transition-all"
+            onclick="openModal('signupModal')"
+          >
+            Create Account
+          </button>
+        </div>
+        <!-- Mobile Menu Toggle -->
+        <button class="md:hidden text-slate-900 hover:opacity-70">
+          <span class="material-symbols-outlined" data-icon="menu">menu</span>
+        </button>
+      </nav>
+    </header>
+    <main>
+      <!-- Hero Section -->
+      <section class="hero-bg-library pt-24 pb-20 relative px-6">
+        <div
+          class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center py-12"
+        >
+          <!-- Hero Left Column -->
+          <div class="glass-card p-8 md:p-12 rounded-[2rem] shadow-2xl">
+            <h1
+              class="text-4xl md:text-6xl font-headline font-extrabold tracking-tight text-on-surface leading-[1.1] mb-6"
+            >
+              Master Your Studies with
+              <span
+                class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-container"
+                >AI-Driven Planning.</span
+              >
+            </h1>
+            <p
+              class="text-lg text-on-surface-variant max-w-xl leading-relaxed mb-8"
+            >
+              Stop guessing how to study. Our intelligent recommendation system
+              builds your perfect weekly schedule, tracks your daily streaks,
+              and predicts your future grades—all in one distraction-free
+              dashboard.
+            </p>
+            <button
+              class="bg-gradient-to-r from-primary to-primary-container text-on-primary px-8 py-4 rounded-full font-bold text-lg shadow-lg shadow-primary/20 transition-all hover:scale-105 hover:opacity-95 active:scale-95"
+              onclick="openModal('signupModal')"
+            >
+              Start Your Study Streak Today
+            </button>
+          </div>
+          <!-- Hero Right Column -->
+          <div class="relative flex justify-center items-center">
+            <div class="w-full max-w-md">
+              <div
+                class="glass-card rounded-3xl shadow-2xl overflow-hidden p-6 text-left border border-white/40"
+              >
+                <!-- Streak Card -->
+                <div
+                  class="bg-gradient-to-br from-secondary to-secondary-container rounded-2xl p-5 mb-6 text-white flex items-center justify-between"
+                >
+                  <div>
+                    <p class="text-sm opacity-90 font-medium">Daily Momentum</p>
+                    <h3 class="text-2xl font-black font-headline">
+                      🔥 5-Day Streak
+                    </h3>
+                  </div>
+                  <span
+                    class="material-symbols-outlined text-4xl"
+                    data-icon="bolt"
+                    >bolt</span
+                  >
+                </div>
+                <!-- Vertical Timetable Mockup -->
+                <div class="space-y-4">
+                  <div class="flex gap-4">
+                    <div class="w-12 text-xs font-semibold text-outline py-2">
+                      09:00
+                    </div>
+                    <div
+                      class="flex-1 bg-white/60 rounded-xl p-3 border-l-4 border-primary"
+                    >
+                      <h4 class="text-sm font-bold">
+                        Advanced Calculus Review
+                      </h4>
+                      <p class="text-[10px] text-on-surface-variant">
+                        AI Optimized Focus Session
+                      </p>
+                    </div>
+                  </div>
+                  <div class="flex gap-4 opacity-60">
+                    <div class="w-12 text-xs font-semibold text-outline py-2">
+                      10:30
+                    </div>
+                    <div
+                      class="flex-1 bg-white/40 rounded-xl p-3 border-l-4 border-surface-container-highest"
+                    >
+                      <h4 class="text-sm font-bold">Coffee &amp; Reflection</h4>
+                      <p class="text-[10px] text-on-surface-variant">
+                        Scheduled break
+                      </p>
+                    </div>
+                  </div>
+                  <div class="flex gap-4">
+                    <div class="w-12 text-xs font-semibold text-outline py-2">
+                      11:00
+                    </div>
+                    <div
+                      class="flex-1 bg-white/60 rounded-xl p-3 border-l-4 border-tertiary"
+                    >
+                      <h4 class="text-sm font-bold">Neural Networks Lab</h4>
+                      <p class="text-[10px] text-on-surface-variant">
+                        High Impact Assignment
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Floating Decorative Element -->
+              <div
+                class="absolute -top-4 -right-4 bg-white p-3 rounded-2xl shadow-xl flex items-center gap-2"
+              >
+                <span
+                  class="material-symbols-outlined text-secondary"
+                  data-icon="auto_awesome"
+                  >auto_awesome</span
+                >
+                <span class="text-xs font-bold font-headline"
+                  >AI Suggestion Ready</span
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <!-- White Body Content -->
+      <div class="bg-white">
+        <!-- Features Bento Grid -->
+        <section class="px-6 py-20 scroll-mt-24" id="features">
+          <div class="max-w-7xl mx-auto">
+            <div class="mb-10 inline-block">
+              <h2 class="text-4xl font-headline font-bold mb-3">
+                Curated for Focus
+              </h2>
+              <p class="text-lg text-on-surface-variant">
+                Precision tools built for the academic high-achiever.
+              </p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <!-- Feature Card 1 -->
+              <div
+                class="md:col-span-2 bg-slate-50 p-8 rounded-[2.5rem] flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow border border-slate-100"
+              >
+                <div
+                  class="h-48 mb-6 bg-white rounded-2xl overflow-hidden relative shadow-inner"
+                >
+                  <div class="absolute inset-0 p-6 space-y-3">
+                    <div
+                      class="w-full h-10 bg-primary/10 rounded-xl flex items-center px-4 gap-3"
+                    >
+                      <div class="w-2 h-2 bg-primary rounded-full"></div>
+                      <div class="h-2 w-2/3 bg-primary/20 rounded"></div>
+                    </div>
+                    <div
+                      class="w-full h-10 bg-slate-100 rounded-xl flex items-center px-4 gap-3"
+                    >
+                      <div class="w-2 h-2 bg-slate-400 rounded-full"></div>
+                      <div class="h-2 w-1/2 bg-slate-400/20 rounded"></div>
+                    </div>
+                    <div
+                      class="w-full h-10 bg-tertiary/10 rounded-xl flex items-center px-4 gap-3"
+                    >
+                      <div class="w-2 h-2 bg-tertiary rounded-full"></div>
+                      <div class="h-2 w-3/4 bg-tertiary/20 rounded"></div>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <h3 class="font-headline font-bold text-xl mb-2">
+                    AI-Powered Scheduling
+                  </h3>
+                  <p class="text-on-surface-variant">
+                    Day-by-day vertical timetable mapped to your energy and
+                    deadlines.
+                  </p>
+                </div>
+              </div>
+              <!-- Feature Card 2 -->
+              <div
+                class="bg-slate-50 p-8 rounded-[2.5rem] shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between border border-slate-100"
+              >
+                <div
+                  class="h-48 mb-6 bg-white rounded-2xl flex items-end justify-between px-6 pb-6 gap-2 shadow-inner"
+                >
+                  <div
+                    class="w-full bg-slate-200 rounded-t-md"
+                    style="height: 40%"
+                  ></div>
+                  <div
+                    class="w-full bg-primary rounded-t-md"
+                    style="height: 75%"
+                  ></div>
+                  <div
+                    class="w-full bg-slate-200 rounded-t-md"
+                    style="height: 55%"
+                  ></div>
+                  <div
+                    class="w-full bg-primary rounded-t-md"
+                    style="height: 90%"
+                  ></div>
+                  <div
+                    class="w-full bg-primary rounded-t-md"
+                    style="height: 65%"
+                  ></div>
+                </div>
+                <div>
+                  <h3 class="font-headline font-bold text-xl mb-2">
+                    Progress &amp; Streaks
+                  </h3>
+                  <p class="text-on-surface-variant">
+                    Consistency charts and daily momentum tracking.
+                  </p>
+                </div>
+              </div>
+              <!-- Feature Card 3 -->
+              <div
+                class="bg-slate-50 p-8 rounded-[2.5rem] shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between border border-slate-100"
+              >
+                <div
+                  class="h-48 mb-6 bg-white rounded-2xl flex items-center justify-center relative shadow-inner"
+                >
+                  <div
+                    class="relative w-28 h-28 rounded-full border-4 border-slate-100 flex items-center justify-center"
+                  >
+                    <svg class="absolute inset-0 w-full h-full -rotate-90">
+                      <circle
+                        class="text-primary"
+                        cx="56"
+                        cy="56"
+                        fill="transparent"
+                        r="52"
+                        stroke="currentColor"
+                        stroke-dasharray="326"
+                        stroke-dashoffset="80"
+                        stroke-width="4"
+                      ></circle>
+                    </svg>
+                    <span
+                      class="text-2xl font-bold font-headline text-on-surface"
+                      >25:00</span
+                    >
+                  </div>
+                </div>
+                <div>
+                  <h3 class="font-headline font-bold text-xl mb-2">
+                    Focus Timer
+                  </h3>
+                  <p class="text-on-surface-variant">
+                    Pomodoro sessions built directly into your study tasks.
+                  </p>
+                </div>
+              </div>
+              <!-- Feature Card 4 -->
+              <div
+                class="md:col-span-4 bg-slate-50 p-10 rounded-[2.5rem] shadow-sm hover:shadow-md transition-shadow flex flex-col md:flex-row items-center gap-8 border border-slate-100"
+              >
+                <div
+                  class="w-full md:w-1/4 aspect-video bg-white rounded-2xl flex items-center justify-center shadow-inner"
+                >
+                  <span
+                    class="material-symbols-outlined text-5xl text-slate-400"
+                    data-icon="description"
+                    >description</span
+                  >
+                </div>
+                <div class="flex-1">
+                  <h3 class="font-headline font-bold text-2xl mb-2">
+                    Digital Resource Library
+                  </h3>
+                  <p class="text-lg text-on-surface-variant">
+                    Centralized PDF management with AI-assisted annotation
+                    linking. Keep all your lecture notes and papers in one
+                    organized vault.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <!-- How It Works Section -->
+        <section
+          class="px-6 py-24 scroll-mt-24 border-t border-slate-100"
+          id="how-it-works"
+        >
+          <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-20">
+              <span
+                class="text-primary font-bold uppercase tracking-widest text-xs"
+                >The Methodology</span
+              >
+              <h2 class="text-4xl font-headline font-bold mt-2">
+                How It Works
+              </h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
+              <!-- Step 1 -->
+              <div class="flex flex-col items-center text-center">
+                <div
+                  class="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center text-white text-2xl font-bold mb-6 shadow-lg rotate-3"
+                >
+                  1
+                </div>
+                <h4 class="font-headline font-bold text-xl mb-3">
+                  Set Your Goals
+                </h4>
+                <p class="text-on-surface-variant">
+                  Tell SEMS your target grades, upcoming exams, and desired
+                  workload. We learn your academic ambitions.
+                </p>
+              </div>
+              <!-- Step 2 -->
+              <div class="flex flex-col items-center text-center">
+                <div
+                  class="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center text-white text-2xl font-bold mb-6 shadow-lg -rotate-2"
+                >
+                  2
+                </div>
+                <h4 class="font-headline font-bold text-xl mb-3">
+                  Map Your Time
+                </h4>
+                <p class="text-on-surface-variant">
+                  AI analyzes your calendar to find the optimal windows for deep
+                  study sessions, avoiding burnout.
+                </p>
+              </div>
+              <!-- Step 3 -->
+              <div class="flex flex-col items-center text-center">
+                <div
+                  class="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center text-white text-2xl font-bold mb-6 shadow-lg rotate-6"
+                >
+                  3
+                </div>
+                <h4 class="font-headline font-bold text-xl mb-3">
+                  Execute &amp; Track
+                </h4>
+                <p class="text-on-surface-variant">
+                  Follow your generated path, complete streaks, and watch your
+                  predictive grade rise in real-time.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+        <!-- Footer CTA -->
+        <section class="px-6 py-20">
+          <div
+            class="max-w-5xl mx-auto bg-slate-900 rounded-[3rem] p-12 md:p-20 text-center text-white shadow-2xl relative overflow-hidden"
+          >
+            <div class="relative z-10">
+              <h2 class="text-4xl md:text-5xl font-headline font-bold mb-6">
+                Ready to organize your academic life?
+              </h2>
+              <p class="text-slate-300 mb-10 text-lg max-w-2xl mx-auto">
+                Join thousands of students curating their success with the power
+                of precision scheduling. Start for free today.
+              </p>
+              <button
+                class="bg-primary text-on-primary px-10 py-5 rounded-full font-bold text-lg transition-all hover:bg-primary-container shadow-xl active:scale-95"
+                onclick="openModal('signupModal')"
+              >
+                Create Your Free Account
+              </button>
+            </div>
+            <!-- Abstract Gradient Background for CTA -->
+            <div
+              class="absolute top-0 right-0 w-96 h-96 bg-primary/20 blur-[100px] rounded-full -mr-40 -mt-40"
+            ></div>
+            <div
+              class="absolute bottom-0 left-0 w-96 h-96 bg-tertiary/10 blur-[100px] rounded-full -ml-40 -mb-40"
+            ></div>
+          </div>
+        </section>
+      </div>
+    </main>
+    <!-- Footer -->
+    <footer class="bg-slate-50 w-full py-16 border-t border-slate-200">
+      <div
+        class="flex flex-col md:flex-row justify-between items-center px-8 max-w-7xl mx-auto space-y-8 md:space-y-0"
+      >
+        <div
+          class="flex flex-col items-center md:items-start gap-2 cursor-pointer"
+          onclick="window.scrollTo({ top: 0, behavior: 'smooth' })"
+        >
+          <div class="flex items-center gap-2 mb-2">
+            <span
+              class="material-symbols-outlined text-blue-600"
+              data-icon="school"
+              >school</span
+            >
+            <span class="font-headline font-bold text-slate-900 text-2xl"
+              >SEMS</span
+            >
+          </div>
+          <p class="font-inter text-sm text-slate-500">
+            © 2024 SEMS. AI-Powered Precision.
+          </p>
+        </div>
+        <div class="flex gap-10">
+          <a
+            class="text-slate-600 font-medium text-sm hover:text-blue-500 transition-colors"
+            href="#features"
+            >Features</a
+          >
+          <a
+            class="text-slate-600 font-medium text-sm hover:text-blue-500 transition-colors"
+            href="#how-it-works"
+            >How it Works</a
+          >
+          <a
+            class="text-slate-600 font-medium text-sm hover:text-blue-500 transition-colors"
+            href="#"
+            >Privacy</a
+          >
+          <a
+            class="text-slate-600 font-medium text-sm hover:text-blue-500 transition-colors"
+            href="#"
+            >Terms</a
+          >
+        </div>
+      </div>
+    </footer>
+    <!-- BottomNavBar (Only for Mobile Layout) -->
+    <div
+      class="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] bg-white/80 backdrop-blur-xl rounded-full shadow-2xl z-50 flex items-center justify-around p-4 border border-slate-200"
+    >
+      <button
+        class="text-blue-700 font-semibold flex flex-col items-center hover:opacity-70"
+        onclick="window.scrollTo({ top: 0, behavior: 'smooth' })"
+      >
+        <span
+          class="material-symbols-outlined"
+          data-icon="auto_awesome"
+          style="font-variation-settings: &quot;FILL&quot; 1"
+          >auto_awesome</span
+        >
+        <span class="text-[10px] font-medium">Explore</span>
+      </button>
+      <a
+        class="text-slate-500 flex flex-col items-center hover:opacity-70"
+        href="#features"
+      >
+        <span class="material-symbols-outlined" data-icon="extension"
+          >extension</span
+        >
+        <span class="text-[10px] font-medium">Features</span>
+      </a>
+      <button
+        class="text-slate-500 flex flex-col items-center hover:opacity-70"
+        onclick="openModal('loginModal')"
+      >
+        <span class="material-symbols-outlined" data-icon="login">login</span>
+        <span class="text-[10px] font-medium">Login</span>
+      </button>
+      <button
+        class="text-slate-500 flex flex-col items-center hover:opacity-70"
+        onclick="openModal('signupModal')"
+      >
+        <span class="material-symbols-outlined" data-icon="person_add"
+          >person_add</span
+        >
+        <span class="text-[10px] font-medium">Join</span>
+      </button>
+    </div>
+
+    <script>
+      async function signupUser(event) {
+        event.preventDefault();
+
+        const name = document.getElementById("signupName").value;
+        const email = document.getElementById("signupEmail").value;
+        const password = document.getElementById("signupPassword").value;
+
+        try {
+          const response = await fetch(
+            "http://127.0.0.1:8000/api/auth/signup",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                name: name,
+                email: email,
+                password: password,
+              }),
+            },
+          );
+
+          const data = await response.json();
+
+          if (response.ok) {
+            alert("Signup Successful!");
+            closeModal("signupModal");
+          } else {
+            alert(data.detail);
+          }
+        } catch (error) {
+          console.error(error);
+          alert("Server Error");
+        }
+      }
+
+      async function loginUser(event) {
+        event.preventDefault();
+
+        const email = document.getElementById("loginEmail").value;
+        const password = document.getElementById("loginPassword").value;
+
+        try {
+          const response = await fetch("http://127.0.0.1:8000/api/auth/login", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email: email,
+              password: password,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            localStorage.setItem(
+              "user_id",
+              data.user_id
+            );
+            window.location.href = "/dashboard";
+          } else {
+            alert(data.detail);
+          }
+        } catch (error) {
+          console.error(error);
+          alert("Server Error");
+        }
+      }
+      function openModal(id) {
+        document.getElementById(id).classList.add("active");
+        document.body.style.overflow = "hidden";
+      }
+      function closeModal(id) {
+        document.getElementById(id).classList.remove("active");
+        document.body.style.overflow = "";
+      }
+      window.onclick = function (event) {
+        if (event.target.classList.contains("modal-overlay")) {
+          event.target.classList.remove("active");
+          document.body.style.overflow = "";
+        }
+      };
+    </script>
+  </body>
+</html>

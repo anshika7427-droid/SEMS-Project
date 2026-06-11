@@ -1,0 +1,801 @@
+<!doctype html>
+
+<html class="scroll-smooth" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Dashboard | SEMS</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Manrope:wght@600;700;800&amp;display=swap"
+      rel="stylesheet"
+    />
+    <!-- Icons -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <!-- Scripts -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "secondary-fixed-dim": "#ffb59f",
+              "on-secondary-container": "#5b1500",
+              "inverse-primary": "#b3c5ff",
+              "on-primary-fixed": "#001849",
+              "surface-container-highest": "#e0e3e6",
+              "on-secondary-fixed-variant": "#852400",
+              "on-tertiary": "#ffffff",
+              "on-error": "#ffffff",
+              "error-container": "#ffdad6",
+              "inverse-surface": "#2d3134",
+              "surface-container-lowest": "#ffffff",
+              "primary-fixed": "#dae1ff",
+              outline: "#727687",
+              "on-primary": "#ffffff",
+              "on-tertiary-container": "#fff6f1",
+              "surface-container-high": "#e6e8ec",
+              "surface-variant": "#e0e3e6",
+              primary: "#0050cb",
+              "secondary-fixed": "#ffdbd0",
+              "on-secondary-fixed": "#3a0a00",
+              "outline-variant": "#c2c6d8",
+              background: "#f7f9fd",
+              tertiary: "#854b00",
+              "surface-bright": "#f7f9fd",
+              "on-error-container": "#93000a",
+              "on-primary-container": "#f8f7ff",
+              "tertiary-fixed-dim": "#ffb874",
+              "surface-dim": "#d8dade",
+              "on-surface": "#181c1f",
+              "on-tertiary-fixed-variant": "#6a3b00",
+              "secondary-container": "#fe6431",
+              "on-background": "#181c1f",
+              "surface-container-low": "#f2f4f8",
+              "inverse-on-surface": "#eff1f5",
+              "tertiary-container": "#a86000",
+              "on-primary-fixed-variant": "#003fa4",
+              "on-tertiary-fixed": "#2d1600",
+              "on-secondary": "#ffffff",
+              "primary-fixed-dim": "#b3c5ff",
+              secondary: "#ae3100",
+              "on-surface-variant": "#424656",
+              surface: "#f7f9fd",
+              error: "#ba1a1a",
+              "tertiary-fixed": "#ffdcbf",
+              "surface-tint": "#0054d6",
+              "surface-container": "#eceef2",
+              "primary-container": "#0066ff",
+            },
+            borderRadius: {
+              DEFAULT: "0.25rem",
+              lg: "0.5rem",
+              xl: "0.75rem",
+              "2xl": "1.5rem",
+              full: "9999px",
+            },
+            fontFamily: {
+              headline: ["Manrope"],
+              display: ["Manrope"],
+              body: ["Inter"],
+              label: ["Inter"],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      .material-symbols-outlined {
+        font-variation-settings:
+          "FILL" 0,
+          "wght" 400,
+          "GRAD" 0,
+          "opsz" 24;
+        vertical-align: middle;
+      }
+      .glass-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+      }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+
+      @keyframes pulse-soft {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.8;
+        }
+      }
+      .animate-pulse-soft {
+        animation: pulse-soft 3s infinite ease-in-out;
+      }
+
+      input[type="range"] {
+        -webkit-appearance: none;
+        width: 100%;
+        background: transparent;
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        height: 20px;
+        width: 20px;
+        border-radius: 50%;
+        background: #0050cb;
+        cursor: pointer;
+        margin-top: -8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      input[type="range"]::-webkit-slider-runnable-track {
+        width: 100%;
+        height: 4px;
+        cursor: pointer;
+        background: #e2e8f0;
+        border-radius: 2px;
+      }
+    </style>
+  </head>
+  <body class="bg-background font-body text-on-surface min-h-screen">
+    <!-- Top Navigation Bar -->
+    <nav
+      class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl shadow-blue-500/5 shadow-xl"
+    >
+      <div
+        class="flex items-center justify-between px-8 py-4 max-w-7xl mx-auto"
+      >
+        <div class="flex items-center gap-2">
+          <span
+            class="material-symbols-outlined text-primary text-3xl"
+            style="font-variation-settings: &quot;FILL&quot; 1"
+            >school</span
+          >
+          <span
+            class="text-xl font-bold tracking-tighter text-slate-900 font-headline uppercase"
+            >SEMS</span
+          >
+        </div>
+        <!-- Desktop Nav Items -->
+        <div class="hidden md:flex items-center gap-8">
+          <a
+            class="text-primary font-semibold border-b-2 border-primary transition-colors duration-300"
+            href="#"
+            >Dashboard</a
+          >
+          <a
+            class="text-slate-600 font-medium hover:text-primary transition-colors duration-300"
+            href="/smart_scheduler"
+            >Smart Schedular</a
+          >
+          <a
+            class="text-slate-600 font-medium hover:text-primary transition-colors duration-300"
+            href="#"
+            >Library</a
+          >
+          <div
+            class="flex items-center gap-4 pl-4 border-l border-surface-container-high"
+          >
+            <button
+              class="relative p-2 text-slate-600 hover:bg-surface-container-low rounded-full transition-all"
+            >
+              <span class="material-symbols-outlined">notifications</span>
+              <span
+                class="absolute top-2 right-2 w-2 h-2 bg-secondary rounded-full"
+              ></span>
+            </button>
+            <div
+              class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/10"
+            >
+              <img
+                alt="Profile"
+                class="w-full h-full object-cover"
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFcUH75N1o8JqQOcUmxnu2tjKtVBUpyFVyS0a-edF7ah9W2CbtzwbqR-6KzkNr2a5mb3ZWi_skQesjI9T2l5JDZYjQuYfTpCaqN_W62lIJ0Iw8Rii6KBbkHxETFlPJRJpNoYnklX251bxOGvrAi0X_wtWPk7yvf7nER0U_GWaaja1Z0AS3HmE6zRb3qTTU3phLN4NOcEfGG37YYsmUTQLnWAX2OHBrdyikqvQZFdEWtcmqUyfFcajqo2ygXdYFW8qV-rwsEpcItGXV"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+    <!-- Main Content Canvas -->
+    <main class="pt-24 pb-32 md:pb-12 px-6 max-w-7xl mx-auto">
+      <!-- Welcome Header -->
+      <header class="mb-10">
+        <h1
+          class="text-4xl md:text-5xl font-headline font-extrabold tracking-tight text-on-surface mb-2"
+        >
+          Anshika Trivedi! 👋
+        </h1>
+        <p
+          class="text-on-surface-variant text-lg max-w-2xl font-medium opacity-80"
+        >
+          Here is your AI-optimized study overview for today. Your focus is
+          peaking in 45 minutes.
+        </p>
+      </header>
+      <!-- Bento Grid Layout -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+        <!-- Progress & Streaks (Medium Bento) -->
+        <div
+          class="md:col-span-8 lg:col-span-8 glass-card rounded-2xl p-8 shadow-sm flex flex-col justify-between border border-white/40"
+        >
+          <div class="flex justify-between items-start mb-6">
+            <div>
+              <h3
+                class="text-sm font-bold uppercase tracking-widest text-primary mb-1"
+              >
+                Daily Momentum
+              </h3>
+              <div class="flex items-center gap-2">
+                <span
+                  class="text-3xl font-headline font-extrabold text-secondary"
+                  >🔥 5-Day Streak</span
+                >
+              </div>
+            </div>
+            <div
+              class="bg-surface-container-low px-4 py-2 rounded-xl text-sm font-semibold text-on-surface-variant"
+            >
+              Top 5% this week
+            </div>
+          </div>
+          <!-- Chart -->
+          <div class="flex items-end justify-between gap-2 h-40 mt-4">
+            <div class="flex flex-col items-center flex-1 gap-3 group">
+              <div
+                class="w-full bg-primary/20 rounded-full h-24 relative overflow-hidden group-hover:bg-primary/30 transition-all"
+              >
+                <div
+                  class="absolute bottom-0 w-full bg-primary rounded-full transition-all duration-700 ease-out"
+                  style="height: 60%"
+                ></div>
+              </div>
+              <span
+                class="text-xs font-bold text-outline uppercase tracking-tighter"
+                >Mon</span
+              >
+            </div>
+            <div class="flex flex-col items-center flex-1 gap-3 group">
+              <div
+                class="w-full bg-primary/20 rounded-full h-24 relative overflow-hidden group-hover:bg-primary/30 transition-all"
+              >
+                <div
+                  class="absolute bottom-0 w-full bg-primary rounded-full transition-all duration-700 ease-out"
+                  style="height: 85%"
+                ></div>
+              </div>
+              <span
+                class="text-xs font-bold text-outline uppercase tracking-tighter"
+                >Tue</span
+              >
+            </div>
+            <div class="flex flex-col items-center flex-1 gap-3 group">
+              <div
+                class="w-full bg-primary/20 rounded-full h-24 relative overflow-hidden group-hover:bg-primary/30 transition-all"
+              >
+                <div
+                  class="absolute bottom-0 w-full bg-primary rounded-full transition-all duration-700 ease-out"
+                  style="height: 45%"
+                ></div>
+              </div>
+              <span
+                class="text-xs font-bold text-outline uppercase tracking-tighter"
+                >Wed</span
+              >
+            </div>
+            <div class="flex flex-col items-center flex-1 gap-3 group">
+              <div
+                class="w-full bg-primary/20 rounded-full h-24 relative overflow-hidden group-hover:bg-primary/30 transition-all"
+              >
+                <div
+                  class="absolute bottom-0 w-full bg-primary rounded-full transition-all duration-700 ease-out"
+                  style="height: 95%"
+                ></div>
+              </div>
+              <span
+                class="text-xs font-bold text-outline uppercase tracking-tighter"
+                >Thu</span
+              >
+            </div>
+            <div class="flex flex-col items-center flex-1 gap-3 group">
+              <div
+                class="w-full bg-primary/20 rounded-full h-24 relative overflow-hidden group-hover:bg-primary/30 transition-all"
+              >
+                <div
+                  class="absolute bottom-0 w-full bg-secondary rounded-full animate-pulse-soft"
+                  style="height: 100%"
+                ></div>
+              </div>
+              <span
+                class="text-xs font-bold text-primary uppercase tracking-tighter"
+                >Fri</span
+              >
+            </div>
+            <div
+              class="flex flex-col items-center flex-1 gap-3 group opacity-30"
+            >
+              <div
+                class="w-full bg-surface-container-high rounded-full h-24 relative"
+              ></div>
+              <span
+                class="text-xs font-bold text-outline uppercase tracking-tighter"
+                >Sat</span
+              >
+            </div>
+            <div
+              class="flex flex-col items-center flex-1 gap-3 group opacity-30"
+            >
+              <div
+                class="w-full bg-surface-container-high rounded-full h-24 relative"
+              ></div>
+              <span
+                class="text-xs font-bold text-outline uppercase tracking-tighter"
+                >Sun</span
+              >
+            </div>
+          </div>
+        </div>
+        <!-- AI Grade Predictor (Small Bento) -->
+        <div
+          class="md:col-span-4 glass-card rounded-2xl p-8 shadow-sm border border-white/40 bg-gradient-to-br from-white/80 to-primary/5"
+        >
+          <h3
+            class="text-sm font-bold uppercase tracking-widest text-primary mb-6"
+          >
+            AI Grade Predictor
+          </h3>
+          <div class="space-y-6">
+            <div
+              class="flex items-center justify-between p-4 bg-white/50 rounded-xl"
+            >
+              <span class="text-on-surface-variant font-medium"
+                >Current Grade</span
+              >
+              <span class="text-2xl font-headline font-bold text-on-surface"
+                >B+</span
+              >
+            </div>
+            <div
+              class="relative py-6 flex flex-col items-center justify-center bg-primary rounded-2xl text-white shadow-lg shadow-primary/20 overflow-hidden"
+            >
+              <div class="absolute top-0 right-0 p-2 opacity-20">
+                <span class="material-symbols-outlined text-6xl"
+                  >trending_up</span
+                >
+              </div>
+              <span class="text-xs uppercase tracking-widest opacity-80 mb-1"
+                >Predicted Finale</span
+              >
+              <div class="flex items-center gap-2">
+                <span class="text-5xl font-headline font-black">A-</span>
+                <span class="material-symbols-outlined text-3xl font-bold"
+                  >arrow_upward</span
+                >
+              </div>
+            </div>
+            <p class="text-xs text-center text-on-surface-variant italic px-2">
+              Increase study time for "Physics Lab" by 15% to secure this
+              projection.
+            </p>
+          </div>
+        </div>
+        <!-- Today's Schedule (Tall Bento) -->
+        <div
+          class="md:col-span-5 glass-card rounded-2xl p-8 shadow-sm border border-white/40"
+        >
+          <div class="flex justify-between items-center mb-8">
+            <h3
+              class="text-sm font-bold uppercase tracking-widest text-primary"
+            >
+              Today's Schedule
+            </h3>
+            <span class="material-symbols-outlined text-outline"
+              >calendar_today</span
+            >
+          </div>
+          <div class="relative space-y-12 pl-6">
+            <div
+              class="absolute left-[7px] top-2 bottom-2 w-0.5 bg-surface-container-highest"
+            ></div>
+            <div class="relative">
+              <div
+                class="absolute -left-[23px] top-1 w-4 h-4 rounded-full border-4 border-white bg-primary z-10"
+              ></div>
+              <div class="flex flex-col gap-2">
+                <div class="flex justify-between items-start">
+                  <span class="text-xs font-bold text-primary uppercase"
+                    >09:00 — 10:30</span
+                  >
+                  <span
+                    class="px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-[10px] font-bold uppercase"
+                    >High Impact</span
+                  >
+                </div>
+                <h4 class="font-headline font-bold text-lg leading-tight">
+                  Advanced Calculus
+                </h4>
+                <p class="text-sm text-on-surface-variant">
+                  Room 402 • Prof. Mehta
+                </p>
+              </div>
+            </div>
+            <div class="relative">
+              <div
+                class="absolute -left-[23px] top-1 w-4 h-4 rounded-full border-4 border-white bg-primary z-10"
+              ></div>
+              <div class="flex flex-col gap-2">
+                <div class="flex justify-between items-start">
+                  <span class="text-xs font-bold text-primary uppercase"
+                    >11:30 — 13:00</span
+                  >
+                  <span
+                    class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant text-[10px] font-bold uppercase"
+                    >Lecture</span
+                  >
+                </div>
+                <h4 class="font-headline font-bold text-lg leading-tight">
+                  Physics Lab
+                </h4>
+                <p class="text-sm text-on-surface-variant">South Wing Lab 2</p>
+              </div>
+            </div>
+            <div class="relative">
+              <div
+                class="absolute -left-[23px] top-1 w-4 h-4 rounded-full border-4 border-white bg-secondary animate-pulse z-10"
+              ></div>
+              <div class="flex flex-col gap-2">
+                <div class="flex justify-between items-start">
+                  <span class="text-xs font-bold text-secondary uppercase"
+                    >14:00 — 14:45</span
+                  >
+                  <span
+                    class="px-2 py-0.5 rounded bg-secondary-fixed text-on-secondary-fixed text-[10px] font-bold uppercase"
+                    >Review</span
+                  >
+                </div>
+                <h4 class="font-headline font-bold text-lg leading-tight">
+                  Weekly Reflection
+                </h4>
+                <p class="text-sm text-on-surface-variant">
+                  AI-curated summary session
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Quick Tools / Pomodoro (Medium Bento) -->
+        <div
+          class="md:col-span-7 glass-card rounded-2xl p-8 shadow-sm border border-white/40 overflow-hidden relative"
+        >
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8 h-full">
+            <!-- Timer Section -->
+            <div class="flex flex-col justify-between">
+              <div>
+                <h3
+                  class="text-sm font-bold uppercase tracking-widest text-primary mb-4"
+                >
+                  Pomodoro Focus
+                </h3>
+                <div
+                  class="text-6xl font-headline font-black tracking-tighter text-on-surface"
+                  id="timer"
+                >
+                  25:00
+                </div>
+              </div>
+              <div class="flex gap-3">
+                <button
+                  class="flex-1 py-3 px-6 bg-primary text-white rounded-full font-bold transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
+                  id="timerToggle"
+                >
+                  <span
+                    class="material-symbols-outlined"
+                    style="font-variation-settings: &quot;FILL&quot; 1"
+                    >play_arrow</span
+                  >
+                  Start
+                </button>
+                <button
+                  class="w-12 h-12 flex items-center justify-center rounded-full border-2 border-primary/10 text-primary hover:bg-primary/5 transition-all"
+                >
+                  <span class="material-symbols-outlined">restart_alt</span>
+                </button>
+              </div>
+            </div>
+            <!-- To-Do Section -->
+            <div
+              class="bg-surface-container-low/50 rounded-2xl p-6 flex flex-col h-full"
+            >
+              <div class="flex items-center justify-between mb-4">
+                <h4
+                  class="text-xs font-bold uppercase tracking-widest text-on-surface-variant"
+                >
+                  To-Do List
+                </h4>
+                <button
+                  class="text-[10px] font-bold text-primary cursor-pointer hover:underline uppercase"
+                  id="clearAllBtn"
+                >
+                  Clear All
+                </button>
+              </div>
+              <!-- Add Task Input -->
+              <div
+                class="mb-4 flex items-center gap-2 p-1.5 bg-white rounded-xl shadow-sm border border-white"
+              >
+                <input
+                  class="flex-1 bg-transparent border-none text-sm font-medium focus:ring-0 placeholder:text-outline-variant py-1 pl-2"
+                  id="todoInput"
+                  placeholder="Add a task..."
+                  type="text"
+                />
+                <button
+                  class="w-8 h-8 flex items-center justify-center bg-primary text-white rounded-lg hover:bg-primary-container transition-all active:scale-90"
+                  id="addTaskBtn"
+                >
+                  <span class="material-symbols-outlined text-xl">add</span>
+                </button>
+              </div>
+              <!-- Task Items Container -->
+              <div
+                class="space-y-3 overflow-y-auto no-scrollbar max-h-48"
+                id="todoListContainer"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <!-- Floating Action Button (FAB) - Mobile Only -->
+    <button
+      class="md:hidden fixed bottom-24 right-6 w-14 h-14 bg-primary text-white rounded-full shadow-2xl flex items-center justify-center z-50 hover:scale-110 active:scale-95 transition-all"
+    >
+      <span class="material-symbols-outlined text-3xl">add</span>
+    </button>
+    <!-- Bottom Navigation Bar (Mobile) -->
+    <nav
+      class="md:hidden fixed bottom-0 w-full glass-card border-t border-white/40 px-6 py-4 flex justify-between items-center z-50"
+    >
+      <a class="flex flex-col items-center gap-1 text-primary" href="#">
+        <span
+          class="material-symbols-outlined"
+          style="font-variation-settings: &quot;FILL&quot; 1"
+          >dashboard</span
+        >
+        <span class="text-[10px] font-bold uppercase tracking-tighter"
+          >Dashboard</span
+        >
+      </a>
+      <a
+        class="flex flex-col items-center gap-1 text-outline transition-colors hover:text-primary"
+        href="/smart_scheduler"
+      >
+        <span class="material-symbols-outlined">schedule</span>
+        <span class="text-[10px] font-bold uppercase tracking-tighter"
+          >Schedule</span
+        >
+      </a>
+      <a
+        class="flex flex-col items-center gap-1 text-outline transition-colors hover:text-primary"
+        href="#"
+      >
+        <span class="material-symbols-outlined">library_books</span>
+        <span class="text-[10px] font-bold uppercase tracking-tighter"
+          >Library</span
+        >
+      </a>
+      <a
+        class="flex flex-col items-center gap-1 text-outline transition-colors hover:text-primary"
+        href="#"
+      >
+        <span class="material-symbols-outlined">settings</span>
+        <span class="text-[10px] font-bold uppercase tracking-tighter"
+          >Settings</span
+        >
+      </a>
+    </nav>
+    <!-- JavaScript for Interactions -->
+    <script>
+      // Pomodoro Timer Logic
+      let timerDisplay = document.getElementById("timer");
+      let timerToggle = document.getElementById("timerToggle");
+      let timeLeft = 25 * 60;
+      let isRunning = false;
+      let timerInterval;
+
+      function updateTimerDisplay() {
+        if (!timerDisplay) return;
+        let minutes = Math.floor(timeLeft / 60);
+        let seconds = timeLeft % 60;
+        timerDisplay.textContent = `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+      }
+
+      if (timerToggle) {
+        timerToggle.addEventListener("click", () => {
+          if (isRunning) {
+            clearInterval(timerInterval);
+            timerToggle.innerHTML = `<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">play_arrow</span> Start`;
+          } else {
+            timerInterval = setInterval(() => {
+              if (timeLeft > 0) {
+                timeLeft--;
+                updateTimerDisplay();
+              } else {
+                clearInterval(timerInterval);
+                alert("Session complete! Take a break.");
+                timeLeft = 25 * 60; // Reset for next session
+                updateTimerDisplay();
+                timerToggle.innerHTML = `<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">play_arrow</span> Start`;
+                isRunning = false;
+              }
+            }, 1000);
+            timerToggle.innerHTML = `<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">pause</span> Pause`;
+          }
+          isRunning = !isRunning;
+        });
+      }
+
+      // To-Do List Interaction Logic
+      const todoInput = document.getElementById("todoInput");
+      const addTaskBtn = document.getElementById("addTaskBtn");
+      const todoListContainer = document.getElementById("todoListContainer");
+      const clearAllBtn = document.getElementById("clearAllBtn");
+
+      function updateTaskStyles(checkbox, span) {
+        if (checkbox.checked) {
+          span.classList.add("line-through", "opacity-50");
+          span.classList.remove("text-on-surface");
+          span.classList.add("text-on-surface-variant");
+        } else {
+          span.classList.remove("line-through", "opacity-50");
+          span.classList.remove("text-on-surface-variant");
+          span.classList.add("text-on-surface");
+        }
+      }
+
+      async function loadTasks() {
+        const response = await fetch("/api/tasks/all");
+        const tasks = await response.json();
+        
+        
+        todoListContainer.innerHTML = "";
+
+        tasks.forEach((task) => {
+          const item = createTodoItem(task.title,task.id);
+
+          const checkbox = item.querySelector("input");
+
+          if (task.status === "Completed") {
+            checkbox.checked = true;
+
+            const span = item.querySelector("span");
+            updateTaskStyles(checkbox, span);
+          }
+
+          todoListContainer.appendChild(item);
+        });
+      }
+
+      function createTodoItem(text, taskId) {
+        const label = document.createElement("label");
+        label.className =
+          "flex items-center gap-3 p-2 bg-white rounded-lg cursor-pointer group hover:bg-primary/5 transition-all animate-in fade-in slide-in-from-top-2 duration-300";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.className =
+          "rounded-full text-primary focus:ring-primary/20 border-surface-container-highest";
+
+        const span = document.createElement("span");
+        span.className =
+          "text-sm font-medium text-on-surface group-hover:text-primary transition-all";
+        span.textContent = text;
+
+        checkbox.addEventListener("change", async function () {
+          updateTaskStyles(this, span);
+
+          if (this.checked) {
+            await fetch(`/api/tasks/complete/${taskId}`, {
+              method: "PUT",
+            });
+          }
+        });
+
+        label.appendChild(checkbox);
+        label.appendChild(span);
+        return label;
+      }
+
+      async function addTask() {
+        const text = todoInput.value.trim();
+        if (text) {
+          const response = await fetch("/api/tasks/create", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              title: text,
+              description: text,
+              priority: "Medium",
+              deadline: "2026-06-01",
+              status: "Pending",
+            }),
+          });
+
+          const data = await response.json();
+
+          const newItem = createTodoItem(text, data.task_id);
+          todoListContainer.insertBefore(newItem, todoListContainer.firstChild);
+          todoInput.value = "";
+          todoInput.focus();
+          todoListContainer.scrollTop = 0;
+        }
+      }
+
+      if (addTaskBtn) {
+        addTaskBtn.addEventListener("click", addTask);
+      }
+
+      if (todoInput) {
+        todoInput.addEventListener("keypress", (e) => {
+          if (e.key === "Enter") {
+            addTask();
+          }
+        });
+      }
+
+      if (clearAllBtn) {
+        clearAllBtn.addEventListener("click", async () => {
+          if (todoListContainer.children.length > 0) {
+            if (confirm("Are you sure you want to clear all tasks?")) {
+                await fetch("/api/tasks/delete-all", {
+                    method: "DELETE"
+                });
+              todoListContainer.innerHTML = "";
+            }
+          }
+        });
+      }
+
+      // Handle initial checkboxes style toggle
+      document
+        .querySelectorAll('#todoListContainer input[type="checkbox"]')
+        .forEach((cb) => {
+          const span = cb.nextElementSibling;
+          // Initialize existing checked state
+          updateTaskStyles(cb, span);
+
+          cb.addEventListener("change", function () {
+            updateTaskStyles(this, this.nextElementSibling);
+          });
+        });
+
+      // Smooth Scrolling
+      document.querySelectorAll("a").forEach((anchor) => {
+        anchor.addEventListener("click", function (e) {
+          const href = this.getAttribute("href");
+          if (href && href.startsWith("#") && href.length > 1) {
+            e.preventDefault();
+            document.querySelector(href).scrollIntoView({
+              behavior: "smooth",
+            });
+          }
+        });
+      });
+      loadTasks();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,1117 @@
+<!doctype html>
+
+<html class="light" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Smart Scheduler | SEMS</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=Manrope:wght@400;500;600;700;800&amp;display=swap"
+      rel="stylesheet"
+    />
+    <!-- Icons -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+      rel="stylesheet"
+    />
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-primary-container": "#f8f7ff",
+              "surface-container-low": "#f2f4f8",
+              "error-container": "#ffdad6",
+              "on-background": "#181c1f",
+              "surface-tint": "#0054d6",
+              "surface-container": "#eceef2",
+              "surface-container-lowest": "#ffffff",
+              "on-tertiary": "#ffffff",
+              "on-error-container": "#93000a",
+              "on-secondary-fixed-variant": "#852400",
+              "secondary-container": "#fe6431",
+              surface: "#f7f9fd",
+              "inverse-surface": "#2d3134",
+              "on-surface-variant": "#424656",
+              "surface-bright": "#f7f9fd",
+              "on-primary-fixed": "#001849",
+              "on-secondary": "#ffffff",
+              "tertiary-fixed": "#ffdcbf",
+              "tertiary-fixed-dim": "#ffb874",
+              "primary-fixed-dim": "#b3c5ff",
+              "on-tertiary-fixed-variant": "#6a3b00",
+              "on-primary-fixed-variant": "#003fa4",
+              primary: "#0050cb",
+              "inverse-on-surface": "#eff1f5",
+              "surface-dim": "#d8dade",
+              "on-tertiary-fixed": "#2d1600",
+              "on-secondary-fixed": "#3a0a00",
+              secondary: "#ae3100",
+              "on-primary": "#ffffff",
+              background: "#f7f9fd",
+              "outline-variant": "#c2c6d8",
+              tertiary: "#854b00",
+              "on-tertiary-container": "#fff6f1",
+              error: "#ba1a1a",
+              "surface-container-highest": "#e0e3e6",
+              "surface-container-high": "#e6e8ec",
+              "surface-variant": "#e0e3e6",
+              "secondary-fixed-dim": "#ffb59f",
+              outline: "#727687",
+              "primary-container": "#0066ff",
+              "secondary-fixed": "#ffdbd0",
+              "tertiary-container": "#a86000",
+              "on-secondary-container": "#5b1500",
+              "primary-fixed": "#dae1ff",
+              "inverse-primary": "#b3c5ff",
+              "on-surface": "#181c1f",
+              "on-error": "#ffffff",
+            },
+            borderRadius: {
+              DEFAULT: "0.5rem",
+              lg: "0.5rem",
+              xl: "0.75rem",
+              full: "9999px",
+            },
+            fontFamily: {
+              headline: ["Manrope"],
+              display: ["Manrope"],
+              body: ["Inter"],
+              label: ["Inter"],
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #f7f9fd;
+        color: #181c1f;
+      }
+      .font-manrope {
+        font-family: "Manrope", sans-serif;
+      }
+      .glass-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+      }
+      .material-symbols-outlined {
+        font-variation-settings:
+          "FILL" 0,
+          "wght" 400,
+          "GRAD" 0,
+          "opsz" 24;
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 24px;
+        height: 24px;
+        background: #0050cb;
+        cursor: pointer;
+        border-radius: 50%;
+        border: 4px solid #ffffff;
+        box-shadow: 0 4px 10px rgba(0, 80, 203, 0.2);
+      }
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+      }
+
+      .modal-backdrop {
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(8px);
+      }
+    </style>
+  </head>
+  <body class="selection:bg-primary-fixed selection:text-on-primary-fixed">
+    <!-- Internal SEMS Navbar -->
+    <nav
+      class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl shadow-blue-500/5 shadow-xl"
+    >
+      <div
+        class="flex items-center justify-between px-8 py-4 max-w-7xl mx-auto"
+      >
+        <div class="flex items-center gap-2">
+          <span
+            class="material-symbols-outlined text-primary text-3xl"
+            style="font-variation-settings: &quot;FILL&quot; 1"
+            >school</span
+          >
+          <span
+            class="text-xl font-bold tracking-tighter text-slate-900 font-headline uppercase"
+            >SEMS</span
+          >
+        </div>
+        <!-- Desktop Nav Items -->
+        <div class="hidden md:flex items-center gap-8">
+          <a
+            class="text-slate-600 font-medium hover:text-primary transition-colors duration-300"
+            href="/dashboard"
+          >
+            Dashboard
+          </a>
+
+          <a
+            class="text-primary font-semibold border-b-2 border-primary transition-colors duration-300"
+            href="/smart_scheduler"
+          >
+            Smart Scheduler
+          </a>
+          <a
+            class="text-slate-600 font-medium hover:text-primary transition-colors duration-300"
+            href="#"
+            >Library</a
+          >
+          <div
+            class="flex items-center gap-4 pl-4 border-l border-surface-container-high"
+          >
+            <button
+              class="relative p-2 text-slate-600 hover:bg-surface-container-low rounded-full transition-all"
+            >
+              <span class="material-symbols-outlined">notifications</span>
+              <span
+                class="absolute top-2 right-2 w-2 h-2 bg-secondary rounded-full"
+              ></span>
+            </button>
+            <div
+              class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/10"
+            >
+              <img
+                alt="Profile"
+                class="w-full h-full object-cover"
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFcUH75N1o8JqQOcUmxnu2tjKtVBUpyFVyS0a-edF7ah9W2CbtzwbqR-6KzkNr2a5mb3ZWi_skQesjI9T2l5JDZYjQuYfTpCaqN_W62lIJ0Iw8Rii6KBbkHxETFlPJRJpNoYnklX251bxOGvrAi0X_wtWPk7yvf7nER0U_GWaaja1Z0AS3HmE6zRb3qTTU3phLN4NOcEfGG37YYsmUTQLnWAX2OHBrdyikqvQZFdEWtcmqUyfFcajqo2ygXdYFW8qV-rwsEpcItGXV"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+    <main class="pt-24 pb-32 md:pb-12 px-6 max-w-7xl mx-auto space-y-12">
+      <!-- Page Title -->
+      <section class="text-center space-y-2">
+        <h2
+          class="text-4xl font-extrabold font-manrope tracking-tight text-on-surface"
+        >
+          Smart Scheduler
+        </h2>
+        <p class="text-on-surface-variant font-medium">
+          Algorithmically optimized academic routine for SEMS students.
+        </p>
+      </section>
+      <!-- Bento Grid Layout -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-8">
+        <!-- Subject Management -->
+        <div class="md:col-span-7 glass-card rounded-3xl p-8 shadow-sm">
+          <div class="flex justify-between items-center mb-6">
+            <div class="flex items-center gap-3">
+              <span
+                class="material-symbols-outlined text-primary"
+                data-icon="library_books"
+                >library_books</span
+              >
+              <h3 class="text-xl font-bold font-manrope">Subject Portfolio</h3>
+            </div>
+            <button
+              class="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg shadow-primary/20 active:scale-95 transition-all"
+              id="addSubjectBtn"
+              onclick="toggleSubjectModal()"
+            >
+              <span class="material-symbols-outlined text-sm" data-icon="add"
+                >add</span
+              >
+              Add Subject
+            </button>
+          </div>
+          <div class="space-y-4" id="subjectContainer">
+            <!-- Dynamic Subjects Rendered Here -->
+            <div
+              class="flex flex-col items-center justify-center py-12 text-on-surface-variant/50 border-2 border-dashed border-outline-variant/30 rounded-2xl"
+            >
+              <span class="material-symbols-outlined text-4xl mb-2"
+                >inventory_2</span
+              >
+              <p class="text-sm font-medium">No subjects added yet</p>
+            </div>
+          </div>
+        </div>
+        <!-- Exam Planning -->
+        <div class="md:col-span-5 glass-card rounded-3xl p-8 shadow-sm">
+          <div class="flex items-center gap-3 mb-6">
+            <span
+              class="material-symbols-outlined text-primary"
+              data-icon="event_note"
+              >event_note</span
+            >
+            <h3 class="text-xl font-bold font-manrope">Exam Milestones</h3>
+          </div>
+          <div class="space-y-6">
+            <div class="space-y-2">
+              <label class="text-sm font-semibold text-on-surface-variant ml-1"
+                >Target Subject</label
+              >
+              <select
+                class="w-full bg-surface-container-low border-none rounded-xl p-4 focus:ring-2 focus:ring-primary/20 appearance-none text-on-surface font-medium"
+                id="milestoneSubject"
+              >
+                <option value="">Select a subject...</option>
+              </select>
+            </div>
+            <div class="space-y-2">
+              <label class="text-sm font-semibold text-on-surface-variant ml-1"
+                >Exam Date</label
+              >
+              <div class="relative">
+                <input
+                  class="w-full bg-surface-container-low border-none rounded-xl p-4 pr-12 focus:ring-2 focus:ring-primary/20 text-on-surface"
+                  id="milestoneDate"
+                  type="date"
+                />
+                <span
+                  class="material-symbols-outlined absolute right-4 top-4 text-outline pointer-events-none"
+                  data-icon="calendar_month"
+                  >calendar_month</span
+                >
+              </div>
+            </div>
+            <button
+              class="w-full py-4 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/10 active:scale-[0.98]"
+              id="addMilestoneBtn"
+              onclick="registerMilestone()"
+            >
+              Register Milestone
+            </button>
+            <div class="space-y-3 mt-4" id="milestoneContainer">
+              <!-- Dynamic Milestones -->
+            </div>
+          </div>
+        </div>
+        <!-- Study Preferences -->
+        <div
+          class="md:col-span-6 glass-card rounded-3xl p-8 shadow-sm space-y-8"
+        >
+          <div class="flex items-center gap-3">
+            <span
+              class="material-symbols-outlined text-primary"
+              data-icon="tune"
+              >tune</span
+            >
+            <h3 class="text-xl font-bold font-manrope">Routine Calibration</h3>
+          </div>
+          <div class="space-y-4">
+            <div class="flex justify-between items-center">
+              <label class="text-sm font-bold text-on-surface"
+                >Daily Study Quota</label
+              >
+              <span class="text-primary font-bold text-lg" id="hours-val"
+                >6 Hours</span
+              >
+            </div>
+            <input
+              class="w-full h-2 bg-surface-container-high rounded-full appearance-none cursor-pointer"
+              id="studyHoursSlider"
+              max="12"
+              min="1"
+              oninput="updateStudyHours(this.value)"
+              type="range"
+              value="6"
+            />
+          </div>
+          <div class="space-y-4">
+            <label class="text-sm font-bold text-on-surface"
+              >Optimal Focus Period</label
+            >
+            <div
+              class="flex p-1 bg-surface-container-low rounded-2xl"
+              id="focusPeriodContainer"
+            >
+              <button
+                class="flex-1 py-3 text-sm font-bold rounded-xl transition-all bg-white shadow-sm text-primary"
+                onclick="selectFocusPeriod(this)"
+              >
+                Morning
+              </button>
+              <button
+                class="flex-1 py-3 text-sm font-bold rounded-xl transition-all text-on-surface-variant hover:bg-white/50"
+                onclick="selectFocusPeriod(this)"
+              >
+                Evening
+              </button>
+              <button
+                class="flex-1 py-3 text-sm font-bold rounded-xl transition-all text-on-surface-variant hover:bg-white/50"
+                onclick="selectFocusPeriod(this)"
+              >
+                Night
+              </button>
+            </div>
+          </div>
+          <div class="space-y-4">
+            <label class="text-sm font-bold text-on-surface"
+              >Focus Method</label
+            >
+            <div class="grid grid-cols-2 gap-4" id="focusMethodContainer">
+              <button
+                class="focus-method-btn border-2 border-primary bg-primary/5 p-4 rounded-2xl text-left"
+                onclick="selectFocusMethod(this)"
+              >
+                <p class="font-bold text-primary">Classic Pomodoro</p>
+                <p class="text-[10px] text-primary/70 uppercase font-black">
+                  25m Work / 5m Break
+                </p>
+              </button>
+              <button
+                class="focus-method-btn border-2 border-transparent bg-surface-container-low p-4 rounded-2xl text-left hover:border-outline-variant transition-all"
+                onclick="selectFocusMethod(this)"
+              >
+                <p class="font-bold text-on-surface">Deep Focus</p>
+                <p
+                  class="text-[10px] text-on-surface-variant uppercase font-bold"
+                >
+                  50m Work / 10m Break
+                </p>
+              </button>
+            </div>
+          </div>
+        </div>
+        <!-- Smart Constraints -->
+        <div class="md:col-span-6 glass-card rounded-3xl p-8 shadow-sm">
+          <div class="flex items-center gap-3 mb-8">
+            <span
+              class="material-symbols-outlined text-primary"
+              data-icon="psychology"
+              >psychology</span
+            >
+            <h3 class="text-xl font-bold font-manrope">
+              Intelligence Constraints
+            </h3>
+          </div>
+          <div class="space-y-5" id="constraintsContainer">
+            <!-- Toggle Switches -->
+            <div class="flex items-center justify-between">
+              <span class="font-medium text-on-surface"
+                >Avoid Early Mornings</span
+              >
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input class="sr-only peer" type="checkbox" />
+                <div
+                  class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"
+                ></div>
+              </label>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="font-medium text-on-surface"
+                >Prioritize Critical Subjects</span
+              >
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input checked="" class="sr-only peer" type="checkbox" />
+                <div
+                  class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"
+                ></div>
+              </label>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="font-medium text-on-surface"
+                >Intensive Pre-Exam Review</span
+              >
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input checked="" class="sr-only peer" type="checkbox" />
+                <div
+                  class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"
+                ></div>
+              </label>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="font-medium text-on-surface"
+                >Weekend Preservation</span
+              >
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input class="sr-only peer" type="checkbox" />
+                <div
+                  class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"
+                ></div>
+              </label>
+            </div>
+          </div>
+        </div>
+        <!-- AI Recommendation Panel -->
+        <div
+          class="md:col-span-12 bg-primary/5 rounded-3xl p-8 border-2 border-primary/10 shadow-inner overflow-hidden relative"
+          id="aiRecommendationContainer"
+        >
+          <div
+            class="flex flex-col md:flex-row items-center justify-center py-12 text-center md:text-left gap-6"
+          >
+            <span
+              class="material-symbols-outlined text-5xl text-primary animate-pulse"
+              data-icon="auto_awesome"
+              >auto_awesome</span
+            >
+            <div>
+              <h4 class="text-2xl font-bold font-manrope">Ready to analyze?</h4>
+              <p class="text-on-surface-variant">
+                Add your subjects and click 'Generate' to see AI-optimized study
+                recommendations.
+              </p>
+            </div>
+          </div>
+        </div>
+        <!-- Schedule Preview -->
+        <div class="md:col-span-12 glass-card rounded-3xl p-8 shadow-sm">
+          <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-3">
+              <span
+                class="material-symbols-outlined text-primary"
+                data-icon="grid_view"
+                >grid_view</span
+              >
+              <h3 class="text-xl font-bold font-manrope">Weekly Study Map</h3>
+            </div>
+            <div class="flex gap-2">
+              <button
+                class="p-2 rounded-lg bg-surface-container-low text-on-surface-variant opacity-50 cursor-not-allowed"
+              >
+                <span
+                  class="material-symbols-outlined text-sm"
+                  data-icon="chevron_left"
+                  >chevron_left</span
+                >
+              </button>
+              <button
+                class="p-2 rounded-lg bg-surface-container-low text-on-surface-variant opacity-50 cursor-not-allowed"
+              >
+                <span
+                  class="material-symbols-outlined text-sm"
+                  data-icon="chevron_right"
+                  >chevron_right</span
+                >
+              </button>
+            </div>
+          </div>
+          <div class="overflow-x-auto custom-scrollbar">
+            <div
+              class="min-w-[800px] grid grid-cols-7 gap-4"
+              id="weeklyScheduleContainer"
+            >
+              <!-- Days Headers -->
+              <div
+                class="text-center py-2 text-xs font-black text-on-surface-variant uppercase"
+              >
+                Mon
+              </div>
+              <div
+                class="text-center py-2 text-xs font-black text-on-surface-variant uppercase"
+              >
+                Tue
+              </div>
+              <div
+                class="text-center py-2 text-xs font-black text-on-surface-variant uppercase"
+              >
+                Wed
+              </div>
+              <div
+                class="text-center py-2 text-xs font-black text-on-surface-variant uppercase"
+              >
+                Thu
+              </div>
+              <div
+                class="text-center py-2 text-xs font-black text-on-surface-variant uppercase"
+              >
+                Fri
+              </div>
+              <div
+                class="text-center py-2 text-xs font-black text-secondary-container uppercase"
+              >
+                Sat
+              </div>
+              <div
+                class="text-center py-2 text-xs font-black text-secondary-container uppercase"
+              >
+                Sun
+              </div>
+              <!-- Empty schedule state -->
+              <div
+                class="col-span-7 flex flex-col items-center justify-center py-12 text-outline-variant"
+              >
+                <span class="material-symbols-outlined text-4xl mb-2"
+                  >calendar_today</span
+                >
+                <p class="text-sm font-bold uppercase tracking-widest">
+                  Schedule pending generation
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Floating Action Cluster -->
+      <div
+        class="fixed bottom-10 left-1/2 -translate-x-1/2 z-40 w-full max-w-2xl px-6"
+      >
+        <div
+          class="bg-white/70 backdrop-blur-2xl border border-white/40 p-3 rounded-full shadow-2xl flex items-center gap-3"
+        >
+          <button
+            class="flex-grow flex items-center justify-center gap-3 py-4 bg-primary text-white rounded-full font-bold text-lg shadow-xl shadow-primary/40 active:scale-95 transition-all"
+            id="generateScheduleBtn"
+            onclick="generateSchedule()"
+          >
+            <span class="material-symbols-outlined" data-icon="auto_awesome"
+              >auto_awesome</span
+            >
+            Generate AI Schedule
+          </button>
+          <div class="flex gap-2 pr-2">
+            <button
+              class="w-14 h-14 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-all active:scale-90"
+              id="saveScheduleBtn"
+              onclick="saveSchedule()"
+              title="Save Schedule"
+            >
+              <span class="material-symbols-outlined" data-icon="save"
+                >save</span
+              >
+            </button>
+            <button
+              class="w-14 h-14 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-all active:scale-90"
+              id="regenerateBtn"
+              onclick="regenerateSchedule()"
+              title="Regenerate"
+            >
+              <span class="material-symbols-outlined" data-icon="refresh"
+                >refresh</span
+              >
+            </button>
+            <button
+              class="w-14 h-14 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-all active:scale-90"
+              id="downloadPdfBtn"
+              onclick="downloadSchedulePDF()"
+              title="Download PDF"
+            >
+              <span class="material-symbols-outlined" data-icon="picture_as_pdf"
+                >picture_as_pdf</span
+              >
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+    <!-- Subject Input Modal -->
+    <div
+      class="fixed inset-0 z-[100] hidden flex items-center justify-center p-6 modal-backdrop"
+      id="subjectModal"
+    >
+      <div
+        class="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl animate-in fade-in zoom-in duration-200"
+      >
+        <div class="flex justify-between items-center mb-6">
+          <h3 class="text-2xl font-bold font-manrope">Add New Subject</h3>
+          <button
+            class="text-on-surface-variant hover:text-error transition-colors"
+            onclick="toggleSubjectModal()"
+          >
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="space-y-6">
+          <div class="space-y-2">
+            <label class="text-sm font-bold text-on-surface-variant ml-1"
+              >Subject Name</label
+            >
+            <input
+              class="w-full bg-surface-container-low border-none rounded-xl p-4 focus:ring-2 focus:ring-primary/20 text-on-surface"
+              id="modalSubjectName"
+              placeholder="e.g. Advanced Calculus"
+              type="text"
+            />
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-bold text-on-surface-variant ml-1"
+              >Complexity Level</label
+            >
+            <div class="grid grid-cols-3 gap-3">
+              <button
+                class="diff-btn py-3 rounded-xl border-2 border-transparent bg-surface-container-low text-sm font-bold text-on-surface-variant transition-all hover:border-outline-variant"
+                onclick="setDifficulty(this, 'Easy')"
+              >
+                Easy
+              </button>
+              <button
+                class="diff-btn py-3 rounded-xl border-2 border-primary bg-primary/5 text-sm font-bold text-primary transition-all"
+                id="defaultDiff"
+                onclick="setDifficulty(this, 'Medium')"
+              >
+                Medium
+              </button>
+              <button
+                class="diff-btn py-3 rounded-xl border-2 border-transparent bg-surface-container-low text-sm font-bold text-on-surface-variant transition-all hover:border-outline-variant"
+                onclick="setDifficulty(this, 'Hard')"
+              >
+                Hard
+              </button>
+            </div>
+          </div>
+          <button
+            class="w-full py-4 bg-primary text-white rounded-2xl font-bold shadow-xl shadow-primary/20 active:scale-95 transition-all"
+            onclick="confirmAddSubject()"
+          >
+            Add to Portfolio
+          </button>
+        </div>
+      </div>
+    </div>
+    <script>
+      // State
+      let subjects = [];
+      let milestones = [];
+      let currentDifficulty = "Medium";
+      let editMilestoneId = null;
+
+      async function loadSubjects() {
+        try {
+
+            const userId =
+                localStorage.getItem("user_id");
+
+            const response = await fetch(
+                `/api/subjects/all/${userId}`
+            );
+
+            const data = await response.json();
+
+            console.log("Subjects API Data:", data);
+
+            subjects = data.map(subject => ({
+                id: subject.id,
+                name: subject.name,
+                credits: subject.credits,
+                difficulty: subject.difficulty,
+                hoursPerWeek: subject.hours_per_week
+            }));
+
+            renderSubjects();
+            updateSubjectDropdown();
+
+        } catch (error) {
+            console.error("Error loading subjects:", error);
+        }
+    }
+
+      // UI Logic: Study Hours
+      function updateStudyHours(val) {
+        document.getElementById("hours-val").innerText = val + " Hours";
+      }
+
+      // UI Logic: Focus Period Selection
+      function selectFocusPeriod(btn) {
+        const siblings = btn.parentElement.querySelectorAll("button");
+        siblings.forEach((s) => {
+          s.classList.remove("bg-white", "shadow-sm", "text-primary");
+          s.classList.add("text-on-surface-variant", "hover:bg-white/50");
+        });
+        btn.classList.add("bg-white", "shadow-sm", "text-primary");
+        btn.classList.remove("text-on-surface-variant", "hover:bg-white/50");
+      }
+
+      // UI Logic: Focus Method Selection
+      function selectFocusMethod(btn) {
+        const buttons = document.querySelectorAll(".focus-method-btn");
+        buttons.forEach((b) => {
+          b.classList.remove("border-primary", "bg-primary/5");
+          b.classList.add("border-transparent", "bg-surface-container-low");
+          b.querySelector("p:first-child").classList.remove("text-primary");
+          b.querySelector("p:first-child").classList.add("text-on-surface");
+          const subtext = b.querySelector("p:last-child");
+          subtext.classList.remove("text-primary/70");
+          subtext.classList.add("text-on-surface-variant");
+        });
+
+        btn.classList.add("border-primary", "bg-primary/5");
+        btn.classList.remove("border-transparent", "bg-surface-container-low");
+        btn.querySelector("p:first-child").classList.add("text-primary");
+        btn.querySelector("p:last-child").classList.add("text-primary/70");
+      }
+
+      // Modal Logic
+      function toggleSubjectModal() {
+        const modal = document.getElementById("subjectModal");
+        modal.classList.toggle("hidden");
+        if (!modal.classList.contains("hidden")) {
+          document.getElementById("modalSubjectName").value = "";
+          document.getElementById("modalSubjectName").focus();
+        }
+      }
+
+      function setDifficulty(btn, level) {
+        const buttons = document.querySelectorAll(".diff-btn");
+        buttons.forEach((b) => {
+          b.classList.remove("border-primary", "bg-primary/5", "text-primary");
+          b.classList.add(
+            "border-transparent",
+            "bg-surface-container-low",
+            "text-on-surface-variant",
+          );
+        });
+        btn.classList.add("border-primary", "bg-primary/5", "text-primary");
+        btn.classList.remove(
+          "border-transparent",
+          "bg-surface-container-low",
+          "text-on-surface-variant",
+        );
+        currentDifficulty = level;
+      }
+
+      // Dynamic Subject Logic
+      async function confirmAddSubject() {
+
+          const name =
+              document.getElementById("modalSubjectName").value.trim();
+
+          const userId =
+              localStorage.getItem("user_id");
+
+          console.log("userId =", userId);
+
+          console.log({
+              name: name,
+              difficulty: currentDifficulty,
+              user_id: parseInt(userId)
+          });
+
+          const response = await fetch(
+              "/api/subjects/create",
+              {
+                  method: "POST",
+                  headers: {
+                      "Content-Type": "application/json",
+                  },
+
+                  body: JSON.stringify({
+                      name: name,
+                      difficulty: currentDifficulty,
+                      user_id: parseInt(userId)
+                  })
+              }
+          );
+
+          const result = await response.json();
+      }
+
+      async function deleteSubject(id) {
+        await fetch(`/api/subjects/${id}`, {
+          method: "DELETE",
+        });
+
+        await loadSubjects();
+      }
+
+      function renderSubjects() {
+        const container = document.getElementById("subjectContainer");
+        if (subjects.length === 0) {
+          container.innerHTML = `<div class="flex flex-col items-center justify-center py-12 text-on-surface-variant/50 border-2 border-dashed border-outline-variant/30 rounded-2xl">
+                                  <span class="material-symbols-outlined text-4xl mb-2">inventory_2</span>
+                                  <p class="text-sm font-medium">No subjects added yet</p>
+                              </div>`;
+          return;
+        }
+
+        container.innerHTML = subjects
+          .map((s) => {
+            let badgeClass = "bg-green-100 text-green-700";
+            if (s.difficulty === "Medium")
+              badgeClass = "bg-tertiary-fixed text-on-tertiary-fixed-variant";
+            if (s.difficulty === "Hard")
+              badgeClass = "bg-error-container text-on-error-container";
+
+            return `
+                                  <div class="flex items-center justify-between p-4 bg-surface-container-lowest rounded-2xl shadow-sm border border-surface-container animate-in slide-in-from-bottom-2 duration-300">
+                                      <div class="flex items-center gap-4">
+                                          <div class="w-1.5 h-10 bg-primary rounded-full"></div>
+                                          <div>
+                                              <h4 class="font-bold text-on-surface">${s.name}</h4>
+                                              <span class="px-2 py-0.5 ${badgeClass} text-[9px] font-bold rounded-full uppercase">${s.difficulty}</span>
+                                          </div>
+                                      </div>
+                                      <button onclick="deleteSubject('${s.id}')" class="w-10 h-10 rounded-full flex items-center justify-center text-outline hover:text-error hover:bg-error/5 transition-all">
+                                          <span class="material-symbols-outlined text-xl">delete</span>
+                                      </button>
+                                  </div>
+                              `;
+          })
+          .join("");
+      }
+
+      function updateSubjectDropdown() {
+        const select = document.getElementById("milestoneSubject");
+        const currentValue = select.value;
+        select.innerHTML =
+          '<option value="">Select a subject...</option>' +
+          subjects
+            .map((s) => `<option value="${s.id}">${s.name}</option>`)
+            .join("");
+
+        // Try to restore previous selection if it still exists
+        if (subjects.find((s) => s.id === currentValue)) {
+          select.value = currentValue;
+        }
+      }
+
+      // Dynamic Milestone Logic
+      async function registerMilestone() {
+        const subId = document.getElementById("milestoneSubject").value;
+        const date = document.getElementById("milestoneDate").value;
+
+        if (!subId || !date) {
+          alert("Please select a subject and date.");
+          return;
+        }
+
+        const subject = subjects.find((s) => String(s.id) === String(subId));
+        if (!subject) {
+          alert(
+            "Error: Subject data is missing or out of sync. Please refresh the page.",
+          );
+          return;
+        }
+        console.log("subId =", subId);
+        console.log("subjects =", subjects);
+        console.log("subject found =", subject);
+
+        if (editMilestoneId) {
+          // Updating existing
+          const index = milestones.findIndex((m) => m.id === editMilestoneId);
+          if (index !== -1) {
+            milestones[index] = {
+              ...milestones[index],
+              subjectId: subId,
+              subjectName: subject.name,
+              date,
+            };
+          }
+          editMilestoneId = null;
+          document.getElementById("addMilestoneBtn").innerText =
+            "Register Milestone";
+        } else {
+          // New milestone
+          try {
+            const response = await fetch("/api/milestones/create", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                subject_id: parseInt(subject.id),
+                subject_name: subject.name,
+                exam_date: date,
+              }),
+            });
+
+            const result = await response.json();
+
+            console.log(result);
+            await loadMilestones();
+          } catch (error) {
+            console.error("Error creating milestone:", error);
+          }
+        }
+
+        // Reset form
+        document.getElementById("milestoneSubject").value = "";
+        document.getElementById("milestoneDate").value = "";
+      }
+
+      async function loadMilestones() {
+        const response = await fetch("/api/milestones/all");
+        const data = await response.json();
+        console.log("Milestone API Data:", data);
+
+        milestones = data.map((m) => ({
+          id: m.id,
+          subjectId: m.subject_id.toString(),
+          subjectName: m.subject_name,
+          date: m.exam_date,
+        }));
+        const container = document.getElementById("milestoneContainer");
+
+        renderMilestones();
+      }
+
+      async function deleteMilestone(id) {
+        await fetch(`/api/milestones/${id}`, {
+          method: "DELETE",
+        });
+
+        await loadMilestones();
+      }
+
+      function editMilestone(id) {
+        const m = milestones.find((m) => m.id === id);
+        if (m) {
+          document.getElementById("milestoneSubject").value = m.subjectId;
+          document.getElementById("milestoneDate").value = m.date;
+          editMilestoneId = id;
+          document.getElementById("addMilestoneBtn").innerText =
+            "Update Milestone";
+          // Scroll to form
+          document
+            .getElementById("milestoneSubject")
+            .scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }
+
+      function renderMilestones() {
+        const container = document.getElementById("milestoneContainer");
+        if (milestones.length === 0) {
+          container.innerHTML = "";
+          return;
+        }
+
+        container.innerHTML = milestones
+          .map(
+            (m) => `
+                              <div class="p-4 bg-surface-container-low rounded-2xl border border-surface-container flex justify-between items-center group animate-in fade-in duration-300">
+                                  <div class="flex items-center gap-3">
+                                      <div class="bg-primary/10 p-2 rounded-lg text-primary">
+                                          <span class="material-symbols-outlined text-lg">event</span>
+                                      </div>
+                                      <div>
+                                          <p class="text-sm font-bold text-on-surface">${m.subjectName}</p>
+                                          <p class="text-[10px] font-medium text-on-surface-variant flex items-center gap-1">
+                                              <span class="material-symbols-outlined text-[12px]">calendar_today</span>
+                                              ${new Date(m.date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                                          </p>
+                                      </div>
+                                  </div>
+                                  <div class="flex gap-1">
+                                      <button onclick="editMilestone('${m.id}')" class="w-8 h-8 rounded-full flex items-center justify-center text-outline hover:text-primary hover:bg-primary/5 transition-all">
+                                          <span class="material-symbols-outlined text-lg">edit</span>
+                                      </button>
+                                      <button onclick="deleteMilestone('${m.id}')" class="w-8 h-8 rounded-full flex items-center justify-center text-outline hover:text-error hover:bg-error/5 transition-all">
+                                          <span class="material-symbols-outlined text-lg">delete</span>
+                                      </button>
+                                  </div>
+                              </div>
+                          `,
+          )
+          .join("");
+      }
+
+      loadMilestones();
+
+      // Core Scheduler Actions
+      function generateSchedule() {
+        if (subjects.length === 0) {
+          alert("Add at least one subject to generate a schedule.");
+          return;
+        }
+
+        const aiContainer = document.getElementById(
+          "aiRecommendationContainer",
+        );
+        aiContainer.innerHTML = `
+                              <div class="absolute -right-12 -top-12 opacity-10">
+                                  <span class="material-symbols-outlined text-[160px]" data-icon="auto_awesome">auto_awesome</span>
+                              </div>
+                              <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-8 relative z-10">
+                                  <div class="space-y-4 max-w-2xl">
+                                      <div class="inline-flex items-center gap-2 px-3 py-1 bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-full">
+                                          <span class="material-symbols-outlined text-sm" data-icon="bolt">bolt</span>
+                                          AI Live Analysis
+                                      </div>
+                                      <h4 class="text-3xl font-bold font-manrope leading-tight">
+                                          Optimizing for <span class="text-primary underline decoration-primary/30 underline-offset-8">${subjects[0].name}</span> and your routine constraints.
+                                      </h4>
+                                      <p class="text-on-surface-variant leading-relaxed">Based on your ${subjects.length} subjects, we've increased prep for hard modules by 20% and preserved your evening relaxation window.</p>
+                                  </div>
+                                  <div class="bg-white p-6 rounded-2xl shadow-xl shadow-primary/10 min-w-[240px]">
+                                      <p class="text-xs font-black text-on-surface-variant uppercase tracking-widest mb-4">Focus Distribution</p>
+                                      <div class="flex items-end gap-3 h-32">
+                                          <div class="flex-1 bg-primary rounded-t-lg h-[80%]"></div>
+                                          <div class="flex-1 bg-secondary-container rounded-t-lg h-[50%]"></div>
+                                          <div class="flex-1 bg-tertiary-container rounded-t-lg h-[30%]"></div>
+                                          <div class="flex-1 bg-surface-container-highest rounded-t-lg h-[20%]"></div>
+                                      </div>
+                                  </div>
+                              </div>
+                          `;
+
+        renderDummyGrid();
+      }
+
+      function renderDummyGrid() {
+        const grid = document.getElementById("weeklyScheduleContainer");
+        const headers = `
+                              <div class="text-center py-2 text-xs font-black text-on-surface-variant uppercase">Mon</div>
+                              <div class="text-center py-2 text-xs font-black text-on-surface-variant uppercase">Tue</div>
+                              <div class="text-center py-2 text-xs font-black text-on-surface-variant uppercase">Wed</div>
+                              <div class="text-center py-2 text-xs font-black text-on-surface-variant uppercase">Thu</div>
+                              <div class="text-center py-2 text-xs font-black text-on-surface-variant uppercase">Fri</div>
+                              <div class="text-center py-2 text-xs font-black text-secondary-container uppercase">Sat</div>
+                              <div class="text-center py-2 text-xs font-black text-secondary-container uppercase">Sun</div>
+                          `;
+
+        let blocks = "";
+        for (let i = 0; i < 5; i++) {
+          blocks += `
+                                  <div class="space-y-2">
+                                      <div class="bg-primary/10 border-l-4 border-primary p-3 rounded-lg">
+                                          <p class="text-[9px] font-bold text-primary">09:00 - 11:30</p>
+                                          <p class="text-[11px] font-extrabold truncate">${subjects[0].name}</p>
+                                      </div>
+                                      ${
+                                        subjects[1]
+                                          ? `
+                                      <div class="bg-secondary-container/10 border-l-4 border-secondary-container p-3 rounded-lg">
+                                          <p class="text-[9px] font-bold text-secondary-container">14:00 - 15:30</p>
+                                          <p class="text-[11px] font-extrabold truncate">${subjects[1].name}</p>
+                                      </div>`
+                                          : ""
+                                      }
+                                  </div>
+                              `;
+        }
+        blocks += `<div class="bg-surface-container-low rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-outline-variant p-4 text-center">
+                              <span class="material-symbols-outlined text-outline text-3xl mb-1" data-icon="beach_access">beach_access</span>
+                              <p class="text-[9px] font-bold text-outline-variant uppercase">Rest</p>
+                          </div>`;
+        blocks += `<div class="bg-surface-container-low rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-outline-variant p-4 text-center">
+                              <span class="material-symbols-outlined text-outline text-3xl mb-1" data-icon="self_improvement">self_improvement</span>
+                              <p class="text-[9px] font-bold text-outline-variant uppercase">Mindful</p>
+                          </div>`;
+
+        grid.innerHTML = headers + blocks;
+      }
+
+      function saveSchedule() {
+        alert("Schedule saved to your SEMS profile!");
+      }
+
+      function regenerateSchedule() {
+        generateSchedule();
+      }
+
+      function downloadSchedulePDF() {
+        alert("Preparing your PDF download...");
+      }
+      // Initial Page Load
+      window.onload = async () => {
+        await loadSubjects();
+        await loadMilestones();
+      };
+    </script>
+  </body>
+</html>
