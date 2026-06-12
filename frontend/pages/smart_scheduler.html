@@ -175,7 +175,7 @@
           </a>
           <a
             class="text-slate-600 font-medium hover:text-primary transition-colors duration-300"
-            href="#"
+            href="/resources"
             >Library</a
           >
           <div
@@ -1050,91 +1050,161 @@
       loadMilestones();
 
       // Core Scheduler Actions
-      function generateSchedule() {
+      async function generateSchedule() {
         if (subjects.length === 0) {
           alert("Add at least one subject to generate a schedule.");
           return;
         }
 
-        const aiContainer = document.getElementById(
-          "aiRecommendationContainer",
-        );
-        aiContainer.innerHTML = `
-                              <div class="absolute -right-12 -top-12 opacity-10">
-                                  <span class="material-symbols-outlined text-[160px]" data-icon="auto_awesome">auto_awesome</span>
-                              </div>
-                              <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-8 relative z-10">
-                                  <div class="space-y-4 max-w-2xl">
-                                      <div class="inline-flex items-center gap-2 px-3 py-1 bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-full">
-                                          <span class="material-symbols-outlined text-sm" data-icon="bolt">bolt</span>
-                                          AI Live Analysis
-                                      </div>
-                                      <h4 class="text-3xl font-bold font-manrope leading-tight">
-                                          Optimizing for <span class="text-primary underline decoration-primary/30 underline-offset-8">${subjects[0].name}</span> and your routine constraints.
-                                      </h4>
-                                      <p class="text-on-surface-variant leading-relaxed">Based on your ${subjects.length} subjects, we've increased prep for hard modules by 20% and preserved your evening relaxation window.</p>
-                                  </div>
-                                  <div class="bg-white p-6 rounded-2xl shadow-xl shadow-primary/10 min-w-[240px]">
-                                      <p class="text-xs font-black text-on-surface-variant uppercase tracking-widest mb-4">Focus Distribution</p>
-                                      <div class="flex items-end gap-3 h-32">
-                                          <div class="flex-1 bg-primary rounded-t-lg h-[80%]"></div>
-                                          <div class="flex-1 bg-secondary-container rounded-t-lg h-[50%]"></div>
-                                          <div class="flex-1 bg-tertiary-container rounded-t-lg h-[30%]"></div>
-                                          <div class="flex-1 bg-surface-container-highest rounded-t-lg h-[20%]"></div>
-                                      </div>
-                                  </div>
-                              </div>
-                          `;
+        try {
+          const response = await fetch("/api/schedule/generate", {
+            method: "POST"
+          });
 
-        renderDummyGrid();
+          if (response.ok) {
+            await loadAiInsights();
+            await loadSchedule();
+          } else {
+            alert("Failed to generate schedule");
+          }
+        } catch (error) {
+          console.error("Error generating schedule:", error);
+        }
       }
 
-      function renderDummyGrid() {
+      async function loadSchedule() {
+        try {
+          const res = await fetch("/api/schedule/all");
+          if (res.ok) {
+            const events = await res.json();
+            if (events && events.length > 0) {
+              renderScheduleGrid(events);
+            } else {
+              renderEmptyGrid();
+            }
+          }
+        } catch (error) {
+          console.error("Error loading schedule:", error);
+        }
+      }
+
+      function renderEmptyGrid() {
         const grid = document.getElementById("weeklyScheduleContainer");
         const headers = `
-                              <div class="text-center py-2 text-xs font-black text-on-surface-variant uppercase">Mon</div>
-                              <div class="text-center py-2 text-xs font-black text-on-surface-variant uppercase">Tue</div>
-                              <div class="text-center py-2 text-xs font-black text-on-surface-variant uppercase">Wed</div>
-                              <div class="text-center py-2 text-xs font-black text-on-surface-variant uppercase">Thu</div>
-                              <div class="text-center py-2 text-xs font-black text-on-surface-variant uppercase">Fri</div>
-                              <div class="text-center py-2 text-xs font-black text-secondary-container uppercase">Sat</div>
-                              <div class="text-center py-2 text-xs font-black text-secondary-container uppercase">Sun</div>
-                          `;
+          <div class="text-center py-2 text-xs font-black text-on-surface-variant uppercase">Mon</div>
+          <div class="text-center py-2 text-xs font-black text-on-surface-variant uppercase">Tue</div>
+          <div class="text-center py-2 text-xs font-black text-on-surface-variant uppercase">Wed</div>
+          <div class="text-center py-2 text-xs font-black text-on-surface-variant uppercase">Thu</div>
+          <div class="text-center py-2 text-xs font-black text-on-surface-variant uppercase">Fri</div>
+          <div class="text-center py-2 text-xs font-black text-secondary-container uppercase">Sat</div>
+          <div class="text-center py-2 text-xs font-black text-secondary-container uppercase">Sun</div>
+        `;
+        const emptyState = `
+          <div class="col-span-7 flex flex-col items-center justify-center py-12 text-outline-variant">
+            <span class="material-symbols-outlined text-4xl mb-2">calendar_today</span>
+            <p class="text-sm font-bold uppercase tracking-widest">Schedule pending generation</p>
+          </div>
+        `;
+        grid.innerHTML = headers + emptyState;
+      }
 
+      function renderScheduleGrid(events) {
+        const grid = document.getElementById("weeklyScheduleContainer");
+        const headers = `
+          <div class="text-center py-2 text-xs font-black text-on-surface-variant uppercase">Mon</div>
+          <div class="text-center py-2 text-xs font-black text-on-surface-variant uppercase">Tue</div>
+          <div class="text-center py-2 text-xs font-black text-on-surface-variant uppercase">Wed</div>
+          <div class="text-center py-2 text-xs font-black text-on-surface-variant uppercase">Thu</div>
+          <div class="text-center py-2 text-xs font-black text-on-surface-variant uppercase">Fri</div>
+          <div class="text-center py-2 text-xs font-black text-secondary-container uppercase">Sat</div>
+          <div class="text-center py-2 text-xs font-black text-secondary-container uppercase">Sun</div>
+        `;
+
+        const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
         let blocks = "";
-        for (let i = 0; i < 5; i++) {
-          blocks += `
-                                  <div class="space-y-2">
-                                      <div class="bg-primary/10 border-l-4 border-primary p-3 rounded-lg">
-                                          <p class="text-[9px] font-bold text-primary">09:00 - 11:30</p>
-                                          <p class="text-[11px] font-extrabold truncate">${subjects[0].name}</p>
-                                      </div>
-                                      ${
-                                        subjects[1]
-                                          ? `
-                                      <div class="bg-secondary-container/10 border-l-4 border-secondary-container p-3 rounded-lg">
-                                          <p class="text-[9px] font-bold text-secondary-container">14:00 - 15:30</p>
-                                          <p class="text-[11px] font-extrabold truncate">${subjects[1].name}</p>
-                                      </div>`
-                                          : ""
-                                      }
-                                  </div>
-                              `;
-        }
-        blocks += `<div class="bg-surface-container-low rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-outline-variant p-4 text-center">
-                              <span class="material-symbols-outlined text-outline text-3xl mb-1" data-icon="beach_access">beach_access</span>
-                              <p class="text-[9px] font-bold text-outline-variant uppercase">Rest</p>
-                          </div>`;
-        blocks += `<div class="bg-surface-container-low rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-outline-variant p-4 text-center">
-                              <span class="material-symbols-outlined text-outline text-3xl mb-1" data-icon="self_improvement">self_improvement</span>
-                              <p class="text-[9px] font-bold text-outline-variant uppercase">Mindful</p>
-                          </div>`;
+        
+        days.forEach(day => {
+          const dayEvents = events.filter(e => e.day_of_week === day);
+          
+          blocks += `<div class="space-y-2">`;
+          if (dayEvents.length === 0) {
+            if (day === "Saturday") {
+              blocks += `
+                <div class="bg-surface-container-low rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-outline-variant p-4 text-center">
+                  <span class="material-symbols-outlined text-outline text-3xl mb-1">beach_access</span>
+                  <p class="text-[9px] font-bold text-outline-variant uppercase">Rest</p>
+                </div>`;
+            } else if (day === "Sunday") {
+              blocks += `
+                <div class="bg-surface-container-low rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-outline-variant p-4 text-center">
+                  <span class="material-symbols-outlined text-outline text-3xl mb-1">self_improvement</span>
+                  <p class="text-[9px] font-bold text-outline-variant uppercase">Mindful</p>
+                </div>`;
+            } else {
+              blocks += `
+                <div class="py-4 text-center text-outline-variant text-[10px] italic">
+                  No sessions
+                </div>`;
+            }
+          } else {
+            dayEvents.forEach((event, idx) => {
+              let bgClass = "bg-primary/10 border-primary text-primary";
+              let labelClass = "text-primary";
+              if (idx === 1) {
+                bgClass = "bg-secondary-container/10 border-secondary-container text-secondary-container";
+                labelClass = "text-secondary-container";
+              } else if (idx > 1) {
+                bgClass = "bg-tertiary-container/10 border-tertiary-container text-tertiary-container";
+                labelClass = "text-tertiary-container";
+              }
+              
+              blocks += `
+                <div class="${bgClass} border-l-4 p-3 rounded-lg animate-in fade-in slide-in-from-top-1 duration-200">
+                  <p class="text-[9px] font-bold ${labelClass}">${event.start_time} - ${event.end_time}</p>
+                  <p class="text-[11px] font-extrabold truncate text-on-surface">${event.subject_name}</p>
+                </div>`;
+            });
+          }
+          blocks += `</div>`;
+        });
 
         grid.innerHTML = headers + blocks;
       }
 
+      async function loadAiInsights() {
+        try {
+          const res = await fetch("/api/analytics/summary");
+          if (res.ok) {
+            const data = await res.json();
+            const aiContainer = document.getElementById("aiRecommendationContainer");
+            if (aiContainer && data.focus_insight) {
+              aiContainer.innerHTML = `
+                <div class="absolute -right-12 -top-12 opacity-10">
+                    <span class="material-symbols-outlined text-[160px]" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+                </div>
+                <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-8 relative z-10 w-full">
+                    <div class="space-y-4 max-w-2xl">
+                        <div class="inline-flex items-center gap-2 px-3 py-1 bg-primary text-white text-[10px] font-black uppercase tracking-widest rounded-full">
+                            <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">bolt</span>
+                            AI Live Analysis
+                        </div>
+                        <h4 class="text-3xl font-bold font-manrope leading-tight text-slate-800">
+                            ${data.focus_insight}
+                        </h4>
+                        <p class="text-on-surface-variant leading-relaxed text-sm font-medium">
+                            Based on your subjects difficulty levels and milestone proximity, the study slots have been prioritized.
+                        </p>
+                    </div>
+                </div>`;
+            }
+          }
+        } catch (e) {
+          console.error("Error loading insights", e);
+        }
+      }
+
       function saveSchedule() {
-        alert("Schedule saved to your SEMS profile!");
+        alert("Schedule saved to your SEMS profile successfully!");
       }
 
       function regenerateSchedule() {
@@ -1142,12 +1212,15 @@
       }
 
       function downloadSchedulePDF() {
-        alert("Preparing your PDF download...");
+        window.print();
       }
+
       // Initial Page Load
       window.onload = async () => {
         await loadSubjects();
         await loadMilestones();
+        await loadSchedule();
+        await loadAiInsights();
       };
     </script>
   </body>

@@ -126,6 +126,18 @@ def smart_scheduler(request: Request):
     )
 
 # -----------------------------------
+# RESOURCES ROUTE (PROTECTED)
+# -----------------------------------
+
+@app.get("/resources")
+def resources_page(request: Request):
+    if not request.session.get("user_id"):
+        return RedirectResponse(url="/")
+    return FileResponse(
+        frontend_path / "pages" / "resources.html"
+    )
+
+# -----------------------------------
 # OPTIONAL PAGES
 # -----------------------------------
 

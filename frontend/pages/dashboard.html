@@ -182,7 +182,7 @@
           >
           <a
             class="text-slate-600 font-medium hover:text-primary transition-colors duration-300"
-            href="#"
+            href="/resources"
             >Library</a
           >
           <div
@@ -247,8 +247,9 @@
               </h3>
               <div class="flex items-center gap-2">
                 <span
+                  id="activeStreakText"
                   class="text-3xl font-headline font-extrabold text-secondary"
-                  >🔥 5-Day Streak</span
+                  >🔥 0-Day Streak</span
                 >
               </div>
             </div>
@@ -265,8 +266,9 @@
                 class="w-full bg-primary/20 rounded-full h-24 relative overflow-hidden group-hover:bg-primary/30 transition-all"
               >
                 <div
+                  id="barMon"
                   class="absolute bottom-0 w-full bg-primary rounded-full transition-all duration-700 ease-out"
-                  style="height: 60%"
+                  style="height: 0%"
                 ></div>
               </div>
               <span
@@ -279,8 +281,9 @@
                 class="w-full bg-primary/20 rounded-full h-24 relative overflow-hidden group-hover:bg-primary/30 transition-all"
               >
                 <div
+                  id="barTue"
                   class="absolute bottom-0 w-full bg-primary rounded-full transition-all duration-700 ease-out"
-                  style="height: 85%"
+                  style="height: 0%"
                 ></div>
               </div>
               <span
@@ -293,8 +296,9 @@
                 class="w-full bg-primary/20 rounded-full h-24 relative overflow-hidden group-hover:bg-primary/30 transition-all"
               >
                 <div
+                  id="barWed"
                   class="absolute bottom-0 w-full bg-primary rounded-full transition-all duration-700 ease-out"
-                  style="height: 45%"
+                  style="height: 0%"
                 ></div>
               </div>
               <span
@@ -307,8 +311,9 @@
                 class="w-full bg-primary/20 rounded-full h-24 relative overflow-hidden group-hover:bg-primary/30 transition-all"
               >
                 <div
+                  id="barThu"
                   class="absolute bottom-0 w-full bg-primary rounded-full transition-all duration-700 ease-out"
-                  style="height: 95%"
+                  style="height: 0%"
                 ></div>
               </div>
               <span
@@ -321,8 +326,9 @@
                 class="w-full bg-primary/20 rounded-full h-24 relative overflow-hidden group-hover:bg-primary/30 transition-all"
               >
                 <div
+                  id="barFri"
                   class="absolute bottom-0 w-full bg-secondary rounded-full animate-pulse-soft"
-                  style="height: 100%"
+                  style="height: 0%"
                 ></div>
               </div>
               <span
@@ -331,22 +337,34 @@
               >
             </div>
             <div
-              class="flex flex-col items-center flex-1 gap-3 group opacity-30"
+              class="flex flex-col items-center flex-1 gap-3 group"
             >
               <div
-                class="w-full bg-surface-container-high rounded-full h-24 relative"
-              ></div>
+                class="w-full bg-primary/20 rounded-full h-24 relative overflow-hidden group-hover:bg-primary/30 transition-all"
+              >
+                <div
+                  id="barSat"
+                  class="absolute bottom-0 w-full bg-primary rounded-full transition-all duration-700 ease-out"
+                  style="height: 0%"
+                ></div>
+              </div>
               <span
                 class="text-xs font-bold text-outline uppercase tracking-tighter"
                 >Sat</span
               >
             </div>
             <div
-              class="flex flex-col items-center flex-1 gap-3 group opacity-30"
+              class="flex flex-col items-center flex-1 gap-3 group"
             >
               <div
-                class="w-full bg-surface-container-high rounded-full h-24 relative"
-              ></div>
+                class="w-full bg-primary/20 rounded-full h-24 relative overflow-hidden group-hover:bg-primary/30 transition-all"
+              >
+                <div
+                  id="barSun"
+                  class="absolute bottom-0 w-full bg-primary rounded-full transition-all duration-700 ease-out"
+                  style="height: 0%"
+                ></div>
+              </div>
               <span
                 class="text-xs font-bold text-outline uppercase tracking-tighter"
                 >Sun</span
@@ -412,74 +430,11 @@
               >calendar_today</span
             >
           </div>
-          <div class="relative space-y-12 pl-6">
+          <div class="relative space-y-12 pl-6" id="todayScheduleContainer">
             <div
               class="absolute left-[7px] top-2 bottom-2 w-0.5 bg-surface-container-highest"
             ></div>
-            <div class="relative">
-              <div
-                class="absolute -left-[23px] top-1 w-4 h-4 rounded-full border-4 border-white bg-primary z-10"
-              ></div>
-              <div class="flex flex-col gap-2">
-                <div class="flex justify-between items-start">
-                  <span class="text-xs font-bold text-primary uppercase"
-                    >09:00 — 10:30</span
-                  >
-                  <span
-                    class="px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-[10px] font-bold uppercase"
-                    >High Impact</span
-                  >
-                </div>
-                <h4 class="font-headline font-bold text-lg leading-tight">
-                  Advanced Calculus
-                </h4>
-                <p class="text-sm text-on-surface-variant">
-                  Room 402 • Prof. Mehta
-                </p>
-              </div>
-            </div>
-            <div class="relative">
-              <div
-                class="absolute -left-[23px] top-1 w-4 h-4 rounded-full border-4 border-white bg-primary z-10"
-              ></div>
-              <div class="flex flex-col gap-2">
-                <div class="flex justify-between items-start">
-                  <span class="text-xs font-bold text-primary uppercase"
-                    >11:30 — 13:00</span
-                  >
-                  <span
-                    class="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant text-[10px] font-bold uppercase"
-                    >Lecture</span
-                  >
-                </div>
-                <h4 class="font-headline font-bold text-lg leading-tight">
-                  Physics Lab
-                </h4>
-                <p class="text-sm text-on-surface-variant">South Wing Lab 2</p>
-              </div>
-            </div>
-            <div class="relative">
-              <div
-                class="absolute -left-[23px] top-1 w-4 h-4 rounded-full border-4 border-white bg-secondary animate-pulse z-10"
-              ></div>
-              <div class="flex flex-col gap-2">
-                <div class="flex justify-between items-start">
-                  <span class="text-xs font-bold text-secondary uppercase"
-                    >14:00 — 14:45</span
-                  >
-                  <span
-                    class="px-2 py-0.5 rounded bg-secondary-fixed text-on-secondary-fixed text-[10px] font-bold uppercase"
-                    >Review</span
-                  >
-                </div>
-                <h4 class="font-headline font-bold text-lg leading-tight">
-                  Weekly Reflection
-                </h4>
-                <p class="text-sm text-on-surface-variant">
-                  AI-curated summary session
-                </p>
-              </div>
-            </div>
+            <!-- Dynamic events go here -->
           </div>
         </div>
         <!-- Quick Tools / Pomodoro (Medium Bento) -->
@@ -596,7 +551,7 @@
       </a>
       <a
         class="flex flex-col items-center gap-1 text-outline transition-colors hover:text-primary"
-        href="#"
+        href="/resources"
       >
         <span class="material-symbols-outlined">library_books</span>
         <span class="text-[10px] font-bold uppercase tracking-tighter"
@@ -668,7 +623,8 @@
                 updateTimerDisplay();
               } else {
                 clearInterval(timerInterval);
-                alert("Session complete! Take a break.");
+                logPomodoroSession(25);
+                alert("Focus session complete! Your progress has been logged. Take a break.");
                 timeLeft = 25 * 60; // Reset for next session
                 updateTimerDisplay();
                 timerToggle.innerHTML = `<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">play_arrow</span> Start`;
@@ -679,6 +635,27 @@
           }
           isRunning = !isRunning;
         });
+      }
+
+      async function logPomodoroSession(minutes) {
+        try {
+          const completedAt = new Date().toISOString().replace('T', ' ').substring(0, 19);
+          await fetch("/api/analytics/log-session", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              duration_minutes: minutes,
+              completed_at: completedAt,
+              session_type: "Pomodoro"
+            })
+          });
+          // Reload dashboard stats
+          await loadDashboardStats();
+        } catch (e) {
+          console.error("Error logging Pomodoro session", e);
+        }
       }
 
       // To-Do List Interaction Logic
@@ -712,19 +689,20 @@
           todoListContainer.innerHTML = "";
   
           tasks.forEach((task) => {
-          const item = createTodoItem(task.title,task.id);
+            const item = createTodoItem(task.title, task.id);
+            const checkbox = item.querySelector("input");
 
-          const checkbox = item.querySelector("input");
+            if (task.status === "Completed") {
+              checkbox.checked = true;
+              const span = item.querySelector("span");
+              updateTaskStyles(checkbox, span);
+            }
 
-          if (task.status === "Completed") {
-            checkbox.checked = true;
-
-            const span = item.querySelector("span");
-            updateTaskStyles(checkbox, span);
-          }
-
-          todoListContainer.appendChild(item);
-        });
+            todoListContainer.appendChild(item);
+          });
+        } catch (err) {
+          console.error("Failed to load tasks", err);
+        }
       }
 
       function createTodoItem(text, taskId) {
@@ -744,12 +722,11 @@
 
         checkbox.addEventListener("change", async function () {
           updateTaskStyles(this, span);
-
-          if (this.checked) {
-            await fetch(`/api/tasks/complete/${taskId}`, {
-              method: "PUT",
-            });
-          }
+          await fetch(`/api/tasks/complete/${taskId}`, {
+            method: "PUT",
+          });
+          // Update analytics when tasks status toggles
+          await loadDashboardStats();
         });
 
         label.appendChild(checkbox);
@@ -769,18 +746,18 @@
               title: text,
               description: text,
               priority: "Medium",
-              deadline: "2026-06-01",
-              status: "Pending",
+              deadline: new Date().toISOString().substring(0, 10),
             }),
           });
 
           const data = await response.json();
-
           const newItem = createTodoItem(text, data.task_id);
           todoListContainer.insertBefore(newItem, todoListContainer.firstChild);
           todoInput.value = "";
           todoInput.focus();
           todoListContainer.scrollTop = 0;
+          
+          await loadDashboardStats();
         }
       }
 
@@ -800,27 +777,114 @@
         clearAllBtn.addEventListener("click", async () => {
           if (todoListContainer.children.length > 0) {
             if (confirm("Are you sure you want to clear all tasks?")) {
-                await fetch("/api/tasks/delete-all", {
-                    method: "DELETE"
-                });
+              await fetch("/api/tasks/delete-all", {
+                method: "DELETE"
+              });
               todoListContainer.innerHTML = "";
+              await loadDashboardStats();
             }
           }
         });
       }
 
-      // Handle initial checkboxes style toggle
-      document
-        .querySelectorAll('#todoListContainer input[type="checkbox"]')
-        .forEach((cb) => {
-          const span = cb.nextElementSibling;
-          // Initialize existing checked state
-          updateTaskStyles(cb, span);
+      // Load streaks, daily momentum chart heights, and AI suggestions
+      async function loadDashboardStats() {
+        try {
+          const res = await fetch("/api/analytics/summary");
+          if (res.ok) {
+            const data = await res.json();
+            
+            // 1. Streak update
+            const streakText = document.getElementById("activeStreakText");
+            if (streakText) {
+              streakText.textContent = `🔥 ${data.active_streak}-Day Streak`;
+            }
+            
+            // 2. Chart bars scaling
+            const weeklyDays = data.weekly_days_hours || {};
+            const hoursArray = Object.values(weeklyDays);
+            const maxHours = Math.max(...hoursArray, 1.0); // avoid division by 0
+            
+            const daysMap = {
+              "Monday": "Mon",
+              "Tuesday": "Tue",
+              "Wednesday": "Wed",
+              "Thursday": "Thu",
+              "Friday": "Fri",
+              "Saturday": "Sat",
+              "Sunday": "Sun"
+            };
+            
+            for (const [fullDay, shortDay] of Object.entries(daysMap)) {
+              const hours = weeklyDays[fullDay] || 0.0;
+              const barElement = document.getElementById(`bar${shortDay}`);
+              if (barElement) {
+                const percentage = Math.min((hours / maxHours) * 100, 100);
+                barElement.style.height = `${percentage}%`;
+                barElement.title = `${hours} hours studied`;
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Error loading dashboard stats", e);
+        }
+      }
 
-          cb.addEventListener("change", function () {
-            updateTaskStyles(this, this.nextElementSibling);
-          });
-        });
+      // Load real dynamic scheduled events for today
+      async function loadTodaySchedule() {
+        try {
+          const res = await fetch("/api/schedule/all");
+          if (res.ok) {
+            const events = await res.json();
+            const container = document.getElementById("todayScheduleContainer");
+            if (!container) return;
+            
+            container.innerHTML = `
+              <div class="absolute left-[7px] top-2 bottom-2 w-0.5 bg-surface-container-highest"></div>
+            `;
+            
+            const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            const todayName = dayNames[new Date().getDay()];
+            
+            const todayEvents = events.filter(e => e.day_of_week === todayName);
+            
+            if (todayEvents.length === 0) {
+              container.innerHTML += `
+                <div class="relative py-8 text-center text-outline-variant text-sm font-semibold">
+                  No sessions scheduled for today. Rest or generate a schedule!
+                </div>
+              `;
+              return;
+            }
+            
+            todayEvents.sort((a, b) => a.start_time.localeCompare(b.start_time));
+            
+            todayEvents.forEach((event, idx) => {
+              const isCurrentOrNext = idx === 0;
+              container.innerHTML += `
+                <div class="relative">
+                  <div class="absolute -left-[23px] top-1 w-4 h-4 rounded-full border-4 border-white ${isCurrentOrNext ? 'bg-secondary animate-pulse' : 'bg-primary'} z-10"></div>
+                  <div class="flex flex-col gap-2">
+                    <div class="flex justify-between items-start">
+                      <span class="text-xs font-bold ${isCurrentOrNext ? 'text-secondary' : 'text-primary'} uppercase">
+                        ${event.start_time} — ${event.end_time}
+                      </span>
+                      <span class="px-2 py-0.5 rounded ${isCurrentOrNext ? 'bg-secondary-fixed text-on-secondary-fixed' : 'bg-blue-100 text-blue-700'} text-[10px] font-bold uppercase">
+                        Study Session
+                      </span>
+                    </div>
+                    <h4 class="font-headline font-bold text-lg leading-tight text-slate-800">
+                      ${event.subject_name}
+                    </h4>
+                  </div>
+                </div>
+              `;
+            });
+          }
+        } catch (e) {
+          console.error("Error loading today schedule", e);
+        }
+      }
 
       // Smooth Scrolling
       document.querySelectorAll("a").forEach((anchor) => {
@@ -834,7 +898,13 @@
           }
         });
       });
-      loadTasks();
+
+      window.onload = async () => {
+        await checkAuth();
+        await loadTasks();
+        await loadDashboardStats();
+        await loadTodaySchedule();
+      };
     </script>
   </body>
 </html>

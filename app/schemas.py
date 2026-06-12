@@ -34,3 +34,54 @@ class SubjectResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class ResourceCreate(BaseModel):
+    title: str
+    link: Optional[str] = None
+    subject_id: int
+
+class ResourceResponse(BaseModel):
+    id: int
+    title: str
+    file_path: Optional[str] = None
+    link: Optional[str] = None
+    upload_date: str
+    subject_id: int
+    user_id: int
+
+    class Config:
+        from_attributes = True
+
+class ScheduleEventCreate(BaseModel):
+    subject_id: int
+    day_of_week: str
+    start_time: str
+    end_time: str
+
+class ScheduleEventResponse(BaseModel):
+    id: int
+    subject_id: int
+    day_of_week: str
+    start_time: str
+    end_time: str
+    user_id: int
+
+    class Config:
+        from_attributes = True
+
+class StudySessionCreate(BaseModel):
+    subject_id: Optional[int] = None
+    duration_minutes: int
+    completed_at: str
+    session_type: str
+
+class StudySessionResponse(BaseModel):
+    id: int
+    user_id: int
+    subject_id: Optional[int] = None
+    duration_minutes: int
+    completed_at: str
+    session_type: str
+
+    class Config:
+        from_attributes = True
