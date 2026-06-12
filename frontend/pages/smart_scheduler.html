@@ -620,6 +620,22 @@
         </div>
       </div>
     </main>
+    <!-- Loading Modal -->
+    <div
+      class="fixed inset-0 z-[150] hidden flex flex-col items-center justify-center p-6 modal-backdrop"
+      id="loadingModal"
+    >
+      <div class="bg-white rounded-3xl p-8 max-w-sm w-full flex flex-col items-center justify-center text-center shadow-2xl space-y-4 animate-in fade-in zoom-in duration-200">
+        <div class="relative w-20 h-20 flex items-center justify-center">
+          <div class="absolute inset-0 rounded-full border-4 border-primary/20 animate-ping"></div>
+          <div class="w-16 h-16 rounded-full border-4 border-t-primary border-r-primary border-b-primary/20 border-l-primary/20 animate-spin"></div>
+          <span class="material-symbols-outlined text-primary text-3xl absolute" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+        </div>
+        <h3 class="text-xl font-bold font-manrope text-slate-800">Please Wait</h3>
+        <p class="text-sm text-slate-600 font-medium leading-relaxed" id="loadingText">Generating personalized AI study plan...</p>
+      </div>
+    </div>
+
     <!-- Subject Input Modal -->
     <div
       class="fixed inset-0 z-[100] hidden flex items-center justify-center p-6 modal-backdrop"
@@ -685,6 +701,22 @@
       </div>
     </div>
     <script>
+      function formatTime12Hour(timeStr) {
+        if (!timeStr) return "";
+        if (timeStr.includes("AM") || timeStr.includes("PM") || timeStr.includes("am") || timeStr.includes("pm")) {
+          return timeStr;
+        }
+        const parts = timeStr.split(":");
+        if (parts.length < 2) return timeStr;
+        let hours = parseInt(parts[0], 10);
+        const minutes = parts[1];
+        const ampm = hours >= 12 ? "PM" : "AM";
+        hours = hours % 12;
+        hours = hours ? hours : 12; // 0 should be 12
+        const hoursStr = String(hours).padStart(2, "0");
+        return `${hoursStr}:${minutes} ${ampm}`;
+      }
+
       // Authentication check and logout logic
       async function checkAuth() {
         try {
@@ -1063,6 +1095,24 @@
 
       loadMilestones();
 
+      function showLoading(text = "Generating personalized AI study plan...") {
+        const loadingTextEl = document.getElementById("loadingText");
+        if (loadingTextEl) {
+          loadingTextEl.innerText = text;
+        }
+        const loadingModalEl = document.getElementById("loadingModal");
+        if (loadingModalEl) {
+          loadingModalEl.classList.remove("hidden");
+        }
+      }
+
+      function hideLoading() {
+        const loadingModalEl = document.getElementById("loadingModal");
+        if (loadingModalEl) {
+          loadingModalEl.classList.add("hidden");
+        }
+      }
+
       // Core Scheduler Actions
       async function generateSchedule() {
         if (subjects.length === 0) {
@@ -1070,19 +1120,77 @@
           return;
         }
 
+        // Gather calibration inputs from the DOM
+        let dailyQuota = 6;
+        const slider = document.getElementById("studyHoursSlider");
+        if (slider) {
+          dailyQuota = parseInt(slider.value, 10);
+        }
+
+        let focusPeriod = "Morning";
+        const activePeriodBtn = document.querySelector("#focusPeriodContainer button.bg-white");
+        if (activePeriodBtn) {
+          focusPeriod = activePeriodBtn.innerText.trim();
+        }
+
+        let focusMethod = "Classic Pomodoro";
+        const activeMethodBtn = document.querySelector("#focusMethodContainer button.border-primary");
+        if (activeMethodBtn) {
+          const firstP = activeMethodBtn.querySelector("p:first-child");
+          if (firstP) {
+            focusMethod = firstP.innerText.trim();
+          }
+        }
+
+        let avoidEarlyMornings = false;
+        let prioritizeCritical = true;
+        let intensivePreExam = true;
+        let weekendPreservation = false;
+
+        const checkboxes = document.querySelectorAll("#constraintsContainer input[type='checkbox']");
+        if (checkboxes && checkboxes.length >= 4) {
+          avoidEarlyMornings = checkboxes[0].checked;
+          prioritizeCritical = checkboxes[1].checked;
+          intensivePreExam = checkboxes[2].checked;
+          weekendPreservation = checkboxes[3].checked;
+        }
+
+        const calibrationPayload = {
+          daily_quota: dailyQuota,
+          focus_period: focusPeriod,
+          focus_method: focusMethod,
+          avoid_early_mornings: avoidEarlyMornings,
+          prioritize_critical: prioritizeCritical,
+          intensive_pre_exam: intensivePreExam,
+          weekend_preservation: weekendPreservation
+        };
+
         try {
-          const response = await fetch("/api/schedule/generate", {
-            method: "POST"
+          showLoading("Generating personalized AI study plan...");
+          const response = await fetch("/api/schedule/generate-ai", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(calibrationPayload)
           });
 
           if (response.ok) {
+            const data = await response.json();
             await loadAiInsights();
             await loadSchedule();
+            if (data.is_ai === false) {
+              alert("AI Generation failed. Automatically fell back to existing scheduler algorithm.");
+            }
           } else {
-            alert("Failed to generate schedule");
+            const data = await response.json();
+            alert(data.detail || "Failed to generate schedule");
           }
         } catch (error) {
           console.error("Error generating schedule:", error);
+          alert("An unexpected error occurred while generating the schedule.");
+        } finally {
+          hideLoading();
         }
       }
 
@@ -1173,9 +1281,10 @@
               }
               
               blocks += `
-                <div class="${bgClass} border-l-4 p-3 rounded-lg animate-in fade-in slide-in-from-top-1 duration-200">
-                  <p class="text-[9px] font-bold ${labelClass}">${event.start_time} - ${event.end_time}</p>
+                <div class="${bgClass} border-l-4 p-3 rounded-lg animate-in fade-in slide-in-from-top-1 duration-200" title="${event.reason || ''}">
+                  <p class="text-[9px] font-bold ${labelClass}">${formatTime12Hour(event.start_time)} - ${formatTime12Hour(event.end_time)}</p>
                   <p class="text-[11px] font-extrabold truncate text-on-surface">${event.subject_name}</p>
+                  ${event.reason ? `<p class="text-[9px] text-on-surface-variant/80 mt-1 leading-tight font-medium italic">${event.reason}</p>` : ''}
                 </div>`;
             });
           }

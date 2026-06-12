@@ -64,6 +64,7 @@ class ScheduleEventResponse(BaseModel):
     day_of_week: str
     start_time: str
     end_time: str
+    reason: Optional[str] = None
     user_id: int
 
     class Config:
@@ -93,3 +94,12 @@ class ProfileUpdate(BaseModel):
 class PasswordChange(BaseModel):
     current_password: str
     new_password: str
+
+class AICalibrationPayload(BaseModel):
+    daily_quota: Optional[int] = 6
+    focus_period: Optional[str] = "Morning"
+    focus_method: Optional[str] = "Classic Pomodoro"
+    avoid_early_mornings: Optional[bool] = False
+    prioritize_critical: Optional[bool] = True
+    intensive_pre_exam: Optional[bool] = True
+    weekend_preservation: Optional[bool] = False

@@ -46,6 +46,11 @@ with engine.connect() as conn:
         conn.commit()
     except Exception:
         pass
+    try:
+        conn.execute(text("ALTER TABLE schedule_events ADD COLUMN reason VARCHAR;"))
+        conn.commit()
+    except Exception:
+        pass
 
 # -----------------------------------
 # FASTAPI APP

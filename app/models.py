@@ -85,6 +85,7 @@ class ScheduleEvent(Base):
     day_of_week = Column(String, nullable=False)
     start_time = Column(String, nullable=False)
     end_time = Column(String, nullable=False)
+    reason = Column(String, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     user = relationship("User", back_populates="schedule_events")
