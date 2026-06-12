@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>User Profile | SEMS</title>
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect"/>
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
+  <!-- Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+                  "surface-container-lowest": "#ffffff",
+                  "on-error-container": "#93000a",
+                  "on-surface-variant": "#424656",
+                  "error-container": "#ffdad6",
+                  "surface": "#f7f9fd",
+                  "surface-variant": "#e0e3e6",
+                  "on-tertiary-container": "#fff6f1",
+                  "on-secondary-fixed-variant": "#852400",
+                  "on-tertiary-fixed-variant": "#6a3b00",
+                  "surface-dim": "#d8dade",
+                  "tertiary-container": "#a86000",
+                  "on-primary-fixed": "#001849",
+                  "background": "#f7f9fd",
+                  "primary-container": "#0066ff",
+                  "secondary-fixed": "#ffdbd0",
+                  "secondary-fixed-dim": "#ffb59f",
+                  "primary": "#0050cb",
+                  "on-tertiary-fixed": "#2d1600",
+                  "inverse-surface": "#2d3134",
+                  "error": "#ba1a1a",
+                  "surface-container": "#eceef2",
+                  "inverse-primary": "#b3c5ff",
+                  "on-primary": "#ffffff",
+                  "surface-container-low": "#f2f4f8",
+                  "surface-tint": "#0054d6",
+                  "on-primary-container": "#f8f7ff",
+                  "surface-container-highest": "#e0e3e6",
+                  "secondary-container": "#fe6431",
+                  "surface-bright": "#f7f9fd",
+                  "on-tertiary": "#ffffff",
+                  "tertiary-fixed": "#ffdcbf",
+                  "on-surface": "#181c1f",
+                  "on-error": "#ffffff",
+                  "inverse-on-surface": "#eff1f5",
+                  "primary-fixed": "#dae1ff",
+                  "surface-container-high": "#e6e8ec",
+                  "secondary": "#ae3100",
+                  "tertiary-fixed-dim": "#ffb874",
+                  "tertiary": "#854b00",
+                  "on-background": "#181c1f",
+                  "primary-fixed-dim": "#b3c5ff",
+                  "outline-variant": "#c2c6d8",
+                  "outline": "#727687",
+                  "on-secondary-container": "#5b1500",
+                  "on-primary-fixed-variant": "#003fa4",
+                  "on-secondary": "#ffffff",
+                  "on-secondary-fixed": "#3a0a00"
+          },
+          "borderRadius": {
+                  "DEFAULT": "0.25rem",
+                  "lg": "0.5rem",
+                  "xl": "0.75rem",
+                  "2xl": "1rem",
+                  "3xl": "1.5rem",
+                  "full": "9999px"
+          },
+          "fontFamily": {
+                  "headline": ["Manrope"],
+                  "display": ["Manrope"],
+                  "body": ["Inter"],
+                  "label": ["Inter"]
+          }
+        },
+      },
+    }
+  </script>
+  <style>
+    .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .glass-panel {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+    }
+    .shimmer {
+        background: linear-gradient(90deg, #f0f0f0 25%, #f8f8f8 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s infinite;
+    }
+    @keyframes shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+    body {
+        background-color: #f7f9fd;
+        color: #181c1f;
+        font-family: 'Inter', sans-serif;
+        min-height: max(884px, 100dvh);
+    }
+    h1, h2, h3 {
+        font-family: 'Manrope', sans-serif;
+    }
+    .toast {
+      animation: slideIn 0.3s ease-out forwards;
+    }
+    @keyframes slideIn {
+      from {
+        transform: translateY(100%) translateX(-50%);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0) translateX(-50%);
+        opacity: 1;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-24">
+  <!-- Top Navigation -->
+  <header class="fixed top-0 w-full z-50 bg-surface-container-lowest/80 backdrop-blur-xl transition-colors duration-300">
+    <div class="flex justify-between items-center px-6 py-4 w-full">
+      <div class="flex items-center gap-4">
+        <button class="p-2 hover:bg-surface-variant/50 rounded-full transition-colors flex items-center justify-center" onclick="window.history.back()">
+          <span class="material-symbols-outlined text-on-surface">arrow_back</span>
+        </button>
+        <h1 class="font-headline text-xl font-bold bg-gradient-to-r from-primary to-primary-container bg-clip-text text-transparent">Profile</h1>
+      </div>
+      <div class="flex items-center gap-3">
+        <span id="navName" class="text-on-surface-variant font-medium text-sm hidden md:block">Alex Sterling</span>
+        <a href="/profile">
+          <img id="navAvatar" alt="Profile" class="w-10 h-10 rounded-full object-cover ring-2 ring-primary/10 hover:ring-primary transition-all" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFcUH75N1o8JqQOcUmxnu2tjKtVBUpyFVyS0a-edF7ah9W2CbtzwbqR-6KzkNr2a5mb3ZWi_skQesjI9T2l5JDZYjQuYfTpCaqN_W62lIJ0Iw8Rii6KBbkHxETFlPJRJpNoYnklX251bxOGvrAi0X_wtWPk7yvf7nER0U_GWaaja1Z0AS3HmE6zRb3qTTU3phLN4NOcEfGG37YYsmUTQLnWAX2OHBrdyikqvQZFdEWtcmqUyfFcajqo2ygXdYFW8qV-rwsEpcItGXV" />
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-6 pt-24 space-y-10">
+    <!-- Hero Section -->
+    <section class="flex flex-col items-center text-center space-y-6 pt-4">
+      <div class="relative group cursor-pointer" id="avatarUpload" onclick="triggerAvatarUpload()">
+        <div class="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden ring-4 ring-white shadow-xl">
+          <img id="profileAvatar" alt="Large Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRxreiRhzKW9ruINCq_WsZd-MHu-Inx1K47yPPgWT1N_2Gp24Edu-dbfIPffWmWrkVGHk7O8kiHiZ0DacZlRPz3CzHnsAiNQErrV1onnCi-WfSm8MtZimBbcwtCvhc1IhYCp0pprZfapz02ickLL1iIK2qRBy-HDdmyd1Z7JhY0Hblnn4pR-QlfXIXy-0Epr9n-oqwyIYZU_W-tNt6zBNGzqg0wDYrOz1waUYgzZfUODOoGv2SzwO9hmsTsdZ0ZRHlMUqrinRlgJA7"/>
+        </div>
+        <button class="absolute bottom-1 right-1 bg-primary text-white p-2 rounded-full shadow-lg hover:scale-105 transition-transform active:scale-95">
+          <span class="material-symbols-outlined text-sm">photo_camera</span>
+        </button>
+        <input type="file" id="avatarFileInput" accept="image/*" class="hidden" onchange="uploadAvatarFile(this)" />
+      </div>
+      <div class="space-y-1">
+        <h2 id="profileName" class="text-3xl md:text-4xl font-extrabold tracking-tight text-on-surface">Student</h2>
+        <p id="profileSubtitle" class="text-on-surface-variant text-lg">SEMS Scholar</p>
+        <div class="flex items-center justify-center gap-2 mt-2">
+          <span id="profileIdBadge" class="px-3 py-1 bg-primary-fixed text-on-primary-fixed text-xs font-bold rounded-full uppercase tracking-wider">ID: SEMS-User</span>
+          <span id="profileJoinedBadge" class="px-3 py-1 bg-secondary-fixed text-on-secondary-fixed text-xs font-bold rounded-full uppercase tracking-wider">Joined: 2026-06-01</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Performance Summary -->
+    <section id="statsContainer">
+      <div class="flex justify-between items-end mb-4 px-2">
+        <h3 class="font-headline text-lg font-bold text-on-surface">Performance Summary</h3>
+        <span class="text-primary text-sm font-semibold">Active Metrics</span>
+      </div>
+      <div class="glass-panel grid grid-cols-2 md:grid-cols-3 gap-6 p-6 rounded-3xl border border-white/40 shadow-[0_4px_20px_rgba(0,80,203,0.04)]">
+        <!-- Stat Item 1 -->
+        <div class="flex flex-col gap-1 shimmer-wrapper">
+          <div class="flex items-center gap-2 text-secondary">
+            <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+            <span class="font-label text-[10px] font-medium uppercase tracking-widest text-on-surface-variant">Study Streak</span>
+          </div>
+          <div class="flex items-baseline gap-1">
+            <span id="statStreakValue" class="text-2xl font-headline font-extrabold text-on-surface">0</span>
+            <span class="text-sm font-medium text-on-surface-variant">days</span>
+          </div>
+        </div>
+        <!-- Stat Item 2 -->
+        <div class="flex flex-col gap-1 shimmer-wrapper">
+          <div class="flex items-center gap-2 text-primary">
+            <span class="material-symbols-outlined text-[20px]">schedule</span>
+            <span class="font-label text-[10px] font-medium uppercase tracking-widest text-on-surface-variant">Total Hours</span>
+          </div>
+          <div class="flex items-baseline gap-1">
+            <span id="statHoursValue" class="text-2xl font-headline font-extrabold text-on-surface">0</span>
+            <span class="text-sm font-medium text-on-surface-variant">h</span>
+          </div>
+        </div>
+        <!-- Stat Item 3 -->
+        <div class="flex flex-col gap-1 shimmer-wrapper">
+          <div class="flex items-center gap-2 text-tertiary">
+            <span class="material-symbols-outlined text-[20px]">school</span>
+            <span class="font-label text-[10px] font-medium uppercase tracking-widest text-on-surface-variant">Subjects</span>
+          </div>
+          <div class="flex items-baseline gap-1">
+            <span id="statSubjectsValue" class="text-2xl font-headline font-extrabold text-on-surface">0</span>
+          </div>
+        </div>
+        <!-- Stat Item 4 -->
+        <div class="flex flex-col gap-1 shimmer-wrapper">
+          <div class="flex items-center gap-2 text-error">
+            <span class="material-symbols-outlined text-[20px]">event_note</span>
+            <span class="font-label text-[10px] font-medium uppercase tracking-widest text-on-surface-variant">Upcoming Exams</span>
+          </div>
+          <div class="flex items-baseline gap-1">
+            <span id="statExamsValue" class="text-2xl font-headline font-extrabold text-on-surface">0</span>
+          </div>
+        </div>
+        <!-- Stat Item 5 -->
+        <div class="flex flex-col gap-1 shimmer-wrapper">
+          <div class="flex items-center gap-2 text-primary-container">
+            <span class="material-symbols-outlined text-[20px]">library_books</span>
+            <span class="font-label text-[10px] font-medium uppercase tracking-widest text-on-surface-variant">Resources</span>
+          </div>
+          <div class="flex items-baseline gap-1">
+            <span id="statResourcesValue" class="text-2xl font-headline font-extrabold text-on-surface">0</span>
+          </div>
+        </div>
+        <!-- Stat Item 6 -->
+        <div class="flex flex-col gap-1 shimmer-wrapper">
+          <div class="flex items-center gap-2 text-secondary">
+            <span class="material-symbols-outlined text-[20px]">stars</span>
+            <span class="font-label text-[10px] font-medium uppercase tracking-widest text-on-surface-variant">Completed Sessions</span>
+          </div>
+          <div class="flex items-baseline gap-1">
+            <span id="statSessionsValue" class="text-2xl font-headline font-extrabold text-on-surface">0</span>
+            <span class="text-xs text-on-surface-variant opacity-70">sessions</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Personal Information -->
+    <section class="space-y-4">
+      <div class="flex justify-between items-center px-2">
+        <h3 class="font-headline text-lg font-bold text-on-surface">Personal Information</h3>
+        <button id="editDetailsBtn" class="text-primary hover:underline text-sm font-bold transition-all" onclick="toggleEdit()">Edit Details</button>
+      </div>
+      <form class="bg-surface-container-low rounded-3xl p-6 md:p-8 space-y-6" id="profileForm">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="space-y-2">
+            <label class="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant ml-1">Full Name</label>
+            <input id="editName" class="profile-input w-full bg-surface-container-high border-none rounded-xl px-4 py-3 text-on-surface font-medium focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-70" disabled="" type="text" value="Student"/>
+          </div>
+          <div class="space-y-2">
+            <label class="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant ml-1">Email Address</label>
+            <input id="editEmail" class="profile-input w-full bg-surface-container-high border-none rounded-xl px-4 py-3 text-on-surface font-medium focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-70" disabled="" type="email" value="email@example.com"/>
+          </div>
+          <div class="space-y-2 md:col-span-2">
+            <label class="font-label text-xs font-bold uppercase tracking-widest text-on-surface-variant ml-1">Branch / Major</label>
+            <input id="profileMajor" class="profile-input w-full bg-surface-container-high border-none rounded-xl px-4 py-3 text-on-surface font-medium focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-70" disabled="" type="text" value="Computer Science and Engineering"/>
+          </div>
+        </div>
+        <div class="hidden flex justify-end gap-3 pt-4 border-t border-surface-variant" id="formActions">
+          <button class="px-6 py-2 rounded-full font-bold text-on-surface-variant hover:bg-surface-variant/50 transition-colors" onclick="toggleEdit()" type="button">Cancel</button>
+          <button class="bg-gradient-to-r from-primary to-primary-container text-white px-8 py-2 rounded-full font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all" type="submit">Save Changes</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Security & Account -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <section class="space-y-4">
+        <h3 class="font-headline text-lg font-bold text-on-surface px-2">Security</h3>
+        <div class="bg-surface-container-low rounded-3xl p-6 flex flex-col items-start gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed">
+              <span class="material-symbols-outlined">key</span>
+            </div>
+            <div>
+              <p class="font-bold text-on-surface">Password</p>
+              <p class="text-xs text-on-surface-variant">Update user account credentials</p>
+            </div>
+          </div>
+          <button class="w-full text-center py-3 rounded-2xl border-2 border-primary/20 text-primary font-bold hover:bg-primary-container/5 transition-colors" onclick="openModal('passwordModal')">Change Password</button>
+        </div>
+      </section>
+      <section class="space-y-4">
+        <h3 class="font-headline text-lg font-bold text-on-surface px-2">Account Actions</h3>
+        <div class="bg-surface-container-low rounded-3xl p-6 flex flex-col items-start gap-4 h-full">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-error-container flex items-center justify-center text-on-error-container">
+              <span class="material-symbols-outlined">logout</span>
+            </div>
+            <div>
+              <p class="font-bold text-on-surface">System Access</p>
+              <p class="text-xs text-on-surface-variant">Manage your session</p>
+            </div>
+          </div>
+          <button class="w-full text-center py-3 rounded-2xl bg-error/10 text-error font-bold hover:bg-error/20 transition-colors" id="logoutBtn">Sign Out</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Navigation Bar (Bottom Mobile) -->
+  <nav class="md:hidden fixed bottom-0 w-full z-50 rounded-t-xl bg-surface-container-lowest/80 backdrop-blur-xl shadow-[0_-4px_20px_rgba(0,80,203,0.04)]">
+    <div class="flex justify-around items-center w-full px-4 py-3 pb-6">
+      <button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-95 duration-200" onclick="window.location.href='/dashboard'">
+        <span class="material-symbols-outlined">grid_view</span>
+        <span class="font-label text-[10px] font-medium uppercase tracking-widest mt-1">Dashboard</span>
+      </button>
+      <button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-95 duration-200" onclick="window.location.href='/smart_scheduler'">
+        <span class="material-symbols-outlined">calendar_today</span>
+        <span class="font-label text-[10px] font-medium uppercase tracking-widest mt-1">Schedule</span>
+      </button>
+      <button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-95 duration-200" onclick="window.location.href='/resources'">
+        <span class="material-symbols-outlined">local_library</span>
+        <span class="font-label text-[10px] font-medium uppercase tracking-widest mt-1">Library</span>
+      </button>
+      <button class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-6 py-2 active:scale-95 duration-200" onclick="window.location.href='/profile'">
+        <span class="material-symbols-outlined">settings</span>
+        <span class="font-label text-[10px] font-medium uppercase tracking-widest mt-1">Settings</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Password Modal -->
+  <div class="fixed inset-0 z-[60] hidden" id="passwordModal">
+    <div class="absolute inset-0 bg-on-surface/40 backdrop-blur-sm" onclick="closeModal('passwordModal')"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md p-6">
+      <div class="bg-surface-container-lowest rounded-3xl shadow-2xl overflow-hidden p-8 space-y-6">
+        <div class="flex justify-between items-start">
+          <div class="space-y-1">
+            <h4 class="font-headline text-2xl font-bold text-on-surface">Change Password</h4>
+            <p class="text-on-surface-variant text-sm">Ensure your account stays secure.</p>
+          </div>
+          <button class="p-2 hover:bg-surface-variant/50 rounded-full" onclick="closeModal('passwordModal')">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <form id="changePasswordForm" class="space-y-4">
+          <div class="space-y-1">
+            <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Current Password</label>
+            <input id="currentPassword" class="w-full bg-surface-container-low border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20" placeholder="••••••••" type="password" required />
+          </div>
+          <div class="space-y-1">
+            <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">New Password</label>
+            <input id="newPassword" class="w-full bg-surface-container-low border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20" placeholder="••••••••" type="password" required minlength="6" />
+          </div>
+          <div class="space-y-1">
+            <label class="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Confirm New Password</label>
+            <input id="confirmNewPassword" class="w-full bg-surface-container-low border-none rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20" placeholder="••••••••" type="password" required minlength="6" />
+          </div>
+          <button type="submit" class="w-full bg-primary text-white py-4 rounded-2xl font-bold shadow-lg shadow-primary/30 hover:bg-primary-container active:scale-[0.98] transition-all">Update Password</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toastNotification" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 toast">
+    <span id="toastIcon" class="material-symbols-outlined">check_circle</span>
+    <span id="toastText" class="text-sm font-semibold">Saved successfully</span>
+  </div>
+
+  <script>
+    let currentUserId = null;
+
+    // Modal logic
+    function openModal(id) {
+        const modal = document.getElementById(id);
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal(id) {
+        const modal = document.getElementById(id);
+        modal.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
+
+    // Edit details layout toggle
+    let isEditing = false;
+    function toggleEdit() {
+        isEditing = !isEditing;
+        const inputs = document.querySelectorAll('.profile-input');
+        const actions = document.getElementById('formActions');
+        const editDetailsBtn = document.getElementById('editDetailsBtn');
+        
+        inputs.forEach(input => {
+            input.disabled = !isEditing;
+            if(isEditing) {
+                input.classList.remove('bg-surface-container-high');
+                input.classList.add('bg-surface-container-lowest', 'ring-2', 'ring-primary/10');
+            } else {
+                input.classList.add('bg-surface-container-high');
+                input.classList.remove('bg-surface-container-lowest', 'ring-2', 'ring-primary/10');
+            }
+        });
+
+        actions.classList.toggle('hidden', !isEditing);
+        if (editDetailsBtn) {
+          editDetailsBtn.textContent = isEditing ? "Editing..." : "Edit Details";
+        }
+    }
+
+    // Shimmer effect on page load
+    function initializeShimmer() {
+        const stats = document.getElementById('statsContainer').querySelectorAll('.shimmer-wrapper');
+        stats.forEach(stat => {
+            const elements = stat.children;
+            Array.from(elements).forEach(el => {
+                el.classList.add('opacity-0');
+            });
+            stat.classList.add('shimmer', 'rounded-lg');
+        });
+    }
+
+    function disableShimmer() {
+        const stats = document.getElementById('statsContainer').querySelectorAll('.shimmer-wrapper');
+        stats.forEach(stat => {
+            const elements = stat.children;
+            stat.classList.remove('shimmer');
+            Array.from(elements).forEach(el => {
+                el.classList.remove('opacity-0');
+                el.classList.add('transition-opacity', 'duration-500', 'opacity-100');
+            });
+        });
+    }
+
+    // Toast alert notices
+    function showToast(text, type = "success") {
+        const toast = document.getElementById("toastNotification");
+        const icon = document.getElementById("toastIcon");
+        const textNode = document.getElementById("toastText");
+        
+        toast.className = toast.className.replace("hidden", "").trim();
+        textNode.textContent = text;
+        
+        if (type === "success") {
+          toast.className = "fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-green-400 px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 toast";
+          icon.textContent = "check_circle";
+        } else if (type === "error") {
+          toast.className = "fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 toast";
+          icon.textContent = "error";
+        } else {
+          toast.className = "fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 toast";
+          icon.textContent = "info";
+        }
+
+        setTimeout(() => {
+          toast.classList.add("hidden");
+        }, 3000);
+    }
+
+    // Authentication check
+    async function checkAuth() {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (!res.ok) {
+          window.location.href = "/";
+          return;
+        }
+        const user = await res.json();
+        currentUserId = user.id;
+        
+        await loadUserProfile();
+      } catch (err) {
+        window.location.href = "/";
+      }
+    }
+
+    // Fetch and populate user profile data
+    async function loadUserProfile() {
+      if (!currentUserId) return;
+      
+      try {
+        const res = await fetch(`/api/profile/${currentUserId}`);
+        if (res.ok) {
+          const data = await res.json();
+          
+          // Set navigation and header names/avatars
+          document.getElementById("navName").textContent = data.name;
+          document.getElementById("navAvatar").src = data.avatar_url;
+          document.getElementById("profileAvatar").src = data.avatar_url;
+          document.getElementById("profileName").textContent = data.name;
+          document.getElementById("profileSubtitle").textContent = `SEMS Scholar • ${data.email}`;
+          
+          // Badges
+          document.getElementById("profileIdBadge").textContent = `ID: SEMS-${data.id}`;
+          document.getElementById("profileJoinedBadge").textContent = `Joined: ${data.created_at}`;
+
+          // Form fields default values
+          document.getElementById("editName").value = data.name;
+          document.getElementById("editEmail").value = data.email;
+          
+          // Stats values
+          document.getElementById("statStreakValue").textContent = data.streak;
+          document.getElementById("statHoursValue").textContent = data.study_hours;
+          document.getElementById("statSubjectsValue").textContent = data.subjects_count;
+          document.getElementById("statExamsValue").textContent = data.milestones_count;
+          document.getElementById("statResourcesValue").textContent = data.resources_count;
+          document.getElementById("statSessionsValue").textContent = data.sessions_count;
+
+          // Shimmer stop
+          disableShimmer();
+        }
+      } catch (err) {
+        console.error("Failed to load user profile stats", err);
+        disableShimmer();
+      }
+    }
+
+    // Trigger photo upload
+    function triggerAvatarUpload() {
+      document.getElementById("avatarFileInput").click();
+    }
+
+    // Upload selected profile file
+    async function uploadAvatarFile(input) {
+      if (input.files.length === 0) return;
+      const file = input.files[0];
+      
+      const formData = new FormData();
+      formData.append("file", file);
+
+      showToast("Uploading profile image...", "info");
+
+      try {
+        const res = await fetch("/api/profile/upload-avatar", {
+          method: "POST",
+          body: formData
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById("profileAvatar").src = data.avatar_url;
+          document.getElementById("navAvatar").src = data.avatar_url;
+          showToast("Profile image updated!", "success");
+        } else {
+          const data = await res.json();
+          showToast(data.detail || "Upload failed", "error");
+        }
+      } catch (err) {
+        console.error("Avatar upload error", err);
+        showToast("Error uploading profile photo", "error");
+      }
+    }
+
+    // Submit details updates
+    document.getElementById("profileForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      
+      const name = document.getElementById("editName").value.trim();
+      const email = document.getElementById("editEmail").value.trim();
+
+      try {
+        const res = await fetch("/api/profile/update", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ name, email })
+        });
+
+        if (res.ok) {
+          showToast("Personal information updated successfully!", "success");
+          toggleEdit();
+          await loadUserProfile();
+        } else {
+          const data = await res.json();
+          showToast(data.detail || "Update details failed", "error");
+        }
+      } catch (err) {
+        console.error("Profile update error", err);
+        showToast("Network connection error", "error");
+      }
+    });
+
+    // Change password form handler
+    document.getElementById("changePasswordForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      
+      const currentPassword = document.getElementById("currentPassword").value;
+      const newPassword = document.getElementById("newPassword").value;
+      const confirmNewPassword = document.getElementById("confirmNewPassword").value;
+
+      if (newPassword !== confirmNewPassword) {
+        showToast("New passwords do not match!", "error");
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        showToast("Password must be at least 6 characters long", "error");
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/profile/change-password", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            current_password: currentPassword,
+            new_password: newPassword
+          })
+        });
+
+        if (res.ok) {
+          showToast("Password changed successfully!", "success");
+          closeModal("passwordModal");
+          document.getElementById("changePasswordForm").reset();
+        } else {
+          const data = await res.json();
+          showToast(data.detail || "Incorrect current password", "error");
+        }
+      } catch (err) {
+        console.error("Password change error", err);
+        showToast("Failed to change password", "error");
+      }
+    });
+
+    // Logout click handler
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      if(confirm('Are you sure you want to sign out?')) {
+          localStorage.removeItem("user_id");
+          fetch("/api/auth/logout", { method: "POST" }).then(() => {
+              window.location.href = "/";
+          });
+      }
+    });
+
+    window.onload = async () => {
+      initializeShimmer();
+      await checkAuth();
+    };
+  </script>
+</body>
+</html>

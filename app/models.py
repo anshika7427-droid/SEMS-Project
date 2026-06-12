@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 from app.database import Base
+from datetime import date
 
 class User(Base):
     __tablename__ = "users"
@@ -9,6 +10,8 @@ class User(Base):
     name = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
     password = Column(String, nullable=False)
+    avatar_url = Column(String, nullable=True)
+    created_at = Column(String, nullable=True, default=lambda: date.today().strftime("%Y-%m-%d"))
 
     # Bidirectional relationships with delete-orphan cascades
     tasks = relationship("Task", back_populates="user", cascade="all, delete-orphan")

@@ -25,12 +25,27 @@ from app.routes.resource_routes import router as resource_router
 from app.routes.schedule_routes import router as schedule_router
 from app.routes.subject_routes import router as subject_router
 from app.routes import milestone_routes
+from app.routes.profile_routes import router as profile_router
 
 # -----------------------------------
 # CREATE DATABASE TABLES
 # -----------------------------------
 
 Base.metadata.create_all(bind=engine)
+
+# Proactive SQLite migrations for existing users table
+from sqlalchemy import text
+with engine.connect() as conn:
+    try:
+        conn.execute(text("ALTER TABLE users ADD COLUMN avatar_url VARCHAR;"))
+        conn.commit()
+    except Exception:
+        pass
+    try:
+        conn.execute(text("ALTER TABLE users ADD COLUMN created_at VARCHAR;"))
+        conn.commit()
+    except Exception:
+        pass
 
 # -----------------------------------
 # FASTAPI APP
@@ -138,6 +153,18 @@ def resources_page(request: Request):
     )
 
 # -----------------------------------
+# PROFILE ROUTE (PROTECTED)
+# -----------------------------------
+
+@app.get("/profile")
+def profile_page(request: Request):
+    if not request.session.get("user_id"):
+        return RedirectResponse(url="/")
+    return FileResponse(
+        frontend_path / "pages" / "profile.html"
+    )
+
+# -----------------------------------
 # OPTIONAL PAGES
 # -----------------------------------
 
@@ -223,3 +250,9 @@ app.include_router(
 app.include_router(subject_router)
 
 app.include_router(milestone_routes.router)
+
+app.include_router(
+    profile_router,
+    prefix="/api/profile",
+    tags=["Profile"]
+)
