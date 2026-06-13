@@ -114,8 +114,8 @@ def test_api_generate_ai_schedule_flow():
     # Mock success path
     mock_schedule = {
         "schedule": [
-            {"day": "Monday", "subject": "DBMS", "hours": 2.5, "reason": "Urgent review"},
-            {"day": "Wednesday", "subject": "DBMS", "hours": 1.5, "reason": "Regular practice"}
+            {"day": "Monday", "subject": "DBMS", "hours": 2.5, "start_time": "15:00", "end_time": "17:30", "reason": "Urgent review"},
+            {"day": "Wednesday", "subject": "DBMS", "hours": 1.5, "start_time": "18:00", "end_time": "19:30", "reason": "Regular practice"}
         ]
     }
 
@@ -133,8 +133,8 @@ def test_api_generate_ai_schedule_flow():
         assert len(events) == 2
         
         monday_event = next(e for e in events if e["day_of_week"] == "Monday")
-        assert monday_event["start_time"] == "09:00"
-        assert monday_event["end_time"] == "11:30"
+        assert monday_event["start_time"] == "15:00"
+        assert monday_event["end_time"] == "17:30"
         assert monday_event["subject_name"] == "DBMS"
 
 def test_api_generate_ai_schedule_fallback():

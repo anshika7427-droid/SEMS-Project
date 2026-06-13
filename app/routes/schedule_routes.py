@@ -92,15 +92,19 @@ def generate_ai_schedule_endpoint(
                     logger.warning(f"AI scheduled subject '{item['subject']}' not found in user subjects portfolio. Skipping.")
                     continue
                     
-                if current_slot_idx < len(SLOT_STARTS):
-                    start_time = SLOT_STARTS[current_slot_idx]
-                    current_slot_idx += 1
+                if "start_time" in item and "end_time" in item:
+                    start_time = item["start_time"]
+                    end_time = item["end_time"]
                 else:
-                    h, m = map(int, last_end_time.split(":"))
-                    break_minutes = h * 60 + m + 30
-                    start_time = f"{(break_minutes // 60) % 24:02d}:{break_minutes % 60:02d}"
-                    
-                end_time = add_hours_to_time(start_time, item["hours"])
+                    if current_slot_idx < len(SLOT_STARTS):
+                        start_time = SLOT_STARTS[current_slot_idx]
+                        current_slot_idx += 1
+                    else:
+                        h, m = map(int, last_end_time.split(":"))
+                        break_minutes = h * 60 + m + 30
+                        start_time = f"{(break_minutes // 60) % 24:02d}:{break_minutes % 60:02d}"
+                    end_time = add_hours_to_time(start_time, item["hours"])
+                
                 last_end_time = end_time
                 
                 event = ScheduleEvent(

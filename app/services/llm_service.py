@@ -39,6 +39,13 @@ def validate_schedule_json(data: dict) -> bool:
         if not isinstance(item["reason"], str):
             logger.warning(f"Validation failed: 'reason' at index {idx} is not a string.")
             return False
+        # If start_time/end_time exist, validate they are strings
+        if "start_time" in item and not isinstance(item["start_time"], str):
+            logger.warning(f"Validation failed: 'start_time' at index {idx} is not a string.")
+            return False
+        if "end_time" in item and not isinstance(item["end_time"], str):
+            logger.warning(f"Validation failed: 'end_time' at index {idx} is not a string.")
+            return False
             
     return True
 
@@ -96,6 +103,8 @@ def generate_ai_schedule(
         "      \"day\": \"Monday\",\n"
         "      \"subject\": \"Name of Subject\",\n"
         "      \"hours\": 2,\n"
+        "      \"start_time\": \"16:00\",\n"
+        "      \"end_time\": \"18:00\",\n"
         "      \"reason\": \"Specific reason based on difficulty or upcoming exam\"\n"
         "    }\n"
         "  ]\n"
@@ -108,7 +117,13 @@ def generate_ai_schedule(
         "   - Hard difficulty subjects MUST be allocated 2.5 to 3.5 hours per session.\n"
         "   - Medium difficulty subjects MUST be allocated 1.5 to 2.0 hours per session.\n"
         "   - Easy difficulty subjects MUST be allocated 1.0 to 1.5 hours per session.\n"
-        "5. Respond with ONLY the raw JSON output, without any markdown formatting wrappers or conversational text."
+        "5. The model MUST select start_time and end_time (in 24-hour 'HH:MM' format) for each session that align strictly with the student's study preferences:\n"
+        "   - If Optimal Focus Period is 'Morning', schedule sessions during 08:00 to 13:00.\n"
+        "   - If Optimal Focus Period is 'Evening', schedule sessions during 14:00 to 20:00.\n"
+        "   - If Optimal Focus Period is 'Night' (or Night-Owl), schedule sessions during 18:00 to 02:00 (late night/early morning next day, e.g. start_time: '23:00', end_time: '01:30').\n"
+        "   - If 'Avoid early mornings' is Yes, do not schedule any sessions starting before 09:30.\n"
+        "6. Ensure the sum of hours for any given day is realistic and doesn't exceed the student's daily study quota target.\n"
+        "7. Respond with ONLY the raw JSON output, without any markdown formatting wrappers or conversational text."
     )
     
     cal_str = "None"
