@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from app.database import Base
 from datetime import date
@@ -12,6 +12,15 @@ class User(Base):
     password = Column(String, nullable=False)
     avatar_url = Column(String, nullable=True)
     created_at = Column(String, nullable=True, default=lambda: date.today().strftime("%Y-%m-%d"))
+
+    # User Preferences (Routine Calibration & Intelligence Constraints)
+    daily_quota = Column(Integer, default=6)
+    focus_period = Column(String, default="Morning")
+    focus_method = Column(String, default="Classic Pomodoro")
+    avoid_early_mornings = Column(Boolean, default=False)
+    prioritize_critical = Column(Boolean, default=True)
+    intensive_pre_exam = Column(Boolean, default=True)
+    weekend_preservation = Column(Boolean, default=False)
 
     # Bidirectional relationships with delete-orphan cascades
     tasks = relationship("Task", back_populates="user", cascade="all, delete-orphan")
@@ -86,6 +95,7 @@ class ScheduleEvent(Base):
     start_time = Column(String, nullable=False)
     end_time = Column(String, nullable=False)
     reason = Column(String, nullable=True)
+    session_type = Column(String, nullable=True, default="Deep Focus")
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     user = relationship("User", back_populates="schedule_events")

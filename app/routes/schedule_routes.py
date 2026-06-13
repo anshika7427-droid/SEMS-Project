@@ -41,13 +41,57 @@ def generate_ai_schedule_endpoint(
         focus_period = "Morning"
         avoid_early_mornings = False
         if payload:
+            try:
+                current_user.daily_quota = payload.daily_quota
+                current_user.focus_period = payload.focus_period
+                current_user.focus_method = payload.focus_method
+                current_user.avoid_early_mornings = payload.avoid_early_mornings
+                current_user.prioritize_critical = payload.prioritize_critical
+                current_user.intensive_pre_exam = payload.intensive_pre_exam
+                current_user.weekend_preservation = payload.weekend_preservation
+                db.commit()
+            except Exception as e:
+                logger.error(f"Failed to auto-save user preferences to database: {e}")
+                db.rollback()
             calibration_dict = payload.model_dump()
             focus_period = payload.focus_period or "Morning"
             avoid_early_mornings = payload.avoid_early_mornings or False
+        else:
+            calibration_dict = {
+                "daily_quota": current_user.daily_quota if current_user.daily_quota is not None else 6,
+                "focus_period": current_user.focus_period or "Morning",
+                "focus_method": current_user.focus_method or "Classic Pomodoro",
+                "avoid_early_mornings": bool(current_user.avoid_early_mornings),
+                "prioritize_critical": bool(current_user.prioritize_critical),
+                "intensive_pre_exam": bool(current_user.intensive_pre_exam),
+                "weekend_preservation": bool(current_user.weekend_preservation)
+            }
+            focus_period = current_user.focus_period or "Morning"
+            avoid_early_mornings = bool(current_user.avoid_early_mornings)
             
-        ai_data = generate_ai_schedule(current_user.id, subjects, milestones, analytics, calibration_dict)
+        ai_data = generate_ai_schedule(current_user.id, subjects, milestones, analytics, calibration_dict, db=db)
         
         db.query(ScheduleEvent).filter(ScheduleEvent.user_id == current_user.id).delete()
+        
+        # Save detailed analysis to user-specific JSON file in the data/ directory
+        import json
+        from app.database import DB_DIR
+        analysis_path = DB_DIR / f"user_{current_user.id}_analysis.json"
+        
+        detailed_analysis = ai_data.get("detailed_analysis", {})
+        quality_scoring = ai_data.get("quality_scoring", {})
+        transparency = ai_data.get("transparency", {})
+        if detailed_analysis:
+            combined_data = {
+                **detailed_analysis, 
+                "quality_scoring": quality_scoring,
+                "transparency": transparency
+            }
+            try:
+                with open(analysis_path, "w", encoding="utf-8") as f:
+                    json.dump(combined_data, f, indent=2)
+            except Exception as e:
+                logger.error(f"Error saving detailed analysis: {e}")
         
         subject_map = {s.name.lower().strip(): s.id for s in subjects}
         
@@ -113,6 +157,7 @@ def generate_ai_schedule_endpoint(
                     start_time=start_time,
                     end_time=end_time,
                     reason=item.get("reason"),
+                    session_type=item.get("session_type", "Deep Focus"),
                     user_id=current_user.id
                 )
                 db.add(event)
@@ -131,6 +176,16 @@ def generate_ai_schedule_endpoint(
         try:
             db.rollback()
             events = generate_weekly_schedule(current_user.id, db)
+            
+            # Delete stale detailed analysis file if fallback happens
+            from app.database import DB_DIR
+            analysis_path = DB_DIR / f"user_{current_user.id}_analysis.json"
+            if analysis_path.exists():
+                try:
+                    analysis_path.unlink()
+                except Exception:
+                    pass
+                    
             return {
                 "message": "AI generation failed, fell back to standard schedule.",
                 "events_count": len(events),
@@ -175,9 +230,68 @@ def get_schedule(
             "day_of_week": event.day_of_week,
             "start_time": event.start_time,
             "end_time": event.end_time,
-            "reason": event.reason
+            "reason": event.reason,
+            "session_type": event.session_type or "Deep Focus"
         })
     return result
+
+@router.get("/analysis")
+def get_schedule_analysis(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    from app.database import DB_DIR
+    import json
+    analysis_path = DB_DIR / f"user_{current_user.id}_analysis.json"
+    if analysis_path.exists():
+        try:
+            with open(analysis_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return data
+        except Exception as e:
+            logger.error(f"Error reading schedule analysis: {e}")
+            
+    return {}
+
+@router.get("/calibration")
+def get_calibration(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    return {
+        "daily_quota": current_user.daily_quota if current_user.daily_quota is not None else 6,
+        "focus_period": current_user.focus_period or "Morning",
+        "focus_method": current_user.focus_method or "Classic Pomodoro",
+        "avoid_early_mornings": bool(current_user.avoid_early_mornings),
+        "prioritize_critical": bool(current_user.prioritize_critical),
+        "intensive_pre_exam": bool(current_user.intensive_pre_exam),
+        "weekend_preservation": bool(current_user.weekend_preservation)
+    }
+
+@router.post("/calibration")
+def save_calibration(
+    payload: AICalibrationPayload,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        current_user.daily_quota = payload.daily_quota
+        current_user.focus_period = payload.focus_period
+        current_user.focus_method = payload.focus_method
+        current_user.avoid_early_mornings = payload.avoid_early_mornings
+        current_user.prioritize_critical = payload.prioritize_critical
+        current_user.intensive_pre_exam = payload.intensive_pre_exam
+        current_user.weekend_preservation = payload.weekend_preservation
+        db.commit()
+        logger.info(f"Saved calibration preferences to database for user {current_user.id}")
+        return {"message": "Preferences saved successfully"}
+    except Exception as e:
+        logger.error(f"Error saving calibration: {e}")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to save calibration preferences"
+        )
 
 @router.delete("/reset")
 def reset_schedule(
@@ -186,5 +300,15 @@ def reset_schedule(
 ):
     deleted_count = db.query(ScheduleEvent).filter(ScheduleEvent.user_id == current_user.id).delete()
     db.commit()
+    
+    # Delete stale detailed analysis file if it exists
+    from app.database import DB_DIR
+    analysis_path = DB_DIR / f"user_{current_user.id}_analysis.json"
+    if analysis_path.exists():
+        try:
+            analysis_path.unlink()
+        except Exception as e:
+            logger.error(f"Error deleting analysis file: {e}")
+            
     logger.info(f"Reset schedule for user {current_user.id}. Deleted {deleted_count} events.")
     return {"message": "Schedule reset successfully"}

@@ -51,6 +51,47 @@ with engine.connect() as conn:
         conn.commit()
     except Exception:
         pass
+    try:
+        conn.execute(text("ALTER TABLE schedule_events ADD COLUMN session_type VARCHAR DEFAULT 'Deep Focus';"))
+        conn.commit()
+    except Exception:
+        pass
+    # Calibration migrations
+    try:
+        conn.execute(text("ALTER TABLE users ADD COLUMN daily_quota INTEGER DEFAULT 6;"))
+        conn.commit()
+    except Exception:
+        pass
+    try:
+        conn.execute(text("ALTER TABLE users ADD COLUMN focus_period VARCHAR DEFAULT 'Morning';"))
+        conn.commit()
+    except Exception:
+        pass
+    try:
+        conn.execute(text("ALTER TABLE users ADD COLUMN focus_method VARCHAR DEFAULT 'Classic Pomodoro';"))
+        conn.commit()
+    except Exception:
+        pass
+    try:
+        conn.execute(text("ALTER TABLE users ADD COLUMN avoid_early_mornings BOOLEAN DEFAULT 0;"))
+        conn.commit()
+    except Exception:
+        pass
+    try:
+        conn.execute(text("ALTER TABLE users ADD COLUMN prioritize_critical BOOLEAN DEFAULT 1;"))
+        conn.commit()
+    except Exception:
+        pass
+    try:
+        conn.execute(text("ALTER TABLE users ADD COLUMN intensive_pre_exam BOOLEAN DEFAULT 1;"))
+        conn.commit()
+    except Exception:
+        pass
+    try:
+        conn.execute(text("ALTER TABLE users ADD COLUMN weekend_preservation BOOLEAN DEFAULT 0;"))
+        conn.commit()
+    except Exception:
+        pass
 
 # -----------------------------------
 # FASTAPI APP

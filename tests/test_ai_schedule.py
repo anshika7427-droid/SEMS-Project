@@ -37,8 +37,48 @@ def test_validate_schedule_json():
     # Valid structure
     valid_data = {
         "schedule": [
-            {"day": "Monday", "subject": "DBMS", "hours": 2, "reason": "Exam approaching"}
-        ]
+            {
+                "day": "Monday", 
+                "subject": "DBMS", 
+                "hours": 2, 
+                "session_type": "Deep Focus", 
+                "reason": "Exam approaching"
+            }
+        ],
+        "detailed_analysis": {
+            "focus_title": "Daily Night-Owl Schedule (6 Hours)",
+            "focus_description": "Since you prefer late nights and want to avoid mornings entirely, we will split your 6 hours into three 2-hour blocks...",
+            "focus_blocks": [
+                {
+                    "block": "Block 1 (Afternoon)",
+                    "time": "4:00 PM – 6:00 PM",
+                    "mode": "Lighter review or reading"
+                }
+            ],
+            "phases": [
+                {
+                    "title": "Phase 1: Deep Prep (June 14 – June 19)",
+                    "description": "DBMS...",
+                    "allocations": [
+                        "Block 1 (4 PM - 6 PM): DBMS"
+                    ]
+                }
+            ],
+            "pro_tips": [
+                "Write state machines"
+            ],
+            "subject_allocation_reasons": {
+                "DBMS": "Focus on DBMS because of the hard SQL Normalization."
+            },
+            "time_slot_reasons": "Distributed evenly throughout peak hours.",
+            "milestone_reasons": "Scaled up hours because the exam is in 6 days.",
+            "preference_reasons": "Night-Owl focus preferred."
+        },
+        "quality_scoring": {
+            "balance_score": 80,
+            "burnout_risk": 20,
+            "exam_readiness_score": 90
+        }
     }
     assert validate_schedule_json(valid_data) is True
 
@@ -70,7 +110,7 @@ def test_generate_ai_schedule_success(mock_post):
                 "choices": [
                     {
                         "message": {
-                            "content": '{"schedule": [{"day": "Monday", "subject": "DBMS", "hours": 2, "reason": "Exam"}]}'
+                            "content": '{"schedule": [{"day": "Monday", "subject": "DBMS", "hours": 2, "session_type": "Deep Focus", "reason": "Exam"}], "detailed_analysis": {"focus_title": "Daily Focus", "focus_description": "Desc", "focus_blocks": [], "phases": [], "pro_tips": [], "subject_allocation_reasons": {}, "time_slot_reasons": "", "milestone_reasons": "", "preference_reasons": ""}, "quality_scoring": {"balance_score": 80, "burnout_risk": 20, "exam_readiness_score": 90}}'
                         }
                     }
                 ]
@@ -114,9 +154,25 @@ def test_api_generate_ai_schedule_flow():
     # Mock success path
     mock_schedule = {
         "schedule": [
-            {"day": "Monday", "subject": "DBMS", "hours": 2.5, "start_time": "15:00", "end_time": "17:30", "reason": "Urgent review"},
-            {"day": "Wednesday", "subject": "DBMS", "hours": 1.5, "start_time": "18:00", "end_time": "19:30", "reason": "Regular practice"}
-        ]
+            {"day": "Monday", "subject": "DBMS", "hours": 2.5, "start_time": "15:00", "end_time": "17:30", "session_type": "Deep Focus", "reason": "Urgent review"},
+            {"day": "Wednesday", "subject": "DBMS", "hours": 1.5, "start_time": "18:00", "end_time": "19:30", "session_type": "Deep Focus", "reason": "Regular practice"}
+        ],
+        "detailed_analysis": {
+            "focus_title": "Daily Focus",
+            "focus_description": "Desc",
+            "focus_blocks": [],
+            "phases": [],
+            "pro_tips": [],
+            "subject_allocation_reasons": {},
+            "time_slot_reasons": "",
+            "milestone_reasons": "",
+            "preference_reasons": ""
+        },
+        "quality_scoring": {
+            "balance_score": 80,
+            "burnout_risk": 20,
+            "exam_readiness_score": 90
+        }
     }
 
     with patch("app.routes.schedule_routes.generate_ai_schedule", return_value=mock_schedule):
