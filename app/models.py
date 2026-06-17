@@ -38,6 +38,7 @@ class Subject(Base):
     credits = Column(Integer, default=0)
     difficulty = Column(String)
     hours_per_week = Column(Integer, default=0)
+    semester = Column(Integer, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     user = relationship("User", back_populates="subjects")
@@ -67,6 +68,8 @@ class Milestone(Base):
     subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False)
     subject_name = Column(String)
     exam_date = Column(String, nullable=False)
+    title = Column(String, nullable=True)
+    completion_percentage = Column(Integer, default=0)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     user = relationship("User", back_populates="milestones")

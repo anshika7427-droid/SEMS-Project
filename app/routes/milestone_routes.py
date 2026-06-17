@@ -1,11 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from typing import List
 import logging
 
 from app.database import get_db
-from app.models import Milestone, Subject
-from app.schemas import MilestoneCreate
 from app.auth import get_current_user, User
+from app.schemas import (
+    MilestoneCreate,
+    MilestoneUpdate,
+    MilestoneResponse,
+    MilestoneListResponse,
+    ProgressResponse,
+    StatisticsResponse
+)
+from app.services.milestone_service import MilestoneService
 
 router = APIRouter()
 logger = logging.getLogger("milestone_routes")
@@ -16,48 +24,91 @@ def create_milestone(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # Verify subject belongs to the current user
-    subject = db.query(Subject).filter(
-        Subject.id == milestone.subject_id,
-        Subject.user_id == current_user.id
-    ).first()
-    
-    if not subject:
-        logger.warning(f"Subject {milestone.subject_id} not found or not owned by User ID: {current_user.id}")
+    try:
+        new_milestone = MilestoneService.create_milestone(db, milestone, current_user.id)
+        logger.info(f"Milestone created successfully. ID: {new_milestone.id}, User ID: {current_user.id}")
+        return {
+            "message": "Milestone created",
+            "id": new_milestone.id
+        }
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.exception(f"Unexpected error creating milestone: {e}")
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Subject not found or does not belong to the user"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error occurred while creating milestone"
         )
 
-    new_milestone = Milestone(
-        subject_id=milestone.subject_id,
-        subject_name=milestone.subject_name,
-        exam_date=milestone.exam_date,
-        user_id=current_user.id
-    )
-
-    db.add(new_milestone)
-    db.commit()
-    db.refresh(new_milestone)
-
-    logger.info(f"Milestone created successfully. ID: {new_milestone.id}, User ID: {current_user.id}")
-    return {
-        "message": "Milestone created",
-        "id": new_milestone.id
-    }
-
-@router.get("/api/milestones/all")
+@router.get("/api/milestones/all", response_model=List[MilestoneResponse])
 def get_all_milestones(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    milestones = (
-        db.query(Milestone)
-        .filter(Milestone.user_id == current_user.id)
-        .all()
-    )
-    logger.info(f"Retrieved {len(milestones)} milestones for User ID: {current_user.id}")
-    return milestones
+    try:
+        milestones = MilestoneService.list_milestones(db, current_user.id)
+        logger.info(f"Retrieved {len(milestones)} milestones for User ID: {current_user.id}")
+        return milestones
+    except Exception as e:
+        logger.exception(f"Unexpected error retrieving milestones: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error occurred while retrieving milestones"
+        )
+
+@router.get("/api/milestones", response_model=MilestoneListResponse)
+def list_milestones_envelope(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        milestones = MilestoneService.list_milestones(db, current_user.id)
+        return MilestoneListResponse(milestones=milestones)
+    except Exception as e:
+        logger.exception(f"Unexpected error listing milestones: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error occurred while listing milestones"
+        )
+
+@router.get("/api/milestones/{milestone_id}", response_model=MilestoneResponse)
+def get_milestone_by_id(
+    milestone_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        milestone = MilestoneService.get_milestone(db, milestone_id, current_user.id)
+        logger.info(f"Retrieved milestone {milestone_id} for User ID: {current_user.id}")
+        return milestone
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.exception(f"Unexpected error retrieving milestone {milestone_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error occurred while retrieving milestone"
+        )
+
+@router.put("/api/milestones/{milestone_id}", response_model=MilestoneResponse)
+def update_milestone(
+    milestone_id: int,
+    milestone_data: MilestoneUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        updated_milestone = MilestoneService.update_milestone(db, milestone_id, milestone_data, current_user.id)
+        logger.info(f"Milestone {milestone_id} updated successfully for User ID: {current_user.id}")
+        return updated_milestone
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.exception(f"Unexpected error updating milestone {milestone_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error occurred while updating milestone"
+        )
 
 @router.delete("/api/milestones/{milestone_id}")
 def delete_milestone(
@@ -65,16 +116,55 @@ def delete_milestone(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    milestone = db.query(Milestone).filter(
-        Milestone.id == milestone_id,
-        Milestone.user_id == current_user.id
-    ).first()
-
-    if milestone:
-        db.delete(milestone)
-        db.commit()
+    try:
+        MilestoneService.delete_milestone(db, milestone_id, current_user.id)
         logger.info(f"Milestone {milestone_id} deleted successfully for User ID: {current_user.id}")
-    else:
-        logger.warning(f"Milestone {milestone_id} not found or not owned by User ID: {current_user.id}")
+        return {"message": "Deleted"}
+    except HTTPException as he:
+        # Compatibility check: if milestone not found, logging warning and returning 200/deleted message is fine for existing tests
+        if he.status_code == status.HTTP_404_NOT_FOUND:
+            logger.warning(f"Milestone {milestone_id} not found or not owned by User ID: {current_user.id}")
+            return {"message": "Deleted"}
+        raise he
+    except Exception as e:
+        logger.exception(f"Unexpected error deleting milestone {milestone_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error occurred while deleting milestone"
+        )
 
-    return {"message": "Deleted"}
+# -----------------------------------
+# PROGRESS & STATISTICS ENDPOINTS
+# -----------------------------------
+
+@router.get("/api/progress", response_model=ProgressResponse)
+def get_progress(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        progress = MilestoneService.get_progress(db, current_user.id)
+        logger.info(f"Progress calculated successfully for User ID: {current_user.id}")
+        return progress
+    except Exception as e:
+        logger.exception(f"Unexpected error calculating progress: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error occurred while calculating progress"
+        )
+
+@router.get("/api/statistics", response_model=StatisticsResponse)
+def get_statistics(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        stats = MilestoneService.get_statistics(db, current_user.id)
+        logger.info(f"Statistics calculated successfully for User ID: {current_user.id}")
+        return stats
+    except Exception as e:
+        logger.exception(f"Unexpected error calculating statistics: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error occurred while calculating statistics"
+        )

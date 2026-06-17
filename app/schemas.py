@@ -1,9 +1,91 @@
-from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
+from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
+from typing import Optional, List, Dict, Union
+from datetime import datetime, date
+
+# -----------------------------------
+# SUBJECT SCHEMAS
+# -----------------------------------
 
 class SubjectCreate(BaseModel):
     name: str
     difficulty: str
+    credits: Optional[int] = 0
+    hours_per_week: Optional[int] = 0
+    semester: Optional[int] = None
+
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v):
+        name_val = v.strip()
+        if not name_val:
+            raise ValueError("Subject name cannot be empty or only whitespace")
+        if len(name_val) > 100:
+            raise ValueError("Subject name cannot exceed 100 characters")
+        return name_val
+
+    @field_validator('credits', 'hours_per_week')
+    @classmethod
+    def validate_positive_ints(cls, v):
+        if v is not None and v < 0:
+            raise ValueError("Value cannot be negative")
+        return v
+
+    @field_validator('semester')
+    @classmethod
+    def validate_semester(cls, v):
+        if v is not None and (v < 1 or v > 20):
+            raise ValueError("Semester must be between 1 and 20")
+        return v
+
+class SubjectUpdate(BaseModel):
+    name: Optional[str] = None
+    difficulty: Optional[str] = None
+    credits: Optional[int] = None
+    hours_per_week: Optional[int] = None
+    semester: Optional[int] = None
+
+    @field_validator('name')
+    @classmethod
+    def validate_name(cls, v):
+        if v is not None:
+            name_val = v.strip()
+            if not name_val:
+                raise ValueError("Subject name cannot be empty or only whitespace")
+            if len(name_val) > 100:
+                raise ValueError("Subject name cannot exceed 100 characters")
+            return name_val
+        return v
+
+    @field_validator('credits', 'hours_per_week')
+    @classmethod
+    def validate_positive_ints(cls, v):
+        if v is not None and v < 0:
+            raise ValueError("Value cannot be negative")
+        return v
+
+    @field_validator('semester')
+    @classmethod
+    def validate_semester(cls, v):
+        if v is not None and (v < 1 or v > 20):
+            raise ValueError("Semester must be between 1 and 20")
+        return v
+
+class SubjectResponse(BaseModel):
+    id: int
+    name: str
+    difficulty: str
+    credits: int
+    hours_per_week: int
+    semester: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class SubjectListResponse(BaseModel):
+    subjects: List[SubjectResponse]
+
+# -----------------------------------
+# USER SCHEMAS
+# -----------------------------------
 
 class UserCreate(BaseModel):
     name: str = Field(..., min_length=3, max_length=50, description="Display name / Username")
@@ -14,26 +96,235 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+# -----------------------------------
+# TASK SCHEMAS
+# -----------------------------------
+
 class TaskCreate(BaseModel):
     title: str
-    description: str
+    description: Optional[str] = None
     priority: str
     deadline: str
+
+    @field_validator('title')
+    @classmethod
+    def validate_title(cls, v):
+        title_val = v.strip()
+        if not title_val:
+            raise ValueError("Task title cannot be empty or only whitespace")
+        if len(title_val) > 200:
+            raise ValueError("Task title cannot exceed 200 characters")
+        return title_val
+
+    @field_validator('deadline')
+    @classmethod
+    def validate_deadline(cls, v):
+        try:
+            datetime.strptime(v, "%Y-%m-%d")
+        except ValueError:
+            raise ValueError("Invalid deadline format, must be YYYY-MM-DD")
+        return v
+
+    @field_validator('priority')
+    @classmethod
+    def validate_priority(cls, v):
+        if not v:
+            raise ValueError("Priority cannot be empty")
+        try:
+            val = int(v)
+            if val < 0:
+                raise ValueError("Priority cannot be negative")
+        except ValueError as e:
+            if "Priority cannot be negative" in str(e):
+                raise e
+        return v
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    priority: Optional[str] = None
+    deadline: Optional[str] = None
+    status: Optional[str] = None
+
+    @field_validator('title')
+    @classmethod
+    def validate_title(cls, v):
+        if v is not None:
+            title_val = v.strip()
+            if not title_val:
+                raise ValueError("Task title cannot be empty or only whitespace")
+            if len(title_val) > 200:
+                raise ValueError("Task title cannot exceed 200 characters")
+            return title_val
+        return v
+
+    @field_validator('deadline')
+    @classmethod
+    def validate_deadline(cls, v):
+        if v is not None:
+            try:
+                datetime.strptime(v, "%Y-%m-%d")
+            except ValueError:
+                raise ValueError("Invalid deadline format, must be YYYY-MM-DD")
+        return v
+
+    @field_validator('priority')
+    @classmethod
+    def validate_priority(cls, v):
+        if v is not None:
+            if not v:
+                raise ValueError("Priority cannot be empty")
+            try:
+                val = int(v)
+                if val < 0:
+                    raise ValueError("Priority cannot be negative")
+            except ValueError as e:
+                if "Priority cannot be negative" in str(e):
+                    raise e
+        return v
+
+    @field_validator('status')
+    @classmethod
+    def validate_status(cls, v):
+        if v is not None:
+            if v not in ["Pending", "Completed"]:
+                raise ValueError("Status must be either 'Pending' or 'Completed'")
+        return v
+
+class TaskResponse(BaseModel):
+    id: int
+    title: str
+    description: Optional[str] = None
+    priority: str
+    deadline: str
+    status: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+class TaskListResponse(BaseModel):
+    tasks: List[TaskResponse]
+
+class TaskCreateResponse(BaseModel):
+    message: str
+    task_id: int
+
+# -----------------------------------
+# MILESTONE SCHEMAS
+# -----------------------------------
 
 class MilestoneCreate(BaseModel):
     subject_id: int
     subject_name: str
     exam_date: str
+    title: Optional[str] = None
+    completion_percentage: Optional[int] = 0
 
-class SubjectResponse(BaseModel):
+    @field_validator('title')
+    @classmethod
+    def validate_title(cls, v):
+        if v is not None:
+            title_val = v.strip()
+            if not title_val:
+                raise ValueError("Milestone title cannot be empty or only whitespace")
+            if len(title_val) > 200:
+                raise ValueError("Milestone title cannot exceed 200 characters")
+            return title_val
+        return v
+
+    @field_validator('exam_date')
+    @classmethod
+    def validate_exam_date(cls, v):
+        try:
+            parsed_date = datetime.strptime(v, "%Y-%m-%d").date()
+        except ValueError:
+            raise ValueError("Invalid exam_date format, must be YYYY-MM-DD")
+        if parsed_date < date.today():
+            raise ValueError("Target date cannot be in the past")
+        return v
+
+    @field_validator('completion_percentage')
+    @classmethod
+    def validate_percentage(cls, v):
+        if v is not None and (v < 0 or v > 100):
+            raise ValueError("Completion percentage must be between 0 and 100")
+        return v
+
+class MilestoneUpdate(BaseModel):
+    subject_id: Optional[int] = None
+    exam_date: Optional[str] = None
+    title: Optional[str] = None
+    completion_percentage: Optional[int] = None
+
+    @field_validator('title')
+    @classmethod
+    def validate_title(cls, v):
+        if v is not None:
+            title_val = v.strip()
+            if not title_val:
+                raise ValueError("Milestone title cannot be empty or only whitespace")
+            if len(title_val) > 200:
+                raise ValueError("Milestone title cannot exceed 200 characters")
+            return title_val
+        return v
+
+    @field_validator('exam_date')
+    @classmethod
+    def validate_exam_date(cls, v):
+        if v is not None:
+            try:
+                parsed_date = datetime.strptime(v, "%Y-%m-%d").date()
+            except ValueError:
+                raise ValueError("Invalid exam_date format, must be YYYY-MM-DD")
+            if parsed_date < date.today():
+                raise ValueError("Target date cannot be in the past")
+        return v
+
+    @field_validator('completion_percentage')
+    @classmethod
+    def validate_percentage(cls, v):
+        if v is not None and (v < 0 or v > 100):
+            raise ValueError("Completion percentage must be between 0 and 100")
+        return v
+
+class MilestoneResponse(BaseModel):
     id: int
-    name: str
-    difficulty: str
-    credits: Optional[int] = None
-    hours_per_week: Optional[int] = None
+    subject_id: int
+    subject_name: str
+    exam_date: str
+    title: Optional[str] = None
+    completion_percentage: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+class MilestoneListResponse(BaseModel):
+    milestones: List[MilestoneResponse]
+
+# -----------------------------------
+# PROGRESS & STATISTICS SCHEMAS
+# -----------------------------------
+
+class ProgressResponse(BaseModel):
+    completed_tasks: int
+    pending_tasks: int
+    milestone_progress: float
+    subject_progress: float
+    overall_progress: float
+
+class SubjectPerformance(BaseModel):
+    subject_id: int
+    progress: float
+    milestones_count: int
+    completed_milestones_count: int
+    study_hours: float
+
+class StatisticsResponse(BaseModel):
+    tasks_completed: int
+    tasks_pending: int
+    milestones_completed: int
+    milestones_pending: int
+    completion_rate: float
+    subject_performance_metrics: Dict[str, SubjectPerformance]
+
 
 class ResourceCreate(BaseModel):
     title: str

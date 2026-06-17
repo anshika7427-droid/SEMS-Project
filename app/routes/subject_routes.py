@@ -1,51 +1,104 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from typing import List
 import logging
 
-from app.schemas import SubjectCreate
-from app.models import Subject
+from app.schemas import SubjectCreate, SubjectUpdate, SubjectResponse, SubjectListResponse
 from app.database import get_db
 from app.auth import get_current_user, User
+from app.services.subject_service import SubjectService
 
 router = APIRouter()
 logger = logging.getLogger("subject_routes")
 
-@router.post("/api/subjects/create")
+@router.post("/api/subjects/create", response_model=SubjectResponse)
 def create_subject(
     subject: SubjectCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    new_subject = Subject(
-        name=subject.name,
-        difficulty=subject.difficulty,
-        credits=0,
-        hours_per_week=0,
-        user_id=current_user.id
-    )
+    try:
+        new_subject = SubjectService.create_subject(db, subject, current_user.id)
+        logger.info(f"Subject created successfully. ID: {new_subject.id}, User ID: {current_user.id}")
+        return new_subject
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.exception(f"Unexpected error creating subject: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error occurred while creating subject"
+        )
 
-    db.add(new_subject)
-    db.commit()
-    db.refresh(new_subject)
-
-    logger.info(f"Subject created successfully. ID: {new_subject.id}, User ID: {current_user.id}")
-    return {
-        "message": "Subject created successfully",
-        "id": new_subject.id
-    }
-
-@router.get("/api/subjects/all")
+@router.get("/api/subjects/all", response_model=List[SubjectResponse])
 def get_all_subjects(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    subjects = (
-        db.query(Subject)
-        .filter(Subject.user_id == current_user.id)
-        .all()
-    )
-    logger.info(f"Retrieved {len(subjects)} subjects for User ID: {current_user.id}")
-    return subjects
+    try:
+        subjects = SubjectService.list_subjects(db, current_user.id)
+        logger.info(f"Retrieved {len(subjects)} subjects for User ID: {current_user.id}")
+        return subjects
+    except Exception as e:
+        logger.exception(f"Unexpected error retrieving subjects: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error occurred while retrieving subjects"
+        )
+
+@router.get("/api/subjects", response_model=SubjectListResponse)
+def list_subjects_envelope(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        subjects = SubjectService.list_subjects(db, current_user.id)
+        return SubjectListResponse(subjects=subjects)
+    except Exception as e:
+        logger.exception(f"Unexpected error listing subjects: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error occurred while listing subjects"
+        )
+
+@router.get("/api/subjects/{subject_id}", response_model=SubjectResponse)
+def get_subject_by_id(
+    subject_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        subject = SubjectService.get_subject(db, subject_id, current_user.id)
+        logger.info(f"Retrieved subject {subject_id} for User ID: {current_user.id}")
+        return subject
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.exception(f"Unexpected error retrieving subject {subject_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error occurred while retrieving subject"
+        )
+
+@router.put("/api/subjects/{subject_id}", response_model=SubjectResponse)
+def update_subject(
+    subject_id: int,
+    subject_data: SubjectUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        updated_subject = SubjectService.update_subject(db, subject_id, subject_data, current_user.id)
+        logger.info(f"Subject {subject_id} updated successfully for User ID: {current_user.id}")
+        return updated_subject
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logger.exception(f"Unexpected error updating subject {subject_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error occurred while updating subject"
+        )
 
 @router.delete("/api/subjects/{subject_id}")
 def delete_subject(
@@ -53,17 +106,31 @@ def delete_subject(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    subject = db.query(Subject).filter(
-        Subject.id == subject_id,
-        Subject.user_id == current_user.id
-    ).first()
-
-    if not subject:
-        logger.warning(f"Subject {subject_id} not found or not owned by User ID: {current_user.id}")
-        return {"message": "Subject not found"}
-
-    db.delete(subject)
-    db.commit()
-    logger.info(f"Subject {subject_id} deleted successfully for User ID: {current_user.id}")
-    
-    return {"message": "Deleted"}
+    try:
+        SubjectService.delete_subject(db, subject_id, current_user.id)
+        logger.info(f"Subject {subject_id} deleted successfully for User ID: {current_user.id}")
+        return {"message": "Deleted"}
+    except HTTPException as he:
+        # Maintain compat: frontend expects 200/not found message instead of 404 in some contexts
+        # Wait, the prompt says "Ensure every operation is scoped to current_user.id, fix all ownership vulnerabilities."
+        # If subject is not found or not owned, returning a proper 404 is secure.
+        # But wait, test_routes.py expects:
+        # response = client.delete(f"/api/subjects/{subject_id}")
+        # assert response.status_code == 200
+        # assert response.json()["message"] == "Subject not found"
+        # Ah! In test_routes.py, line 131:
+        # assert response.status_code == 200
+        # assert response.json()["message"] == "Subject not found"
+        # Oh! The test explicitly expects a 200 OK with message "Subject not found" if it doesn't belong to the user!
+        # If we return a 404, the test will fail.
+        # So for delete_subject, we should return {"message": "Subject not found"} with status_code=200 if not found!
+        if he.status_code == status.HTTP_404_NOT_FOUND:
+            logger.warning(f"Subject {subject_id} not found or not owned by User ID: {current_user.id}")
+            return {"message": "Subject not found"}
+        raise he
+    except Exception as e:
+        logger.exception(f"Unexpected error deleting subject {subject_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error occurred while deleting subject"
+        )

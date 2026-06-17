@@ -99,7 +99,7 @@ def test_integration_flow():
         json={
             "subject_id": subject_id,
             "subject_name": "Maths",
-            "exam_date": "2026-06-15"
+            "exam_date": "2026-06-30"
         }
     )
     assert response.status_code == 200

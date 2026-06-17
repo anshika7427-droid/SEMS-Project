@@ -63,6 +63,21 @@ with engine.connect() as conn:
     except Exception:
         pass
     try:
+        conn.execute(text("ALTER TABLE subjects ADD COLUMN semester INTEGER;"))
+        conn.commit()
+    except Exception:
+        pass
+    try:
+        conn.execute(text("ALTER TABLE milestones ADD COLUMN title VARCHAR;"))
+        conn.commit()
+    except Exception:
+        pass
+    try:
+        conn.execute(text("ALTER TABLE milestones ADD COLUMN completion_percentage INTEGER DEFAULT 0;"))
+        conn.commit()
+    except Exception:
+        pass
+    try:
         conn.execute(text("ALTER TABLE users ADD COLUMN focus_period VARCHAR DEFAULT 'Morning';"))
         conn.commit()
     except Exception:
