@@ -55,6 +55,10 @@ def get_user_analytics(user_id: int, db: Session) -> dict:
         one_week_ago = today - timedelta(days=7)
         start_of_week = today - timedelta(days=today.weekday())
         
+        # Pre-fetch subjects to avoid N+1 queries in the loop
+        subjects = db.query(Subject).filter(Subject.user_id == user_id).all()
+        subject_map = {sub.id: sub.name for sub in subjects}
+        
         subject_minutes = {}
         weekly_days_minutes = {
             "Monday": 0, "Tuesday": 0, "Wednesday": 0, "Thursday": 0,
@@ -82,10 +86,9 @@ def get_user_analytics(user_id: int, db: Session) -> dict:
                     if day_name in weekly_days_minutes:
                         weekly_days_minutes[day_name] += s.duration_minutes
                     
-                # Aggregate by subject (securing against cross-user deleted subjects)
+                # Aggregate by subject (using the pre-fetched map)
                 if s.subject_id:
-                    sub = db.query(Subject).filter(Subject.id == s.subject_id, Subject.user_id == user_id).first()
-                    sub_name = sub.name if sub else "Other"
+                    sub_name = subject_map.get(s.subject_id, "Other")
                 else:
                     sub_name = "Other"
                     
