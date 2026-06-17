@@ -153,17 +153,22 @@ class MilestoneService:
 
         # Subject Performance Metrics
         subjects = db.query(Subject).filter(Subject.user_id == user_id).all()
+        
+        # Optimize performance: single aggregated query for study sessions to avoid N+1 query pattern
+        sessions = db.query(StudySession).filter(StudySession.user_id == user_id).all()
+        sessions_by_subject = {}
+        for s in sessions:
+            if s.subject_id:
+                sessions_by_subject.setdefault(s.subject_id, []).append(s)
+
         performance_metrics = {}
         for subj in subjects:
             subj_milestones = [m for m in milestones if m.subject_id == subj.id]
             subj_milestones_completed = sum(1 for m in subj_milestones if m.completion_percentage == 100 or m.exam_date <= today_str)
             
-            # Study sessions hours
-            sessions = db.query(StudySession).filter(
-                StudySession.user_id == user_id,
-                StudySession.subject_id == subj.id
-            ).all()
-            study_hours = sum(s.duration_minutes for s in sessions) / 60.0
+            # Study sessions hours grouped in-memory
+            subj_sessions = sessions_by_subject.get(subj.id, [])
+            study_hours = sum(s.duration_minutes for s in subj_sessions) / 60.0
 
             subj_progress = 0.0
             if subj_milestones:

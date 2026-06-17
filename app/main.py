@@ -78,6 +78,11 @@ with engine.connect() as conn:
     except Exception:
         pass
     try:
+        conn.execute(text("ALTER TABLE tasks ADD COLUMN subject_id INTEGER;"))
+        conn.commit()
+    except Exception:
+        pass
+    try:
         conn.execute(text("ALTER TABLE users ADD COLUMN focus_period VARCHAR DEFAULT 'Morning';"))
         conn.commit()
     except Exception:

@@ -47,6 +47,7 @@ class Subject(Base):
     resources = relationship("Resource", back_populates="subject", cascade="all, delete-orphan")
     schedule_events = relationship("ScheduleEvent", back_populates="subject", cascade="all, delete-orphan")
     study_sessions = relationship("StudySession", back_populates="subject", cascade="all, delete-orphan")
+    tasks = relationship("Task", back_populates="subject", cascade="all, delete-orphan")
 
 class Task(Base):
     __tablename__ = "tasks"
@@ -57,9 +58,11 @@ class Task(Base):
     priority = Column(String)
     deadline = Column(String)
     status = Column(String, default="Pending")
+    subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="CASCADE"), nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     user = relationship("User", back_populates="tasks")
+    subject = relationship("Subject", back_populates="tasks")
 
 class Milestone(Base):
     __tablename__ = "milestones"

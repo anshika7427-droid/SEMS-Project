@@ -105,6 +105,7 @@ class TaskCreate(BaseModel):
     description: Optional[str] = None
     priority: str
     deadline: str
+    subject_id: Optional[int] = None
 
     @field_validator('title')
     @classmethod
@@ -120,9 +121,11 @@ class TaskCreate(BaseModel):
     @classmethod
     def validate_deadline(cls, v):
         try:
-            datetime.strptime(v, "%Y-%m-%d")
+            parsed_date = datetime.strptime(v, "%Y-%m-%d").date()
         except ValueError:
             raise ValueError("Invalid deadline format, must be YYYY-MM-DD")
+        if parsed_date < date.today():
+            raise ValueError("Deadline cannot be in the past")
         return v
 
     @field_validator('priority')
@@ -145,6 +148,7 @@ class TaskUpdate(BaseModel):
     priority: Optional[str] = None
     deadline: Optional[str] = None
     status: Optional[str] = None
+    subject_id: Optional[int] = None
 
     @field_validator('title')
     @classmethod
@@ -163,9 +167,11 @@ class TaskUpdate(BaseModel):
     def validate_deadline(cls, v):
         if v is not None:
             try:
-                datetime.strptime(v, "%Y-%m-%d")
+                parsed_date = datetime.strptime(v, "%Y-%m-%d").date()
             except ValueError:
                 raise ValueError("Invalid deadline format, must be YYYY-MM-DD")
+            if parsed_date < date.today():
+                raise ValueError("Deadline cannot be in the past")
         return v
 
     @field_validator('priority')
@@ -198,6 +204,7 @@ class TaskResponse(BaseModel):
     priority: str
     deadline: str
     status: str
+    subject_id: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 
