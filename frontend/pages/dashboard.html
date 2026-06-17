@@ -391,7 +391,7 @@
               <span class="text-on-surface-variant font-medium"
                 >Current Grade</span
               >
-              <span class="text-2xl font-headline font-bold text-on-surface"
+              <span class="text-2xl font-headline font-bold text-on-surface" id="currentGradeText"
                 >B+</span
               >
             </div>
@@ -407,13 +407,13 @@
                 >Predicted Finale</span
               >
               <div class="flex items-center gap-2">
-                <span class="text-5xl font-headline font-black">A-</span>
-                <span class="material-symbols-outlined text-3xl font-bold"
+                <span class="text-5xl font-headline font-black" id="predictedGradeText">A-</span>
+                <span class="material-symbols-outlined text-3xl font-bold" id="predictedGradeArrow"
                   >arrow_upward</span
                 >
               </div>
             </div>
-            <p class="text-xs text-center text-on-surface-variant italic px-2">
+            <p class="text-xs text-center text-on-surface-variant italic px-2" id="gradePredictorTip">
               Increase study time for "Physics Lab" by 15% to secure this
               projection.
             </p>
@@ -800,6 +800,18 @@
         });
       }
 
+      function getGradeFromScore(score) {
+        if (score >= 95) return "A+";
+        if (score >= 90) return "A";
+        if (score >= 85) return "A-";
+        if (score >= 80) return "B+";
+        if (score >= 75) return "B";
+        if (score >= 70) return "B-";
+        if (score >= 60) return "C";
+        if (score >= 50) return "D";
+        return "F";
+      }
+
       // Load streaks, daily momentum chart heights, and AI suggestions
       async function loadDashboardStats() {
         try {
@@ -837,6 +849,56 @@
                 barElement.title = `${hours} hours studied`;
               }
             }
+
+            // 3. AI Grade Predictor Update
+            let currentScore = 75; // Default B
+            if (data.total_tasks > 0) {
+              currentScore = (data.completed_tasks / data.total_tasks) * 100;
+            }
+            const currentGrade = getGradeFromScore(currentScore);
+            const currentGradeText = document.getElementById("currentGradeText");
+            if (currentGradeText) {
+              currentGradeText.textContent = currentGrade;
+            }
+            
+            // Set default predicted score to currentScore
+            let predictedScore = currentScore;
+            try {
+              const analysisRes = await fetch("/api/schedule/analysis?t=" + new Date().getTime(), { cache: "no-store" });
+              if (analysisRes.ok) {
+                const analysisData = await analysisRes.json();
+                if (analysisData.quality_scoring && analysisData.quality_scoring.exam_readiness_score !== undefined) {
+                  predictedScore = analysisData.quality_scoring.exam_readiness_score;
+                }
+              }
+            } catch (err) {
+              console.error("Error loading schedule analysis for grade predictor", err);
+            }
+            
+            const predictedGrade = getGradeFromScore(predictedScore);
+            const predictedGradeText = document.getElementById("predictedGradeText");
+            if (predictedGradeText) {
+              predictedGradeText.textContent = predictedGrade;
+            }
+            
+            const predictedGradeArrow = document.getElementById("predictedGradeArrow");
+            if (predictedGradeArrow) {
+              if (predictedScore > currentScore) {
+                predictedGradeArrow.textContent = "arrow_upward";
+                predictedGradeArrow.className = "material-symbols-outlined text-3xl font-bold text-green-500 animate-bounce";
+              } else if (predictedScore < currentScore) {
+                predictedGradeArrow.textContent = "arrow_downward";
+                predictedGradeArrow.className = "material-symbols-outlined text-3xl font-bold text-red-500";
+              } else {
+                predictedGradeArrow.textContent = "trending_flat";
+                predictedGradeArrow.className = "material-symbols-outlined text-3xl font-bold text-slate-400";
+              }
+            }
+            
+            const gradePredictorTip = document.getElementById("gradePredictorTip");
+            if (gradePredictorTip) {
+              gradePredictorTip.textContent = data.focus_insight || "Complete tasks and keep your schedule active to raise your grade prediction.";
+            }
           }
         } catch (e) {
           console.error("Error loading dashboard stats", e);
@@ -862,7 +924,9 @@
       // Load real dynamic scheduled events for today
       async function loadTodaySchedule() {
         try {
-          const res = await fetch("/api/schedule/all");
+          const res = await fetch("/api/schedule/all?t=" + new Date().getTime(), {
+            cache: "no-store"
+          });
           if (res.ok) {
             const events = await res.json();
             const container = document.getElementById("todayScheduleContainer");
@@ -875,7 +939,7 @@
             const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
             const todayName = dayNames[new Date().getDay()];
             
-            const todayEvents = events.filter(e => e.day_of_week === todayName);
+            const todayEvents = events.filter(e => e.day_of_week && e.day_of_week.trim().toLowerCase() === todayName.toLowerCase());
             
             if (todayEvents.length === 0) {
               container.innerHTML += `
@@ -890,21 +954,48 @@
             
             todayEvents.forEach((event, idx) => {
               const isCurrentOrNext = idx === 0;
+              const diff = (event.subject_difficulty || "Medium").toLowerCase().trim();
+              
+              let bgClass = "bg-amber-500/10 border-amber-500 text-amber-700";
+              let labelClass = "text-amber-700";
+              let badgeClass = "bg-amber-100 text-amber-700";
+              let dotColorClass = "bg-amber-500";
+              let diffBadgeClass = "bg-amber-500 text-white";
+              
+              if (diff === "hard") {
+                bgClass = "bg-red-500/10 border-red-500 text-red-700";
+                labelClass = "text-red-700";
+                badgeClass = "bg-red-100 text-red-700";
+                dotColorClass = "bg-red-500";
+                diffBadgeClass = "bg-red-500 text-white";
+              } else if (diff === "easy") {
+                bgClass = "bg-green-500/10 border-green-500 text-green-700";
+                labelClass = "text-green-700";
+                badgeClass = "bg-green-100 text-green-700";
+                dotColorClass = "bg-green-500";
+                diffBadgeClass = "bg-green-500 text-white";
+              }
+              
+              const pulseClass = isCurrentOrNext ? "animate-pulse" : "";
+              const sessionType = event.session_type || "Study Session";
+              
               container.innerHTML += `
                 <div class="relative">
-                  <div class="absolute -left-[23px] top-1 w-4 h-4 rounded-full border-4 border-white ${isCurrentOrNext ? 'bg-secondary animate-pulse' : 'bg-primary'} z-10"></div>
-                  <div class="flex flex-col gap-2">
+                  <div class="absolute -left-[23px] top-[18px] w-4 h-4 rounded-full border-4 border-white ${dotColorClass} ${pulseClass} z-10"></div>
+                  <div class="flex flex-col gap-2 p-4 rounded-xl border ${bgClass} shadow-sm">
                     <div class="flex justify-between items-start">
-                      <span class="text-xs font-bold ${isCurrentOrNext ? 'text-secondary' : 'text-primary'} uppercase">
+                      <span class="text-xs font-bold ${labelClass} uppercase">
                         ${formatTime12Hour(event.start_time)} — ${formatTime12Hour(event.end_time)}
                       </span>
-                      <span class="px-2 py-0.5 rounded ${isCurrentOrNext ? 'bg-secondary-fixed text-on-secondary-fixed' : 'bg-blue-100 text-blue-700'} text-[10px] font-bold uppercase">
-                        Study Session
+                      <span class="px-2 py-0.5 rounded ${badgeClass} text-[10px] font-bold uppercase">
+                        ${sessionType}
                       </span>
                     </div>
-                    <h4 class="font-headline font-bold text-lg leading-tight text-slate-800">
+                    <h4 class="font-headline font-bold text-lg leading-tight text-slate-800 flex items-center gap-2">
+                      <span class="px-1.5 py-0.5 rounded text-[10px] font-black uppercase ${diffBadgeClass}">[${diff.toUpperCase()}]</span>
                       ${event.subject_name}
                     </h4>
+                    ${event.reason ? `<p class="text-xs text-on-surface-variant/80 mt-1 leading-tight font-medium italic">${event.reason}</p>` : ''}
                   </div>
                 </div>
               `;

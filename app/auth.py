@@ -37,9 +37,10 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
+        request.session.clear()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Session user not found."
+            detail="Session user not found or deleted."
         )
     
     logger.info(f"[Auth Audit] Successfully authenticated user: {user.email} (ID: {user.id})")

@@ -1,0 +1,248 @@
+{
+  "schedule": [
+    {
+      "day": "Monday",
+      "subject": "Botney",
+      "hours": 1.5,
+      "start_time": "15:00",
+      "end_time": "16:30",
+      "session_type": "Deep Focus",
+      "reason": "3 Deep Focus cycles to cover critical topics, given the upcoming exam on 2026-06-20"
+    },
+    {
+      "day": "Monday",
+      "subject": "Physics",
+      "hours": 1.5,
+      "start_time": "17:00",
+      "end_time": "18:30",
+      "session_type": "Deep Focus",
+      "reason": "2 Deep Focus cycles for medium difficulty subject, interleaved with Botney for cognitive load management"
+    },
+    {
+      "day": "Monday",
+      "subject": "zoology",
+      "hours": 2.0,
+      "start_time": "19:30",
+      "end_time": "21:30",
+      "session_type": "Deep Focus",
+      "reason": "4 Deep Focus cycles for hard subject, utilizing night preference for intense focus"
+    },
+    {
+      "day": "Monday",
+      "subject": "English",
+      "hours": 2.0,
+      "start_time": "21:30",
+      "end_time": "23:30",
+      "session_type": "Deep Focus",
+      "reason": "4 Deep Focus cycles for easy subject, completing the daily quota and leveraging night focus"
+    },
+    {
+      "day": "Tuesday",
+      "subject": "Botney",
+      "hours": 1.5,
+      "start_time": "15:00",
+      "end_time": "16:30",
+      "session_type": "Deep Focus",
+      "reason": "3 Deep Focus cycles, maintaining consistency and focus on critical subject"
+    },
+    {
+      "day": "Tuesday",
+      "subject": "Chemistry",
+      "hours": 1.5,
+      "start_time": "17:00",
+      "end_time": "18:30",
+      "session_type": "Deep Focus",
+      "reason": "2 Deep Focus cycles for medium difficulty subject, ensuring balanced progress"
+    },
+    {
+      "day": "Tuesday",
+      "subject": "Physical Education",
+      "hours": 2.0,
+      "start_time": "19:30",
+      "end_time": "21:30",
+      "session_type": "Deep Focus",
+      "reason": "4 Deep Focus cycles for easy subject, utilizing night preference for efficient learning"
+    },
+    {
+      "day": "Tuesday",
+      "subject": "zoology",
+      "hours": 2.0,
+      "start_time": "21:30",
+      "end_time": "23:30",
+      "session_type": "Deep Focus",
+      "reason": "4 Deep Focus cycles, maintaining intense focus on hard subject"
+    },
+    {
+      "day": "Wednesday",
+      "subject": "Botney",
+      "hours": 2.0,
+      "start_time": "15:00",
+      "end_time": "17:00",
+      "session_type": "Deep Focus",
+      "reason": "4 Deep Focus cycles, intensifying review as exam approaches"
+    },
+    {
+      "day": "Wednesday",
+      "subject": "Physics",
+      "hours": 1.5,
+      "start_time": "17:30",
+      "end_time": "19:00",
+      "session_type": "Deep Focus",
+      "reason": "3 Deep Focus cycles, balancing progress across subjects"
+    },
+    {
+      "day": "Wednesday",
+      "subject": "English",
+      "hours": 2.0,
+      "start_time": "19:30",
+      "end_time": "21:30",
+      "session_type": "Deep Focus",
+      "reason": "4 Deep Focus cycles, leveraging night focus for consistent progress"
+    },
+    {
+      "day": "Wednesday",
+      "subject": "Chemistry",
+      "hours": 1.5,
+      "start_time": "21:30",
+      "end_time": "23:00",
+      "session_type": "Deep Focus",
+      "reason": "3 Deep Focus cycles, ensuring all subjects receive adequate attention"
+    },
+    {
+      "day": "Thursday",
+      "subject": "Botney",
+      "hours": 2.5,
+      "start_time": "15:00",
+      "end_time": "17:30",
+      "session_type": "Deep Focus",
+      "reason": "5 Deep Focus cycles, final intensive review before the exam"
+    },
+    {
+      "day": "Thursday",
+      "subject": "zoology",
+      "hours": 2.0,
+      "start_time": "18:00",
+      "end_time": "20:00",
+      "session_type": "Deep Focus",
+      "reason": "4 Deep Focus cycles, maintaining focus on hard subject"
+    },
+    {
+      "day": "Thursday",
+      "subject": "Physical Education",
+      "hours": 2.5,
+      "start_time": "20:00",
+      "end_time": "22:30",
+      "session_type": "Deep Focus",
+      "reason": "5 Deep Focus cycles, efficient learning for easy subject"
+    },
+    {
+      "day": "Friday",
+      "subject": "Botney",
+      "hours": 2.0,
+      "start_time": "15:00",
+      "end_time": "17:00",
+      "session_type": "Deep Focus",
+      "reason": "4 Deep Focus cycles, last review before the exam"
+    },
+    {
+      "day": "Friday",
+      "subject": "Chemistry",
+      "hours": 1.5,
+      "start_time": "17:30",
+      "end_time": "19:00",
+      "session_type": "Deep Focus",
+      "reason": "3 Deep Focus cycles, balanced progress across medium subjects"
+    },
+    {
+      "day": "Friday",
+      "subject": "Physics",
+      "hours": 2.0,
+      "start_time": "19:30",
+      "end_time": "21:30",
+      "session_type": "Deep Focus",
+      "reason": "4 Deep Focus cycles, night focus for medium subject"
+    },
+    {
+      "day": "Friday",
+      "subject": "English",
+      "hours": 1.5,
+      "start_time": "21:30",
+      "end_time": "23:00",
+      "session_type": "Deep Focus",
+      "reason": "3 Deep Focus cycles, consistent progress on easy subject"
+    }
+  ],
+  "detailed_analysis": {
+    "focus_title": "Night Focus Schedule (35.0 Hours/Week)",
+    "focus_description": "The study schedule is designed to leverage the night focus preference, with sessions distributed to maintain a balance between intense focus and breaks. Given the upcoming exams, the schedule prioritizes critical subjects and intensive pre-exam review.",
+    "focus_blocks": [
+      {
+        "block": "Block 1 (Afternoon)",
+        "time": "15:00 \u2013 17:00",
+        "mode": "Deep Focus"
+      },
+      {
+        "block": "Block 2 (Evening)",
+        "time": "17:30 \u2013 20:00",
+        "mode": "Deep Focus"
+      },
+      {
+        "block": "Block 3 (Night)",
+        "time": "20:00 \u2013 23:30",
+        "mode": "Deep Focus"
+      }
+    ],
+    "phases": [
+      {
+        "title": "Phase 1: Botney Intensive Review",
+        "description": "Focus on Botney due to the upcoming exam on 2026-06-20",
+        "allocations": [
+          "Block 1: Botney (Critical Topics)"
+        ]
+      },
+      {
+        "title": "Phase 2: Medium Subjects Review",
+        "description": "Balanced progress across Physics, Chemistry, and English",
+        "allocations": [
+          "Block 2: Physics, Chemistry, English (Medium Difficulty Topics)"
+        ]
+      },
+      {
+        "title": "Phase 3: zoology and Physical Education Focus",
+        "description": "Intensive review for zoology and Physical Education",
+        "allocations": [
+          "Block 3: zoology (Hard Topics), Physical Education (Easy Topics)"
+        ]
+      }
+    ],
+    "pro_tips": [
+      "Use active recall techniques during Deep Focus sessions",
+      "Review notes and summarize key points after each session"
+    ],
+    "subject_allocation_reasons": {
+      "Botney": "High priority due to upcoming exam and hard difficulty",
+      "zoology": "High focus due to hard difficulty and upcoming exam",
+      "Physics": "Balanced progress due to medium difficulty",
+      "Chemistry": "Balanced progress due to medium difficulty",
+      "Physical Education": "Efficient learning due to easy difficulty",
+      "English": "Consistent progress due to easy difficulty"
+    },
+    "time_slot_reasons": "Time slots are chosen to leverage night focus preference, with breaks in between sessions to avoid burnout",
+    "milestone_reasons": "The schedule is designed to prioritize subjects with upcoming exams, ensuring adequate review and preparation",
+    "preference_reasons": "The schedule respects the night focus preference, avoiding early mornings and leveraging the most productive hours for intense focus"
+  },
+  "quality_scoring": {
+    "balance_score": 84,
+    "burnout_risk": 38,
+    "exam_readiness_score": 52
+  },
+  "transparency": {
+    "requested_study_hours": 7,
+    "actual_study_hours": 35.0,
+    "predicted_burnout_risk": 38,
+    "predicted_exam_readiness": 52,
+    "ai_recommendation": "Your burnout risk is Moderate. Ensure you take full breaks between your study blocks. Readiness score is average. Consider adding more study hours before upcoming milestone exams."
+  },
+  "is_cached": false,
+  "llm_calls_count": 2
+}

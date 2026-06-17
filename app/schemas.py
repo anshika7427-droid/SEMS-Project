@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 
 class SubjectCreate(BaseModel):
@@ -6,9 +6,9 @@ class SubjectCreate(BaseModel):
     difficulty: str
 
 class UserCreate(BaseModel):
-    name: str
+    name: str = Field(..., min_length=3, max_length=50, description="Display name / Username")
     email: EmailStr
-    password: str
+    password: str = Field(..., min_length=6, description="Password must be at least 6 characters")
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -88,12 +88,12 @@ class StudySessionResponse(BaseModel):
         from_attributes = True
 
 class ProfileUpdate(BaseModel):
-    name: str
+    name: str = Field(..., min_length=3, max_length=50)
     email: EmailStr
 
 class PasswordChange(BaseModel):
     current_password: str
-    new_password: str
+    new_password: str = Field(..., min_length=6)
 
 class AICalibrationPayload(BaseModel):
     daily_quota: Optional[int] = 6
@@ -103,3 +103,64 @@ class AICalibrationPayload(BaseModel):
     prioritize_critical: Optional[bool] = True
     intensive_pre_exam: Optional[bool] = True
     weekend_preservation: Optional[bool] = False
+    force_refresh: Optional[bool] = False
+
+# New Expected Response Models/Schemas
+class MessageResponse(BaseModel):
+    message: str
+
+class UserResponse(BaseModel):
+    id: int
+    name: str
+    email: EmailStr
+
+    class Config:
+        from_attributes = True
+
+class ProfileResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    created_at: Optional[str] = None
+    avatar_url: Optional[str] = None
+    subjects_count: int
+    milestones_count: int
+    resources_count: int
+    streak: int
+    study_hours: float
+    sessions_count: int
+
+    class Config:
+        from_attributes = True
+
+class LoginResponse(BaseModel):
+    message: str
+    user_id: int
+    name: str
+    email: str
+
+    class Config:
+        from_attributes = True
+
+class AuthStatusResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+
+    class Config:
+        from_attributes = True
+
+class AvatarResponse(BaseModel):
+    message: str
+    avatar_url: str
+
+    class Config:
+        from_attributes = True
+
+class ProfileUpdateResponse(BaseModel):
+    message: str
+    name: str
+    email: EmailStr
+
+    class Config:
+        from_attributes = True

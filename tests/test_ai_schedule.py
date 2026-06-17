@@ -1,4 +1,5 @@
 import pytest
+import json
 from unittest.mock import patch
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -101,22 +102,58 @@ def test_validate_schedule_json():
 @patch("app.services.llm_service.LLM_API_KEY", "mock_key")
 @patch("httpx.Client.post")
 def test_generate_ai_schedule_success(mock_post):
-    class MockResponse:
-        status_code = 200
-        def raise_for_status(self):
-            pass
-        def json(self):
-            return {
-                "choices": [
-                    {
-                        "message": {
-                            "content": '{"schedule": [{"day": "Monday", "subject": "DBMS", "hours": 2, "session_type": "Deep Focus", "reason": "Exam"}], "detailed_analysis": {"focus_title": "Daily Focus", "focus_description": "Desc", "focus_blocks": [], "phases": [], "pro_tips": [], "subject_allocation_reasons": {}, "time_slot_reasons": "", "milestone_reasons": "", "preference_reasons": ""}, "quality_scoring": {"balance_score": 80, "burnout_risk": 20, "exam_readiness_score": 90}}'
+    def side_effect(*args, **kwargs):
+        class MockResponse:
+            status_code = 200
+            def raise_for_status(self):
+                pass
+            def json(self):
+                return {
+                    "choices": [
+                        {
+                            "message": {
+                                "content": json.dumps({
+                                    "schedule": [
+                                        {
+                                            "day": "Monday",
+                                            "subject": "DBMS",
+                                            "hours": 2,
+                                            "session_type": "Deep Focus",
+                                            "reason": "Exam",
+                                            "start_time": "15:00",
+                                            "end_time": "17:00"
+                                        }
+                                    ],
+                                    "detailed_analysis": {
+                                        "focus_title": "Daily Focus",
+                                        "focus_description": "Desc",
+                                        "focus_blocks": [
+                                            {"block": "Block 1", "time": "15:00-17:00", "mode": "Deep Focus"}
+                                        ],
+                                        "phases": [
+                                            {"title": "Phase 1: DBMS Prep", "description": "DBMS Prep", "allocations": ["DBMS"]}
+                                        ],
+                                        "pro_tips": ["Tip 1"],
+                                        "subject_allocation_reasons": {
+                                            "DBMS": "Reason"
+                                        },
+                                        "time_slot_reasons": "Slots",
+                                        "milestone_reasons": "Milestone",
+                                        "preference_reasons": "Pref"
+                                    },
+                                    "quality_scoring": {
+                                        "balance_score": 80,
+                                        "burnout_risk": 20,
+                                        "exam_readiness_score": 90
+                                    }
+                                })
+                            }
                         }
-                    }
-                ]
-            }
+                    ]
+                }
+        return MockResponse()
 
-    mock_post.return_value = MockResponse()
+    mock_post.side_effect = side_effect
 
     class MockSubject:
         name = "DBMS"
@@ -202,3 +239,49 @@ def test_api_generate_ai_schedule_fallback():
         # Should succeed with is_ai = False
         assert data["is_ai"] is False
         assert data["events_count"] > 0
+
+def test_calculate_schedule_metrics_burnout():
+    from app.services.llm_service import calculate_schedule_metrics
+    
+    class MockSubject:
+        def __init__(self, name, difficulty):
+            self.name = name
+            self.difficulty = difficulty
+
+    class MockMilestone:
+        def __init__(self, subject_name, exam_date, user_id=1):
+            self.subject_name = subject_name
+            self.exam_date = exam_date
+            self.user_id = user_id
+
+    subjects = [
+        MockSubject("Physics", "Hard"),
+        MockSubject("Botany", "Hard"),
+        MockSubject("English", "Easy")
+    ]
+    
+    # Scenario 1: Extremely high burnout risk (stacked hard subjects, consecutive hours, late night)
+    bad_schedule = [
+        # Monday: 7 hours consecutive study, stacked hard subjects, late night
+        {"day": "Monday", "subject": "Physics", "hours": 4.0, "start_time": "18:00", "end_time": "22:00", "session_type": "Deep Focus", "reason": "No break"},
+        {"day": "Monday", "subject": "Botany", "hours": 3.0, "start_time": "22:00", "end_time": "01:00", "session_type": "Deep Focus", "reason": "No break"},
+        # Tuesday: 6 hours consecutive
+        {"day": "Tuesday", "subject": "Physics", "hours": 6.0, "start_time": "14:00", "end_time": "20:00", "session_type": "Deep Focus", "reason": "Long block"}
+    ]
+    
+    metrics_bad = calculate_schedule_metrics(bad_schedule, [], subjects)
+    assert metrics_bad["burnout_risk"] > 50  # Should be elevated
+    
+    # Scenario 2: Good schedule (well distributed, healthy recovery gaps, weekend recovery, balanced load)
+    good_schedule = [
+        # Monday: distributed with a 2-hour recovery gap (15:00 - 17:00)
+        {"day": "Monday", "subject": "Physics", "hours": 2.0, "start_time": "13:00", "end_time": "15:00", "session_type": "Deep Focus", "reason": "Distributed"},
+        {"day": "Monday", "subject": "English", "hours": 2.0, "start_time": "17:00", "end_time": "19:00", "session_type": "Deep Focus", "reason": "Distributed"},
+        # Tuesday: distributed
+        {"day": "Tuesday", "subject": "Botany", "hours": 2.0, "start_time": "10:00", "end_time": "12:00", "session_type": "Deep Focus", "reason": "Distributed"},
+        {"day": "Tuesday", "subject": "Physics", "hours": 2.0, "start_time": "14:00", "end_time": "16:00", "session_type": "Deep Focus", "reason": "Distributed"}
+    ]
+    
+    metrics_good = calculate_schedule_metrics(good_schedule, [], subjects)
+    assert metrics_good["burnout_risk"] < metrics_bad["burnout_risk"]
+

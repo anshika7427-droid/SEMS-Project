@@ -164,11 +164,13 @@ def generate_ai_schedule_endpoint(
                 events_added += 1
                 
         db.commit()
-        logger.info(f"AI generated schedule saved. Created {events_added} events for User ID: {current_user.id}")
+        logger.info(f"AI generated schedule saved. Created {events_added} events for User ID: {current_user.id}. Total LLM calls: {ai_data.get('llm_calls_count', 0)}, Cached: {ai_data.get('is_cached', False)}")
         return {
             "message": "AI study plan generated successfully",
             "events_count": events_added,
-            "is_ai": True
+            "is_ai": True,
+            "is_cached": ai_data.get("is_cached", False),
+            "llm_calls_count": ai_data.get("llm_calls_count", 0)
         }
         
     except Exception as e:
@@ -189,7 +191,9 @@ def generate_ai_schedule_endpoint(
             return {
                 "message": "AI generation failed, fell back to standard schedule.",
                 "events_count": len(events),
-                "is_ai": False
+                "is_ai": False,
+                "is_cached": False,
+                "llm_calls_count": 0
             }
         except Exception as fallback_error:
             logger.exception(f"Fallback schedule generation also failed: {fallback_error}")
@@ -227,6 +231,7 @@ def get_schedule(
             "id": event.id,
             "subject_id": event.subject_id,
             "subject_name": subject.name if subject else "Unknown",
+            "subject_difficulty": subject.difficulty if subject else "Medium",
             "day_of_week": event.day_of_week,
             "start_time": event.start_time,
             "end_time": event.end_time,

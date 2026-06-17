@@ -2,6 +2,7 @@ import json
 import logging
 import httpx
 import hashlib
+import time
 from datetime import date, datetime, timedelta
 from app.config import LLM_API_KEY, LLM_MODEL, LLM_API_URL
 
@@ -144,7 +145,7 @@ def validate_candidates_json(data: dict) -> bool:
     return True
 
 def call_llm_api(system_instruction: str, user_prompt: str) -> dict:
-    """Wrapper to make standard POST request to the LLM API and parse JSON response."""
+    """Wrapper to make standard POST request to the LLM API and parse JSON response with 429 retry backoff."""
     if not LLM_API_KEY:
         logger.error("LLM_API_KEY is not configured.")
         raise ValueError("LLM_API_KEY is not configured.")
@@ -171,18 +172,41 @@ def call_llm_api(system_instruction: str, user_prompt: str) -> dict:
     url = f"{LLM_API_URL}/chat/completions"
     logger.debug(f"Sending request to LLM API: {url}")
     
-    with httpx.Client(timeout=25.0) as client:
-        response = client.post(url, headers=headers, json=payload)
-        response.raise_for_status()
-        result = response.json()
-        choices = result.get("choices", [])
-        if not choices:
-            raise ValueError("LLM response did not contain any choices.")
-        content = choices[0].get("message", {}).get("content", "").strip()
-        logger.debug(f"Received raw LLM response: {content}")
-        
-        cleaned = clean_json_response(content)
-        return json.loads(cleaned)
+    max_retries = 5
+    backoff_factor = 2.0
+    for attempt in range(max_retries):
+        try:
+            with httpx.Client(timeout=25.0) as client:
+                response = client.post(url, headers=headers, json=payload)
+                if response.status_code == 429:
+                    sleep_time = (backoff_factor ** attempt) + 1.0
+                    logger.warning(f"Rate limited (429) on attempt {attempt + 1}. Retrying in {sleep_time:.1f}s...")
+                    time.sleep(sleep_time)
+                    continue
+                response.raise_for_status()
+                result = response.json()
+                choices = result.get("choices", [])
+                if not choices:
+                    raise ValueError("LLM response did not contain any choices.")
+                content = choices[0].get("message", {}).get("content", "").strip()
+                logger.debug(f"Received raw LLM response: {content}")
+                
+                cleaned = clean_json_response(content)
+                return json.loads(cleaned)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 429:
+                sleep_time = (backoff_factor ** attempt) + 1.0
+                logger.warning(f"Rate limited (429) via HTTPStatusError on attempt {attempt + 1}. Retrying in {sleep_time:.1f}s...")
+                time.sleep(sleep_time)
+                continue
+            logger.error(f"HTTP error occurred in call_llm_api: {e}")
+            raise e
+        except Exception as e:
+            logger.error(f"Error occurred in call_llm_api on attempt {attempt + 1}: {e}")
+            if attempt == max_retries - 1:
+                raise e
+            time.sleep(1.0)
+    raise RuntimeError("Max retries exceeded in call_llm_api.")
 
 def calculate_schedule_metrics(schedule_events: list, milestones: list, subjects: list, db=None) -> dict:
     """
@@ -302,8 +326,14 @@ def calculate_schedule_metrics(schedule_events: list, milestones: list, subjects
     risk_hours = max(0.0, min(100.0, risk_hours))
 
     # Number of study blocks contribution
+    # Rule 5: Too few breaks increases risk, study sessions being distributed decreases risk
     avg_blocks = sum(daily_blocks.values()) / 7.0
-    risk_blocks = min(100.0, avg_blocks * 20.0)
+    if avg_daily_hours > 3.0 and avg_blocks < 2.0:
+        risk_blocks = 75.0  # too few breaks
+    else:
+        # Having more blocks (well-distributed sessions) reduces risk
+        risk_blocks = max(10.0, 50.0 - (avg_blocks - 1.5) * 15.0)
+    risk_blocks = min(100.0, max(0.0, risk_blocks))
 
     # Continuous study duration contribution
     max_block_duration = 0.0
@@ -313,12 +343,14 @@ def calculate_schedule_metrics(schedule_events: list, milestones: list, subjects
             max_block_duration = hours
             
     risk_block_duration = 10.0
-    if max_block_duration > 1.0 and max_block_duration <= 1.5:
-        risk_block_duration = 50.0
-    elif max_block_duration > 1.5 and max_block_duration <= 2.0:
-        risk_block_duration = 80.0
-    elif max_block_duration > 2.0:
+    if max_block_duration > 3.0:
         risk_block_duration = 100.0
+    elif max_block_duration > 2.0:
+        risk_block_duration = 80.0
+    elif max_block_duration > 1.5:
+        risk_block_duration = 50.0
+    elif max_block_duration > 1.0:
+        risk_block_duration = 30.0
 
     # Recovery periods contribution
     recovery_days = sum(1 for h in daily_hours.values() if h < 2.0)
@@ -335,12 +367,12 @@ def calculate_schedule_metrics(schedule_events: list, milestones: list, subjects
     # Weekend load contribution
     weekend_load = daily_hours["Saturday"] + daily_hours["Sunday"]
     risk_weekend = 10.0
-    if weekend_load > 2.0 and weekend_load <= 4.0:
+    if weekend_load > 6.0:
+        risk_weekend = 85.0
+    elif weekend_load > 4.0:
+        risk_weekend = 60.0
+    elif weekend_load > 2.0:
         risk_weekend = 40.0
-    elif weekend_load > 4.0 and weekend_load <= 8.0:
-        risk_weekend = 75.0
-    elif weekend_load > 8.0:
-        risk_weekend = 100.0
 
     # Consecutive intensive days contribution (intensive: >= 6.0 hours)
     max_consecutive = 0
@@ -363,13 +395,15 @@ def calculate_schedule_metrics(schedule_events: list, milestones: list, subjects
     elif max_consecutive >= 6:
         risk_intensive = 100.0
 
-    # Sleep window contribution (sessions running past 11:00 PM)
+    # Sleep window contribution (sessions running past 11:00 PM or starting before 5:00 AM)
     late_sessions = 0
     for event in schedule_events:
         end_time_str = event.get("end_time", "")
+        start_time_str = event.get("start_time", "")
         try:
-            h = int(end_time_str.split(":")[0])
-            if h >= 23 or h < 5:
+            h_end = int(end_time_str.split(":")[0])
+            h_start = int(start_time_str.split(":")[0])
+            if h_end >= 23 or h_end < 5 or h_start < 5:
                 late_sessions += 1
         except Exception:
             pass
@@ -382,16 +416,107 @@ def calculate_schedule_metrics(schedule_events: list, milestones: list, subjects
     elif late_sessions >= 5:
         risk_sleep = 100.0
 
-    # Weighted Burnout Risk calculation
-    burnout_risk = int(
-        0.50 * risk_hours +
+    # Gap and cognitive load/stacking analysis for weekdays
+    def time_to_min(t_str: str) -> int:
+        t_str = t_str.strip().lower()
+        is_pm = False
+        if "pm" in t_str:
+            is_pm = True
+            t_str = t_str.replace("pm", "").strip()
+        elif "am" in t_str:
+            t_str = t_str.replace("am", "").strip()
+            
+        parts = t_str.split(":")
+        if len(parts) == 2:
+            h = int(parts[0])
+            m = int(parts[1])
+        elif len(parts) == 1:
+            h = int(parts[0])
+            m = 0
+        else:
+            h = 12
+            m = 0
+            
+        if is_pm and h < 12:
+            h += 12
+        if not is_pm and h == 12:
+            h = 0
+        return h * 60 + m
+
+    # Additional modifiers for breaks/gaps and stacking
+    gap_penalty = 0
+    stacked_hard_penalty = 0
+    subject_difficulty_map = {s.name.lower().strip(): s.difficulty for s in subjects}
+
+    for day in days:
+        day_events = [e for e in schedule_events if e.get("day") == day]
+        if len(day_events) >= 2:
+            def get_event_start_min(e):
+                st = e.get("start_time")
+                if not st:
+                    return 0
+                try:
+                    return time_to_min(st)
+                except Exception:
+                    return 0
+            day_events.sort(key=get_event_start_min)
+            for i in range(len(day_events) - 1):
+                e1 = day_events[i]
+                e2 = day_events[i+1]
+                try:
+                    end_e1 = time_to_min(e1.get("end_time", "00:00"))
+                    start_e2 = time_to_min(e2.get("start_time", "00:00"))
+                    gap = start_e2 - end_e1
+                    if gap < 0:
+                        gap += 24 * 60
+                    
+                    # Too few breaks / gap < 60 minutes
+                    if gap < 60:
+                        gap_penalty += 15
+                    # Healthy break decreases risk
+                    elif 60 <= gap <= 180:
+                        gap_penalty -= 5
+                        
+                    # Stacking check for Hard subjects
+                    sub1_name = e1.get("subject", "").lower().strip()
+                    sub2_name = e2.get("subject", "").lower().strip()
+                    
+                    sub1_diff = "Medium"
+                    for name, diff in subject_difficulty_map.items():
+                        if name in sub1_name or sub1_name in name:
+                            sub1_diff = diff
+                            break
+                    sub2_diff = "Medium"
+                    for name, diff in subject_difficulty_map.items():
+                        if name in sub2_name or sub2_name in name:
+                            sub2_diff = diff
+                            break
+                            
+                    if sub1_diff == "Hard" and sub2_diff == "Hard" and gap < 60:
+                        stacked_hard_penalty += 20
+                except Exception:
+                    pass
+
+    # Balance score modifier
+    balance_modifier = 0
+    if balance_score >= 80:
+        balance_modifier = -10
+    elif balance_score < 50:
+        balance_modifier = 15
+
+    # Base weighted burnout risk
+    base_burnout = (
+        0.45 * risk_hours +
         0.10 * risk_blocks +
         0.10 * risk_block_duration +
         0.10 * risk_recovery +
         0.08 * risk_weekend +
-        0.06 * risk_intensive +
-        0.06 * risk_sleep
+        0.08 * risk_intensive +
+        0.09 * risk_sleep
     )
+    
+    # Apply penalties & rewards
+    burnout_risk = int(base_burnout + gap_penalty + stacked_hard_penalty + balance_modifier)
     burnout_risk = max(0, min(100, burnout_risk))
 
     # Debug Logging for Burnout Risk
@@ -719,8 +844,8 @@ def generate_ai_schedule(
     db = None
 ) -> dict:
     """
-    Generates a personalized weekly study timetable and detailed strategic analysis.
-    Optimizes schedule selection using a Candidate Evaluation Quality Engine.
+    Generates a personalized weekly study timetable and detailed strategic analysis in a single LLM call.
+    Uses file-based caching to prevent redundant API calls.
     """
     logger.info(f"Generating AI study plan for user {user_id} using model {LLM_MODEL}")
     
@@ -734,11 +859,46 @@ def generate_ai_schedule(
         "avoid_early_mornings": False,
         "prioritize_critical": True,
         "intensive_pre_exam": True,
-        "weekend_preservation": False
+        "weekend_preservation": False,
+        "force_refresh": False
     }
     for k, v in calibration_defaults.items():
         if k not in calibration or calibration[k] is None:
             calibration[k] = v
+            
+    force_refresh = calibration.get("force_refresh", False)
+    
+    # ------------------------------------------
+    # Cache Check
+    # ------------------------------------------
+    from app.database import DB_DIR
+    import os
+    
+    # Generate unique cache path based on inputs
+    sub_sig = sorted([(s.name.lower().strip(), s.difficulty) for s in subjects])
+    mil_sig = sorted([(m.subject_name.lower().strip(), m.exam_date) for m in milestones])
+    cal_sig = sorted([(str(k), str(v)) for k, v in calibration.items() if k != "force_refresh"])
+    
+    cache_inputs = {
+        "user_id": user_id,
+        "subjects": sub_sig,
+        "milestones": mil_sig,
+        "calibration": cal_sig
+    }
+    serialized = json.dumps(cache_inputs, sort_keys=True)
+    cache_hash = hashlib.md5(serialized.encode("utf-8")).hexdigest()
+    cache_path = DB_DIR / f"schedule_cache_{user_id}_{cache_hash}.json"
+    
+    if not force_refresh and cache_path.exists():
+        try:
+            with open(cache_path, "r", encoding="utf-8") as f:
+                cached_data = json.load(f)
+            logger.info(f"Cache hit for user {user_id}. Returning cached schedule. Total LLM calls: 0")
+            cached_data["is_cached"] = True
+            cached_data["llm_calls_count"] = 0
+            return cached_data
+        except Exception as cache_err:
+            logger.error(f"Failed to read schedule cache: {cache_err}")
             
     # Compile subjects list details
     subject_details = []
@@ -767,6 +927,11 @@ def generate_ai_schedule(
                 return date.max
 
     milestones_sorted = sorted(milestones, key=parse_mil_date)
+    milestones_chronology_list = [
+        f"- {m.subject_name} (Exam Date: {m.exam_date})"
+        for m in milestones_sorted
+    ]
+    milestones_chronology_str = "\n".join(milestones_chronology_list) if milestones_chronology_list else "None"
     
     milestone_details = []
     for m in milestones_sorted:
@@ -806,56 +971,79 @@ def generate_ai_schedule(
         f"- Weekend preservation: {'Yes' if calibration.get('weekend_preservation') else 'No'}"
     )
 
-    # ==========================================
-    # STEP 1: Generate Schedule Candidates
-    # ==========================================
-    logger.info("Executing Step 1: Timetable candidates generation LLM call.")
     system_instruction_1 = (
-        "You are an expert academic study planner. Your goal is to analyze a student's profile "
-        "and generate 3 distinct candidate study schedules for the week (Candidate 1, Candidate 2, Candidate 3).\n\n"
+        "You are an expert academic study planner, scheduling engine, and advisor. Your goal is to analyze a student's profile "
+        "and generate a single, highly realistic, balanced, and sustainable weekly study schedule along with a detailed strategic analysis.\n\n"
         "You MUST respond ONLY with a valid JSON object matching the following structure exactly:\n"
         "{\n"
-        "  \"candidates\": [\n"
+        "  \"schedule\": [\n"
         "    {\n"
-        "      \"candidate_id\": 1,\n"
-        "      \"schedule\": [\n"
-        "        {\n"
-        "          \"day\": \"Monday\",\n"
-        "          \"subject\": \"Name of Subject\",\n"
-        "          \"hours\": 1.5,\n"
-        "          \"start_time\": \"15:00\",\n"
-        "          \"end_time\": \"16:30\",\n"
-        "          \"session_type\": \"Deep Focus\",\n"
-        "          \"reason\": \"Reason including Pomodoro cycles description\"\n"
-        "        }\n"
-        "      ]\n"
+        "      \"day\": \"Monday\",\n"
+        "      \"subject\": \"Name of Subject\",\n"
+        "      \"hours\": 1.5,\n"
+        "      \"start_time\": \"15:00\",\n"
+        "      \"end_time\": \"16:30\",\n"
+        "      \"session_type\": \"Deep Focus\",\n"
+        "      \"reason\": \"Reason including Pomodoro cycles description\"\n"
         "    }\n"
-        "  ]\n"
+        "  ],\n"
+        "  \"detailed_analysis\": {\n"
+        "    \"focus_title\": \"Daily Focus Rhythm (e.g., Daily Night-Owl Schedule (6 Hours))\",\n"
+        "    \"focus_description\": \"Detailed explanation of how and why study hours are divided into blocks.\",\n"
+        "    \"focus_blocks\": [\n"
+        "      {\"block\": \"Block 1 (Afternoon)\", \"time\": \"15:00 – 16:30\", \"mode\": \"Lighter review or reading\"}\n"
+        "    ],\n"
+        "    \"phases\": [\n"
+        "      {\"title\": \"Phase 1: Deep Prep\", \"description\": \"Logic of this phase\", \"allocations\": [\"Block 1: Subject (Topic)\"]}\n"
+        "    ],\n"
+        "    \"pro_tips\": [\"Actionable academic tip\"],\n"
+        "    \"subject_allocation_reasons\": {\"SubjectName\": \"Reason explaining hour allocation\"},\n"
+        "    \"time_slot_reasons\": \"Explanation of time slots choices\",\n"
+        "    \"milestone_reasons\": \"Explanation of exam proximity effect\",\n"
+        "    \"preference_reasons\": \"Explanation of satisfying preferences\"\n"
+        "  },\n"
+        "  \"quality_scoring\": {\n"
+        "    \"balance_score\": 80,\n"
+        "    \"burnout_risk\": 20,\n"
+        "    \"exam_readiness_score\": 90\n"
+        "  }\n"
         "}\n\n"
-        "Rules for Candidate Schedules:\n"
-        "1. Candidate 1 (Balanced Focus): Focus on even workload distribution across subjects and days.\n"
-        "2. Candidate 2 (High Readiness Focus): Prioritize upcoming exams, allocating maximum hours to critical subjects.\n"
-        "3. Candidate 3 (Low Burnout Focus): Integrate more recovery blocks, shorter study sessions, and avoid consecutive hard subjects.\n"
-        "4. Every day of the week can have zero, one, or more sessions.\n"
-        "5. Vary study hours per session based on subject difficulty: Hard (2.0 to 3.5h), Medium (1.5 to 2.0h), Easy (1.0 to 1.5h).\n"
-        "   - Note: If a subject session needs 3 hours, split it into two blocks (e.g. 1.5h each or 2.0h and 1.0h) separated by a 30-60 minute break to respect the maximum block duration rule.\n"
-        "6. Implement Realistic Human Constraints:\n"
-        "   - Maximum continuous session block length = 2.0 hours. You MUST NOT schedule any single block longer than 2.0 hours.\n"
-        "   - Mandatory break of at least 30 to 60 minutes after every scheduled session block.\n"
-        "   - Maximum Deep Focus hours per day = 6.0 hours. The remaining target daily study hours must be allocated as 'Revision', 'Quizzes', 'Flashcards', or 'Practice Tests'.\n"
-        "   - No study session is allowed past 12:00 AM (midnight) to 1:00 AM unless explicitly allowed by Focus Period.\n"
-        "   - Each study session duration must correspond to complete Pomodoro/Deep Focus cycles:\n"
-        "     * Classic Pomodoro: multiples of 0.5 hours.\n"
-        "     * Deep Focus: multiples of 1.0 hour.\n"
-        "7. Distribute study hours across the day to match the daily study quota target. For example, if quota is 12 hours, generate multiple sessions totaling around 12 hours (e.g. morning, afternoon, evening).\n"
-        "8. Respect Routine Calibration preferences (Avoid mornings, Night focus, Weekend preservation, Intensive review, critical subjects prioritization).\n"
-        "9. Fatigue Model Enforcement: scale down hours and insert recovery/rest blocks if Fatigue is High/Medium.\n"
-        "10. Respond with ONLY the raw JSON output, without any markdown formatting wrappers or conversational text."
+        "Strict Rules & Constraints:\n"
+        "1. Daily Quota Compliance & Weekday Consistency: You MUST schedule study sessions on EVERY weekday (Monday, Tuesday, Wednesday, Thursday, and Friday). Do NOT leave any weekday with 0 study hours. The sum of scheduled study hours for each of these weekdays must match the requested Daily Study Quota target within a strict tolerance of ±30 minutes (e.g. if daily quota is 7, the total hours for Monday, Tuesday, Wednesday, Thursday, and Friday must each be between 6.5 and 7.5 hours). Avoid under-allocations or leaving weekdays completely blank.\n"
+        "2. STUDY HOUR DISTRIBUTION (Daily Quota Split): The requested daily study quota MUST be split and distributed across 2-4 study sessions throughout the day. You must NEVER place the entire quota into a single continuous study period (e.g., never schedule 7 hours consecutively). Interleave sessions with healthy recovery gaps.\n"
+        "   - Example 7-hour quota: Afternoon: 2 hours, Evening: 2 hours, Night: 3 hours\n"
+        "   - Example 9-hour quota: Afternoon: 3 hours, Evening: 2 hours, Night: 4 hours\n"
+        "   - Example 12-hour quota: Afternoon: 4 hours, Evening: 3 hours, Night: 5 hours\n"
+        "3. RECOVERY GAPS (Burnout Prevention): Between major study sessions, there MUST be recovery time. You must schedule a mandatory break/recovery gap of at least 60 minutes (preferred gap: 2-3 hours) between sessions. Do not schedule sessions back-to-back without a break. For example, rather than studying continuously from 2:00 PM to 9:00 PM, a realistic and burnout-preventive schedule is:\n"
+        "   - 2:00 PM - 4:00 PM: Study (2 hours)\n"
+        "   - 4:00 PM - 6:00 PM: Break/Recovery (2 hours gap)\n"
+        "   - 6:00 PM - 8:00 PM: Study (2 hours)\n"
+        "   - 8:00 PM - 9:00 PM: Dinner/Rest (1 hour gap)\n"
+        "   - 9:00 PM - 11:00 PM: Study (2 hours)\n"
+        "4. Sleeping Window: No study session is allowed between 12:00 AM (midnight) and 6:00 AM. For users with Night preference, the absolute no-study window is 3:00 AM to 7:00 AM.\n"
+        "5. AVOID EARLY MORNINGS: If 'Avoid Early Mornings' is enabled, do NOT schedule any sessions before 9:00 AM. Preferred start windows are 9:00 AM onwards, 10:00 AM onwards, or 11:00 AM onwards. It does NOT mean starting at night only; you should still use afternoon and evening slots to distribute study sessions throughout the day.\n"
+        "6. Each study session duration must correspond to complete Pomodoro/Deep Focus cycles:\n"
+        "   - Classic Pomodoro: multiples of 0.5 hours.\n"
+        "   - Deep Focus: multiples of 1.0 hour.\n"
+        "7. Subject Rotation & Cognitive Load (Anti-Stacking & Mixing):\n"
+        "   - Do NOT schedule identical subjects back-to-back on the same day. Interleave different subjects to aid retention.\n"
+        "   - Do NOT stack multiple Hard subjects consecutively (e.g., Botany, Zoology, Physics back-to-back-to-back). Mix difficult and easier subjects, separated by breaks, to reduce mental fatigue (e.g., Botany, Break, English, Break, Zoology).\n"
+        "8. Routine Calibration Weighting (Focus preference without dominating):\n"
+        "   - Focus Period means 'most productive study window', NOT the 'only study window'. The focus period should receive the largest share of study time, but the rest of the day must still contain study sessions.\n"
+        "   - Night Preference: Night study (preferably 6:00 PM – 12:00 AM) should receive 40-50% of the daily study quota, with the remaining 50-60% distributed during afternoon/evening blocks.\n"
+        "   - Evening Preference: Evening study (preferably 4:00 PM – 9:00 PM) should receive 40-50% of the daily study quota, with the remaining 50-60% distributed in afternoon + night blocks.\n"
+        "   - Morning Preference: Morning study (preferably 8:00 AM – 1:00 PM) should receive 40-50% of the daily study quota, with the remaining 50-60% distributed in afternoon + evening blocks.\n"
+        "   - Weekend Preservation: If Weekend Preservation is active, reduce Saturday and Sunday study hours to 1.5 - 2.5 hours per day (or designate one day as a full rest day). If Weekend Preservation is NOT active, weekends should still have study sessions, either matching the daily quota or slightly reduced (e.g. 70-100% of daily quota). Only override weekend preservation and scale up hours if an exam milestone is less than 5 days away.\n"
+        "   - Prioritize Critical Subjects: Allocate more hours and preferred slots to Hard subjects and subjects close to their exam dates.\n"
+        "9. Chronological Phase Ordering: The preparation phases in `phases` MUST be ordered chronologically by milestone exam date. You MUST follow this exact order:\n"
+        f"   - {milestones_chronology_str}\n"
+        "10. Human Realism Safeguard (Human-like Scheduling): The generated schedule must feel like it was designed for a real college student. Assume they have classes, meals, family time, travel, personal activities, and rest. The student is NOT available for uninterrupted studying all day. Generate realistic schedules rather than maximizing study density. Optimize for consistency, focus, and burnout prevention, not merely mathematical allocation.\n"
+        "11. Respond with ONLY the raw JSON output, without any markdown formatting wrappers or conversational text."
     )
 
     user_prompt_1 = (
         f"Current Date: {current_date_str}\n\n"
-        f"Generate 3 candidate study schedule timetables for:\n\n"
+        f"Generate the study schedule and detailed analysis for:\n\n"
         f"Subjects & Performance Analytics:\n{subjects_str}\n\n"
         f"Upcoming Exam Milestones:\n{milestones_str}\n\n"
         f"Fatigue Analytics:\n{fatigue_str}\n\n"
@@ -863,70 +1051,47 @@ def generate_ai_schedule(
         f"JSON output:"
     )
 
-    try:
-        schedule_data = call_llm_api(system_instruction_1, user_prompt_1)
-        if not validate_candidates_json(schedule_data):
-            raise ValueError("No valid candidates list returned by LLM.")
-    except Exception as e:
-        logger.error(f"Error in Step 1 (Timetable candidates generation): {e}")
-        raise RuntimeError(f"Step 1 Timetable generation failed: {e}")
-
-    # ==========================================
-    # STEP 2: Evaluate & Select Best Candidate (Quality Engine)
-    # ==========================================
-    candidates_list = schedule_data.get("candidates", [])
-    best_candidate = None
-    best_score = -999.0
-    best_metrics = {}
+    schedule_data = {}
+    llm_calls_made = 0
+    consistency_retries = 3
     
-    for c in candidates_list:
-        schedule = c.get("schedule", [])
-        metrics = calculate_schedule_metrics(schedule, milestones, subjects, db=db)
-        
-        # quality_score = (0.45 * readiness) + (0.35 * balance) - (0.20 * burnout)
-        q_score = (0.45 * metrics["exam_readiness_score"]) + (0.35 * metrics["balance_score"]) - (0.20 * metrics["burnout_risk"])
-        
-        logger.info(f"Candidate Evaluation - ID {c.get('candidate_id')}: "
-                    f"Readiness={metrics['exam_readiness_score']}%, "
-                    f"Balance={metrics['balance_score']}%, "
-                    f"Burnout={metrics['burnout_risk']}% -> Quality Score={q_score:.2f}")
-        
-        if q_score > best_score:
-            best_score = q_score
-            best_candidate = c
-            best_metrics = metrics
-
-    # Burnout Heuristics and Self-Correcting Loop
-    # If burnout > 85: regenerate schedule automatically
-    if best_metrics.get("burnout_risk", 0) > 85:
-        logger.warning(f"Best Candidate Burnout risk {best_metrics['burnout_risk']}% is too high (>85%). Automatically regenerating...")
-        user_prompt_regen = (
-            user_prompt_1 + "\n\nCRITICAL: The previous schedule candidate had an extremely high burnout risk of "
-            f"{best_metrics['burnout_risk']}%. You MUST regenerate the candidate schedules with a 30% reduction in daily study hours, "
-            "more recovery blocks, and zero late-night slots."
-        )
+    for attempt in range(consistency_retries):
         try:
-            regen_data = call_llm_api(system_instruction_1, user_prompt_regen)
-            if validate_candidates_json(regen_data):
-                candidates_list = regen_data.get("candidates", [])
-                best_candidate = None
-                best_score = -999.0
-                best_metrics = {}
-                for c in candidates_list:
-                    schedule = c.get("schedule", [])
-                    metrics = calculate_schedule_metrics(schedule, milestones, subjects, db=db)
-                    q_score = (0.45 * metrics["exam_readiness_score"]) + (0.35 * metrics["balance_score"]) - (0.20 * metrics["burnout_risk"])
-                    if q_score > best_score:
-                        best_score = q_score
-                        best_candidate = c
-                        best_metrics = metrics
-        except Exception as regen_err:
-            logger.error(f"Error during schedule regeneration: {regen_err}")
+            logger.info(f"Executing Single-Call LLM Generation (Attempt {attempt + 1}).")
+            llm_calls_made += 1
+            schedule_data = call_llm_api(system_instruction_1, user_prompt_1)
+            
+            if not validate_schedule_json(schedule_data):
+                raise ValueError("No valid schedule structure returned by LLM.")
+                
+            schedule_events = schedule_data.get("schedule", [])
+            detailed_analysis = schedule_data.get("detailed_analysis", {})
+            
+            # Check consistency of the generated map
+            if verify_consistency(schedule_events, detailed_analysis, milestones, subjects):
+                break
+            else:
+                logger.warning(f"Consistency check failed on attempt {attempt + 1}. Retrying...")
+                if attempt == consistency_retries - 1:
+                    raise RuntimeError("Consistency check failed on all attempts.")
+        except Exception as e:
+            logger.error(f"Error in schedule generation attempt {attempt + 1}: {e}")
+            if attempt == consistency_retries - 1:
+                raise RuntimeError(f"AI Schedule Generation failed after all retries: {e}")
 
-    # If burnout > 70: insert recovery blocks, reduce consecutive hard subjects, move sessions
-    schedule_events = best_candidate.get("schedule", [])
+    logger.info(f"Total LLM calls made for this generation request: {llm_calls_made}")
+
+    schedule_events = schedule_data.get("schedule", [])
+    detailed_analysis = schedule_data.get("detailed_analysis", {})
+
+    # Generate analytics locally using backend algorithms
+    # This guarantees they are perfectly derived from the final generated schedule.
+    logger.info("Computing metrics locally from the final schedule...")
+    best_metrics = calculate_schedule_metrics(schedule_events, milestones, subjects, db=db)
+
+    # Burnout Heuristics and self-correcting optimization
     if best_metrics.get("burnout_risk", 0) > 70:
-        logger.info(f"Burnout risk {best_metrics['burnout_risk']}% is elevated (>70%). Applying optimization heuristics.")
+        logger.info(f"Local Burnout risk {best_metrics['burnout_risk']}% is elevated. Running recovery rebalancer...")
         daily_events = {}
         for event in schedule_events:
             day = event.get("day")
@@ -957,111 +1122,13 @@ def generate_ai_schedule(
                     else:
                         hard_count = 0
                         
-        # Recalculate metrics
+        # Recalculate metrics locally
         best_metrics = calculate_schedule_metrics(schedule_events, milestones, subjects, db=db)
-        best_score = (0.45 * best_metrics["exam_readiness_score"]) + (0.35 * best_metrics["balance_score"]) - (0.20 * best_metrics["burnout_risk"])
 
-    # Diagnostics Log
+    # Compile transparency details
     actual_hours = sum(float(event.get("hours", 0.0)) for event in schedule_events)
     requested_hours = calibration.get("daily_quota", 6)
     
-    logger.info(
-        f"OPTIMIZATION ENGINE DIAGNOSTICS:\n"
-        f"- Requested study hours (daily quota): {requested_hours} hours\n"
-        f"- Generated study hours (weekly total): {actual_hours} hours\n"
-        f"- Burnout score inputs: avg_hours={actual_hours/7:.2f}, max_block={max([float(e.get('hours', 0.0)) for e in schedule_events]) if schedule_events else 0}\n"
-        f"- Balance score inputs: subjects={len(subjects)}, coverage={best_metrics.get('balance_score')}\n"
-        f"- Readiness score inputs: milestones={len(milestones)}, readiness={best_metrics.get('exam_readiness_score')}\n"
-        f"- Final optimization quality score: {best_score:.2f}"
-    )
-
-    # ==========================================
-    # STEP 3: Generate Study Map directly from chosen timetable
-    # ==========================================
-    logger.info("Executing Step 3: Study Map generation LLM call based on chosen schedule.")
-    milestones_chronology_list = [
-        f"- {m.subject_name} (Exam Date: {m.exam_date})"
-        for m in milestones_sorted
-    ]
-    milestones_chronology_str = "\n".join(milestones_chronology_list) if milestones_chronology_list else "None"
-
-    system_instruction_2 = (
-        "You are an expert academic study advisor. Your goal is to analyze a generated study timetable "
-        "and generate a detailed strategic analysis and Study Map matching that timetable exactly.\n\n"
-        "You MUST respond ONLY with a valid JSON object matching the following structure exactly:\n"
-        "{\n"
-        "  \"detailed_analysis\": {\n"
-        "    \"focus_title\": \"Daily Focus Rhythm (e.g., Daily Night-Owl Schedule (6 Hours))\",\n"
-        "    \"focus_description\": \"Detailed explanation of how and why study hours are divided into blocks.\",\n"
-        "    \"focus_blocks\": [\n"
-        "      {\n"
-        "        \"block\": \"Block 1 (Afternoon)\",\n"
-        "        \"time\": \"4:00 PM – 6:00 PM\",\n"
-        "        \"mode\": \"Lighter review or reading\"\n"
-        "      }\n"
-        "    ],\n"
-        "    \"phases\": [\n"
-        "      {\n"
-        "        \"title\": \"Phase 1: Deep Prep (June 14 – June 19)\",\n"
-        "        \"description\": \"Detailed description of what to focus on in this phase and why.\",\n"
-        "        \"allocations\": [\n"
-        "          \"Block 1 (4 PM - 6 PM): DBMS (Concepts, SQL, Normalization)\"\n"
-        "        ]\n"
-        "      }\n"
-        "    ],\n"
-        "    \"pro_tips\": [\n"
-        "      \"Custom actionable pro-tip for subjects based on their specific topics and difficulty\"\n"
-        "    ],\n"
-        "    \"subject_allocation_reasons\": {\n"
-        "      \"SubjectName\": \"Reason explaining why this subject got its allocated hours based on difficulty, milestones, or completion progress.\"\n"
-        "    },\n"
-        "    \"time_slot_reasons\": \"Explanation of why specific time slots were chosen throughout the day.\",\n"
-        "    \"milestone_reasons\": \"Explanation of how upcoming exam proximity affected the overall hour allocation.\",\n"
-        "    \"preference_reasons\": \"Explanation of how user calibration preferences and intelligence constraints were respected.\"\n"
-        "  }\n"
-        "}\n\n"
-        "Rules:\n"
-        "1. The Study Map MUST match the provided weekly study timetable EXACTLY.\n"
-        "2. Do NOT invent any subjects, blocks, or study sessions that are not present in the provided timetable.\n"
-        "3. Every study block listed in `focus_blocks` must correspond to a time block that is scheduled in the timetable.\n"
-        "4. The descriptions in `phases` and `focus_blocks` must explain the exact subjects and hours allocated in the timetable.\n"
-        "   - E.g. if the timetable contains Chemistry from 2:00 PM to 3:30 PM, then `focus_blocks` or `phases` must explain that exact allocation.\n"
-        "5. The preparation phases in `phases` MUST be ordered chronologically by milestone exam date. You MUST follow this exact order:\n"
-        f"{milestones_chronology_str}\n"
-        "Phase 1 must prep for the earliest exam, Phase 2 for the next, etc.\n"
-        "6. Respond with ONLY the raw JSON output, without any markdown formatting wrappers or conversational text."
-    )
-
-    formatted_schedule_str = json.dumps(schedule_events, indent=2)
-    user_prompt_2 = (
-        f"Current Date: {current_date_str}\n\n"
-        f"Here is the weekly study timetable generated in Step 1:\n"
-        f"{formatted_schedule_str}\n\n"
-        f"Please explain these exact time allocations and generate the detailed analysis Study Map.\n"
-        f"Remember, do NOT invent any extra subjects or slots not in the timetable.\n"
-        f"JSON output:"
-    )
-
-    detailed_analysis = {}
-    consistency_retries = 3
-    for attempt in range(consistency_retries):
-        try:
-            map_data = call_llm_api(system_instruction_2, user_prompt_2)
-            detailed_analysis = map_data.get("detailed_analysis", {})
-            if verify_consistency(schedule_events, detailed_analysis, milestones, subjects):
-                break
-            else:
-                logger.warning(f"Consistency check failed on attempt {attempt + 1}. Retrying...")
-        except Exception as e:
-            logger.error(f"Error generating study map on attempt {attempt + 1}: {e}")
-            if attempt == consistency_retries - 1:
-                raise RuntimeError(f"Step 3 Study Map generation failed: {e}")
-
-    # Enforce/Correct the focus schedule label
-    focus_title = calculate_dynamic_schedule_label(schedule_events)
-    detailed_analysis["focus_title"] = focus_title
-
-    # Compile transparency details
     recs = []
     if best_metrics["burnout_risk"] < 35:
         recs.append("Your burnout risk is Low. You have a balanced daily load with adequate rest.")
@@ -1085,11 +1152,25 @@ def generate_ai_schedule(
         "ai_recommendation": ai_recommendation
     }
 
+    # Force/Correct the focus schedule label
+    focus_title = calculate_dynamic_schedule_label(schedule_events)
+    detailed_analysis["focus_title"] = focus_title
+
     result = {
         "schedule": schedule_events,
         "detailed_analysis": detailed_analysis,
         "quality_scoring": best_metrics,
-        "transparency": transparency_data
+        "transparency": transparency_data,
+        "is_cached": False,
+        "llm_calls_count": llm_calls_made
     }
-    
+
+    # Save to Cache
+    try:
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(result, f, indent=2)
+        logger.info(f"Saved generated schedule to cache: {cache_path}")
+    except Exception as cache_save_err:
+        logger.error(f"Failed to save schedule to cache: {cache_save_err}")
+        
     return result

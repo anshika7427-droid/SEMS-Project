@@ -9,7 +9,7 @@ import os
 from app.database import get_db
 from app.auth import get_current_user, hash_password, verify_password, User
 from app.models import Subject, Milestone, Resource, StudySession
-from app.schemas import ProfileUpdate, PasswordChange
+from app.schemas import ProfileUpdate, PasswordChange, ProfileResponse, ProfileUpdateResponse, MessageResponse, AvatarResponse
 from app.analytics import get_user_analytics
 
 router = APIRouter()
@@ -20,7 +20,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 AVATAR_DIR = BASE_DIR / "frontend" / "assets" / "avatars"
 AVATAR_DIR.mkdir(parents=True, exist_ok=True)
 
-@router.get("/{user_id}")
+@router.get("/{user_id}", response_model=ProfileResponse)
 def get_profile(
     user_id: int,
     current_user: User = Depends(get_current_user),
@@ -46,21 +46,21 @@ def get_profile(
         current_user.created_at = join_date
         db.commit()
 
-    return {
-        "id": current_user.id,
-        "name": current_user.name,
-        "email": current_user.email,
-        "created_at": join_date,
-        "avatar_url": current_user.avatar_url or "https://lh3.googleusercontent.com/aida-public/AB6AXuAFcUH75N1o8JqQOcUmxnu2tjKtVBUpyFVyS0a-edF7ah9W2CbtzwbqR-6KzkNr2a5mb3ZWi_skQesjI9T2l5JDZYjQuYfTpCaqN_W62lIJ0Iw8Rii6KBbkHxETFlPJRJpNoYnklX251bxOGvrAi0X_wtWPk7yvf7nER0U_GWaaja1Z0AS3HmE6zRb3qTTU3phLN4NOcEfGG37YYsmUTQLnWAX2OHBrdyikqvQZFdEWtcmqUyfFcajqo2ygXdYFW8qV-rwsEpcItGXV",
-        "subjects_count": subjects_count,
-        "milestones_count": milestones_count,
-        "resources_count": resources_count,
-        "streak": analytics.get("active_streak", 0),
-        "study_hours": analytics.get("total_study_hours", 0.0),
-        "sessions_count": sessions_count
-    }
+    return ProfileResponse(
+        id=current_user.id,
+        name=current_user.name,
+        email=current_user.email,
+        created_at=join_date,
+        avatar_url=current_user.avatar_url or "https://lh3.googleusercontent.com/aida-public/AB6AXuAFcUH75N1o8JqQOcUmxnu2tjKtVBUpyFVyS0a-edF7ah9W2CbtzwbqR-6KzkNr2a5mb3ZWi_skQesjI9T2l5JDZYjQuYfTpCaqN_W62lIJ0Iw8Rii6KBbkHxETFlPJRJpNoYnklX251bxOGvrAi0X_wtWPk7yvf7nER0U_GWaaja1Z0AS3HmE6zRb3qTTU3phLN4NOcEfGG37YYsmUTQLnWAX2OHBrdyikqvQZFdEWtcmqUyfFcajqo2ygXdYFW8qV-rwsEpcItGXV",
+        subjects_count=subjects_count,
+        milestones_count=milestones_count,
+        resources_count=resources_count,
+        streak=analytics.get("active_streak", 0),
+        study_hours=analytics.get("total_study_hours", 0.0),
+        sessions_count=sessions_count
+    )
 
-@router.put("/update")
+@router.put("/update", response_model=ProfileUpdateResponse)
 def update_profile(
     profile: ProfileUpdate,
     current_user: User = Depends(get_current_user),
@@ -84,13 +84,13 @@ def update_profile(
     db.refresh(current_user)
     
     logger.info(f"User profile updated successfully. User ID: {current_user.id}")
-    return {
-        "message": "Profile updated successfully",
-        "name": current_user.name,
-        "email": current_user.email
-    }
+    return ProfileUpdateResponse(
+        message="Profile updated successfully",
+        name=current_user.name,
+        email=current_user.email
+    )
 
-@router.put("/change-password")
+@router.put("/change-password", response_model=MessageResponse)
 def change_password(
     password_data: PasswordChange,
     current_user: User = Depends(get_current_user),
@@ -106,43 +106,81 @@ def change_password(
     db.commit()
     
     logger.info(f"User password changed successfully. User ID: {current_user.id}")
-    return {"message": "Password changed successfully"}
+    return MessageResponse(message="Password changed successfully")
 
-@router.post("/upload-avatar")
+@router.post("/upload-avatar", response_model=AvatarResponse)
 async def upload_avatar(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # Validate file type is image
+    # Sanitize and guard against path traversal in filename
+    if ".." in file.filename or "/" in file.filename or "\\" in file.filename:
+        logger.warning(f"[Security Alert] Path traversal pattern detected in filename: '{file.filename}' by user {current_user.id}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid filename. Path traversal characters not allowed."
+        )
+
+    # Validate file type is image from Content-Type header
     if not file.content_type.startswith("image/"):
+        logger.warning(f"Avatar upload failed: invalid content-type '{file.content_type}' for user {current_user.id}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Uploaded file is not an image."
         )
         
+    # Validate extension
+    ext = Path(file.filename).suffix.lower()
+    allowed_extensions = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+    if ext not in allowed_extensions:
+        logger.warning(f"Avatar upload failed: disallowed extension '{ext}' for user {current_user.id}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Disallowed file extension. Supported formats: PNG, JPG, JPEG, GIF, WEBP."
+        )
+
+    # Validate file size
     try:
-        # Generate safe file name
-        ext = Path(file.filename).suffix
-        if not ext:
-            ext = ".png" # default extension
-            
+        file.file.seek(0, os.SEEK_END)
+        file_size = file.file.tell()
+        file.file.seek(0)  # Reset pointer to beginning of file
+    except Exception as seek_err:
+        logger.exception(f"Failed to check file size of uploaded avatar: {seek_err}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Could not process image file."
+        )
+
+    max_size = 5 * 1024 * 1024  # 5 MB
+    if file_size > max_size:
+        logger.warning(f"Avatar upload failed: File size {file_size} exceeds 5MB limit for user {current_user.id}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File size exceeds the 5MB limit."
+        )
+
+    try:
+        # Generate safe, unique, random file name to prevent collision/overwrite
         filename = f"avatar_{current_user.id}_{int(os.urandom(4).hex(), 16)}{ext}"
         file_path = AVATAR_DIR / filename
-        
-        # Delete old avatar file if it exists
+        while file_path.exists():
+            filename = f"avatar_{current_user.id}_{int(os.urandom(4).hex(), 16)}{ext}"
+            file_path = AVATAR_DIR / filename
+
+        # Delete old avatar file if it exists and is not default
         if current_user.avatar_url:
             old_filename = current_user.avatar_url.split("/")[-1]
-            # Make sure it's not the default avatar
             if old_filename != "default_avatar.png":
                 old_file_path = AVATAR_DIR / old_filename
                 if old_file_path.exists():
                     try:
                         old_file_path.unlink()
-                    except Exception as e:
-                        logger.error(f"Error deleting old avatar file: {e}")
+                        logger.info(f"Deleted old avatar file: {old_file_path}")
+                    except Exception as unlink_err:
+                        logger.exception(f"Error deleting old avatar file: {unlink_err}")
 
-        # Save new avatar
+        # Save new avatar to destination
         with file_path.open("wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
@@ -151,12 +189,12 @@ async def upload_avatar(
         db.commit()
         
         logger.info(f"Avatar uploaded successfully for user {current_user.id}: {avatar_url}")
-        return {
-            "message": "Avatar uploaded successfully",
-            "avatar_url": avatar_url
-        }
+        return AvatarResponse(
+            message="Avatar uploaded successfully",
+            avatar_url=avatar_url
+        )
     except Exception as e:
-        logger.error(f"Avatar upload failed: {e}")
+        logger.exception(f"Avatar upload failed due to server error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to upload avatar"

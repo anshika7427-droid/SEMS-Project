@@ -1,0 +1,228 @@
+{
+  "schedule": [
+    {
+      "day": "Monday",
+      "subject": "Botney",
+      "hours": 3,
+      "start_time": "14:00",
+      "end_time": "17:00",
+      "session_type": "Deep Focus",
+      "reason": "3 cycles of Deep Focus to cover critical topics, with 15-minute breaks in between"
+    },
+    {
+      "day": "Monday",
+      "subject": "zoology",
+      "hours": 1.5,
+      "start_time": "18:00",
+      "end_time": "20:00",
+      "session_type": "Revision",
+      "reason": "Switched to Revision to prevent consecutive hard subjects."
+    },
+    {
+      "day": "Monday",
+      "subject": "Physics",
+      "hours": 3.0,
+      "start_time": "20:30",
+      "end_time": "00:30",
+      "session_type": "Recovery",
+      "reason": "Converted to Recovery block to mitigate elevated burnout risk."
+    },
+    {
+      "day": "Tuesday",
+      "subject": "Botney",
+      "hours": 3,
+      "start_time": "14:00",
+      "end_time": "17:00",
+      "session_type": "Deep Focus",
+      "reason": "3 cycles of Deep Focus to cover critical topics, with 15-minute breaks in between"
+    },
+    {
+      "day": "Tuesday",
+      "subject": "Chemistry",
+      "hours": 2,
+      "start_time": "18:00",
+      "end_time": "20:00",
+      "session_type": "Deep Focus",
+      "reason": "2 cycles of Deep Focus to review and practice problems, with 15-minute breaks in between"
+    },
+    {
+      "day": "Tuesday",
+      "subject": "English",
+      "hours": 3.0,
+      "start_time": "20:30",
+      "end_time": "00:30",
+      "session_type": "Recovery",
+      "reason": "Converted to Recovery block to mitigate elevated burnout risk."
+    },
+    {
+      "day": "Wednesday",
+      "subject": "Botney",
+      "hours": 3,
+      "start_time": "14:00",
+      "end_time": "17:00",
+      "session_type": "Deep Focus",
+      "reason": "3 cycles of Deep Focus to cover critical topics, with 15-minute breaks in between"
+    },
+    {
+      "day": "Wednesday",
+      "subject": "Physical Education",
+      "hours": 2,
+      "start_time": "18:00",
+      "end_time": "20:00",
+      "session_type": "Deep Focus",
+      "reason": "2 cycles of Deep Focus to review and practice problems, with 15-minute breaks in between"
+    },
+    {
+      "day": "Wednesday",
+      "subject": "zoology",
+      "hours": 3.0,
+      "start_time": "20:30",
+      "end_time": "00:30",
+      "session_type": "Recovery",
+      "reason": "Converted to Recovery block to mitigate elevated burnout risk."
+    },
+    {
+      "day": "Thursday",
+      "subject": "Botney",
+      "hours": 3,
+      "start_time": "14:00",
+      "end_time": "17:00",
+      "session_type": "Deep Focus",
+      "reason": "3 cycles of Deep Focus to cover critical topics, with 15-minute breaks in between"
+    },
+    {
+      "day": "Thursday",
+      "subject": "Physics",
+      "hours": 2,
+      "start_time": "18:00",
+      "end_time": "20:00",
+      "session_type": "Deep Focus",
+      "reason": "2 cycles of Deep Focus to review and practice problems, with 15-minute breaks in between"
+    },
+    {
+      "day": "Thursday",
+      "subject": "Chemistry",
+      "hours": 3.0,
+      "start_time": "20:30",
+      "end_time": "00:30",
+      "session_type": "Recovery",
+      "reason": "Converted to Recovery block to mitigate elevated burnout risk."
+    },
+    {
+      "day": "Friday",
+      "subject": "Botney",
+      "hours": 3,
+      "start_time": "14:00",
+      "end_time": "17:00",
+      "session_type": "Deep Focus",
+      "reason": "3 cycles of Deep Focus to cover critical topics, with 15-minute breaks in between"
+    },
+    {
+      "day": "Friday",
+      "subject": "English",
+      "hours": 2,
+      "start_time": "18:00",
+      "end_time": "20:00",
+      "session_type": "Deep Focus",
+      "reason": "2 cycles of Deep Focus to review and practice problems, with 15-minute breaks in between"
+    },
+    {
+      "day": "Friday",
+      "subject": "zoology",
+      "hours": 3.0,
+      "start_time": "20:30",
+      "end_time": "00:30",
+      "session_type": "Recovery",
+      "reason": "Converted to Recovery block to mitigate elevated burnout risk."
+    }
+  ],
+  "detailed_analysis": {
+    "focus_title": "Night Focus Schedule (39.5 Hours/Week)",
+    "focus_description": "The daily study quota of 9 hours is split into three sessions, with the largest share allocated to the night session. This allows for a balance between focused study and rest, while prioritizing critical subjects and upcoming exams.",
+    "focus_blocks": [
+      {
+        "block": "Block 1 (Afternoon)",
+        "time": "14:00 \u2013 17:00",
+        "mode": "Deep Focus"
+      },
+      {
+        "block": "Block 2 (Evening)",
+        "time": "18:00 \u2013 20:00",
+        "mode": "Deep Focus"
+      },
+      {
+        "block": "Block 3 (Night)",
+        "time": "20:30 \u2013 00:30",
+        "mode": "Deep Focus"
+      }
+    ],
+    "phases": [
+      {
+        "title": "Phase 1: Botney Exam Prep",
+        "description": "Focus on Botney in the lead-up to the exam on June 20th",
+        "allocations": [
+          "Block 1: Botney (Critical Topics)",
+          "Block 2: zoology (Review and Practice)",
+          "Block 3: Physics (Key Concepts and Topics)"
+        ]
+      },
+      {
+        "title": "Phase 2: English and Physical Education Exam Prep",
+        "description": "Focus on English and Physical Education in the lead-up to their exams on June 30th and July 1st",
+        "allocations": [
+          "Block 1: English (Review and Practice)",
+          "Block 2: Physical Education (Review and Practice)",
+          "Block 3: Chemistry (Key Concepts and Topics)"
+        ]
+      },
+      {
+        "title": "Phase 3: Physics and Chemistry Exam Prep",
+        "description": "Focus on Physics and Chemistry in the lead-up to their exams on July 4th and July 8th",
+        "allocations": [
+          "Block 1: Physics (Review and Practice)",
+          "Block 2: Chemistry (Review and Practice)",
+          "Block 3: zoology (Key Concepts and Topics)"
+        ]
+      },
+      {
+        "title": "Phase 4: zoology Exam Prep",
+        "description": "Focus on zoology in the lead-up to the exam on July 10th",
+        "allocations": [
+          "Block 1: zoology (Critical Topics)",
+          "Block 2: English (Review and Practice)",
+          "Block 3: Physics (Key Concepts and Topics)"
+        ]
+      }
+    ],
+    "pro_tips": [
+      "Use active recall and spaced repetition to reinforce learning",
+      "Take regular breaks to avoid burnout and maintain focus",
+      "Review and practice consistently to build confidence and mastery"
+    ],
+    "subject_allocation_reasons": {
+      "Botney": "High priority due to upcoming exam on June 20th",
+      "zoology": "High priority due to difficulty and upcoming exam on July 10th",
+      "Physics": "Medium priority due to medium difficulty and upcoming exam on July 4th",
+      "Chemistry": "Medium priority due to medium difficulty and upcoming exam on July 8th",
+      "English": "Low priority due to ease and upcoming exam on June 30th",
+      "Physical Education": "Low priority due to ease and upcoming exam on July 1st"
+    },
+    "time_slot_reasons": "Time slots are chosen to balance focused study with rest and other activities, while prioritizing critical subjects and upcoming exams.",
+    "milestone_reasons": "The schedule is designed to prioritize subjects with upcoming exams, with a focus on Botney in the lead-up to the exam on June 20th.",
+    "preference_reasons": "The schedule is designed to accommodate the student's preference for night focus, while also allowing for rest and other activities."
+  },
+  "quality_scoring": {
+    "balance_score": 78,
+    "burnout_risk": 91,
+    "exam_readiness_score": 51
+  },
+  "transparency": {
+    "requested_study_hours": 9,
+    "actual_study_hours": 39.5,
+    "predicted_burnout_risk": 91,
+    "predicted_exam_readiness": 51,
+    "ai_recommendation": "Your burnout risk is Elevated. We have automatically inserted recovery blocks and shifted hard subjects to optimize cognitive load. Readiness score is average. Consider adding more study hours before upcoming milestone exams."
+  },
+  "is_cached": false,
+  "llm_calls_count": 2
+}

@@ -1,0 +1,56 @@
+{
+  "schedule": [
+    {
+      "day": "Monday",
+      "subject": "DBMS",
+      "hours": 2,
+      "session_type": "Deep Focus",
+      "reason": "Exam",
+      "start_time": "15:00",
+      "end_time": "17:00"
+    }
+  ],
+  "detailed_analysis": {
+    "focus_title": "Afternoon Focus Schedule (2.0 Hours/Week)",
+    "focus_description": "Desc",
+    "focus_blocks": [
+      {
+        "block": "Block 1",
+        "time": "15:00-17:00",
+        "mode": "Deep Focus"
+      }
+    ],
+    "phases": [
+      {
+        "title": "Phase 1: DBMS Prep",
+        "description": "DBMS Prep",
+        "allocations": [
+          "DBMS"
+        ]
+      }
+    ],
+    "pro_tips": [
+      "Tip 1"
+    ],
+    "subject_allocation_reasons": {
+      "DBMS": "Reason"
+    },
+    "time_slot_reasons": "Slots",
+    "milestone_reasons": "Milestone",
+    "preference_reasons": "Pref"
+  },
+  "quality_scoring": {
+    "balance_score": 63,
+    "burnout_risk": 11,
+    "exam_readiness_score": 28
+  },
+  "transparency": {
+    "requested_study_hours": 6,
+    "actual_study_hours": 2.0,
+    "predicted_burnout_risk": 11,
+    "predicted_exam_readiness": 28,
+    "ai_recommendation": "Your burnout risk is Low. You have a balanced daily load with adequate rest. Readiness score is average. Consider adding more study hours before upcoming milestone exams."
+  },
+  "is_cached": false,
+  "llm_calls_count": 1
+}

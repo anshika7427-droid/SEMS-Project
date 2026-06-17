@@ -490,6 +490,7 @@
                 >grid_view</span
               >
               <h3 class="text-xl font-bold font-manrope">Weekly Study Map</h3>
+              <span id="scheduleEngineStatus" class="text-xs font-semibold px-2.5 py-1 rounded-full hidden"></span>
             </div>
             <div class="flex gap-2">
               <button
@@ -511,6 +512,11 @@
                 >
               </button>
             </div>
+          </div>
+          <!-- Fallback Alert Banner -->
+          <div id="fallbackAlertBanner" class="mb-6 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-2xl flex items-center gap-3 text-amber-800 dark:text-amber-300 hidden">
+            <span class="material-symbols-outlined text-amber-600 dark:text-amber-400">warning</span>
+            <p class="text-sm font-medium">AI service temporarily unavailable. Using intelligent fallback scheduler.</p>
           </div>
           <div class="overflow-x-auto custom-scrollbar">
             <div
@@ -914,6 +920,17 @@
       let currentDifficulty = "Medium";
       let editMilestoneId = null;
 
+      let schedulerState = "Pending";
+      window.schedulerState = "Pending";
+      window.preferencesModified = false;
+
+      function markPreferencesModified() {
+        schedulerState = "Preferences Modified";
+        window.schedulerState = "Preferences Modified";
+        window.preferencesModified = true;
+        console.log("Scheduler state marked as:", schedulerState);
+      }
+
       async function loadSubjects() {
         try {
             const response = await fetch("/api/subjects/all");
@@ -956,8 +973,8 @@
         btn.classList.add("bg-white", "shadow-sm", "text-primary");
         btn.classList.remove("text-on-surface-variant", "hover:bg-white/50");
         
-        // Auto-generate on preference change
-        generateSchedule();
+        // Mark preferences as modified
+        markPreferencesModified();
       }
 
       // UI Logic: Focus Method Selection
@@ -978,8 +995,8 @@
         btn.querySelector("p:first-child").classList.add("text-primary");
         btn.querySelector("p:last-child").classList.add("text-primary/70");
         
-        // Auto-generate on preference change
-        generateSchedule();
+        // Mark preferences as modified
+        markPreferencesModified();
       }
 
       // Modal Logic
@@ -1326,13 +1343,30 @@
       }
 
       // Core Scheduler Actions
-      async function generateSchedule() {
+      // Core Scheduler Actions
+      async function generateSchedule(forceRefresh = false) {
         if (subjects.length === 0) {
           alert("Add at least one subject to generate a schedule.");
           return;
         }
 
+        const generateBtn = document.getElementById("generateScheduleBtn");
+        const regenerateBtn = document.getElementById("regenerateBtn");
+        
+        // Throttling: disable buttons during generation
+        if (generateBtn) {
+          generateBtn.disabled = true;
+          generateBtn.style.pointerEvents = "none";
+          generateBtn.style.opacity = "0.5";
+        }
+        if (regenerateBtn) {
+          regenerateBtn.disabled = true;
+          regenerateBtn.style.pointerEvents = "none";
+          regenerateBtn.style.opacity = "0.5";
+        }
+
         const calibrationPayload = gatherCalibrationInputs();
+        calibrationPayload.force_refresh = forceRefresh;
 
         try {
           showLoading("Generating personalized AI study plan...");
@@ -1349,8 +1383,30 @@
             await loadAiInsights();
             await loadSchedule();
             await loadDetailedAnalysis();
+            
+            // Reset state on successful generation
+            schedulerState = "Generated";
+            window.schedulerState = "Generated";
+            window.preferencesModified = false;
+            
+            const alertBanner = document.getElementById("fallbackAlertBanner");
+            const statusBadge = document.getElementById("scheduleEngineStatus");
+
             if (data.is_ai === false) {
-              alert("AI Generation failed. Automatically fell back to existing scheduler algorithm.");
+              if (alertBanner) alertBanner.classList.remove("hidden");
+              if (statusBadge) {
+                statusBadge.innerText = "Fallback Rule-Based Schedule Used";
+                statusBadge.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200 ml-3";
+                statusBadge.classList.remove("hidden");
+              }
+              alert("AI service temporarily unavailable. Using intelligent fallback scheduler.");
+            } else {
+              if (alertBanner) alertBanner.classList.add("hidden");
+              if (statusBadge) {
+                statusBadge.innerText = "AI Schedule Generated";
+                statusBadge.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 ml-3";
+                statusBadge.classList.remove("hidden");
+              }
             }
           } else {
             const data = await response.json();
@@ -1361,6 +1417,16 @@
           alert("An unexpected error occurred while generating the schedule.");
         } finally {
           hideLoading();
+          if (generateBtn) {
+            generateBtn.disabled = false;
+            generateBtn.style.pointerEvents = "auto";
+            generateBtn.style.opacity = "1";
+          }
+          if (regenerateBtn) {
+            regenerateBtn.disabled = false;
+            regenerateBtn.style.pointerEvents = "auto";
+            regenerateBtn.style.opacity = "1";
+          }
         }
       }
 
@@ -1370,9 +1436,15 @@
           if (res.ok) {
             const events = await res.json();
             if (events && events.length > 0) {
+              window.hasSchedule = true;
               renderScheduleGrid(events);
             } else {
+              window.hasSchedule = false;
               renderEmptyGrid();
+              const statusBadge = document.getElementById("scheduleEngineStatus");
+              const alertBanner = document.getElementById("fallbackAlertBanner");
+              if (statusBadge) statusBadge.classList.add("hidden");
+              if (alertBanner) alertBanner.classList.add("hidden");
             }
           }
         } catch (error) {
@@ -1440,32 +1512,27 @@
             }
           } else {
             dayEvents.forEach((event) => {
-              let bgClass = "bg-primary/5 border-primary text-primary";
-              let labelClass = "text-primary";
+              const diff = (event.subject_difficulty || "Medium").toLowerCase().trim();
+              let bgClass = "bg-amber-500/10 border-amber-500 text-amber-700";
+              let labelClass = "text-amber-700";
+              let badgeClass = "bg-amber-100 text-amber-700";
               const type = event.session_type || "Deep Focus";
               
-              if (type.includes("Deep Focus")) {
-                bgClass = "bg-primary/5 border-primary text-primary";
-                labelClass = "text-primary";
-              } else if (type.includes("Revision")) {
-                bgClass = "bg-purple-500/10 border-purple-500 text-purple-600";
-                labelClass = "text-purple-600";
-              } else if (type.includes("Quiz")) {
-                bgClass = "bg-amber-500/10 border-amber-500 text-amber-600";
-                labelClass = "text-amber-600";
-              } else if (type.includes("Flashcard")) {
-                bgClass = "bg-emerald-500/10 border-emerald-500 text-emerald-600";
-                labelClass = "text-emerald-600";
-              } else if (type.includes("Practice Test")) {
-                bgClass = "bg-rose-500/10 border-rose-500 text-rose-600";
-                labelClass = "text-rose-600";
+              if (diff === "hard") {
+                bgClass = "bg-red-500/10 border-red-500 text-red-700";
+                labelClass = "text-red-700";
+                badgeClass = "bg-red-100 text-red-700";
+              } else if (diff === "easy") {
+                bgClass = "bg-green-500/10 border-green-500 text-green-700";
+                labelClass = "text-green-700";
+                badgeClass = "bg-green-100 text-green-700";
               }
               
               blocks += `
                 <div class="${bgClass} border-l-4 p-3 rounded-lg animate-in fade-in slide-in-from-top-1 duration-200 shadow-sm" title="${event.reason || ''}">
                   <div class="flex items-center justify-between gap-1 mb-1">
                     <p class="text-[9px] font-extrabold ${labelClass}">${formatTime12Hour(event.start_time)} - ${formatTime12Hour(event.end_time)}</p>
-                    <span class="px-1 py-0.2 text-[7px] font-black uppercase rounded ${bgClass}">${type}</span>
+                    <span class="px-1 py-0.5 text-[7px] font-black uppercase rounded ${badgeClass}">${type}</span>
                   </div>
                   <p class="text-[11px] font-extrabold truncate text-on-surface">${event.subject_name}</p>
                   ${event.reason ? `<p class="text-[9px] text-on-surface-variant/80 mt-1 leading-tight font-medium italic">${event.reason}</p>` : ''}
@@ -1514,11 +1581,27 @@
         const card = document.getElementById("detailedAnalysisCard");
         if (!card) return;
         
+        const statusBadge = document.getElementById("scheduleEngineStatus");
+        const alertBanner = document.getElementById("fallbackAlertBanner");
+
+        if (!window.hasSchedule) {
+          card.classList.add("hidden");
+          if (statusBadge) statusBadge.classList.add("hidden");
+          if (alertBanner) alertBanner.classList.add("hidden");
+          return;
+        }
+
         try {
           const res = await fetch("/api/schedule/analysis");
           if (res.ok) {
             const data = await res.json();
             if (data && data.focus_title) {
+              if (statusBadge) {
+                statusBadge.innerText = "AI Schedule Generated";
+                statusBadge.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 ml-3";
+                statusBadge.classList.remove("hidden");
+              }
+              if (alertBanner) alertBanner.classList.add("hidden");
               // 1. Populate Title and Description
               document.getElementById("analysisFocusTitle").innerText = data.focus_title;
               document.getElementById("analysisFocusDesc").innerText = data.focus_description;
@@ -1650,13 +1733,31 @@
               card.classList.remove("hidden");
             } else {
               card.classList.add("hidden");
+              if (statusBadge) {
+                statusBadge.innerText = "Fallback Rule-Based Schedule Used";
+                statusBadge.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200 ml-3";
+                statusBadge.classList.remove("hidden");
+              }
+              if (alertBanner) alertBanner.classList.remove("hidden");
             }
           } else {
             card.classList.add("hidden");
+            if (statusBadge) {
+              statusBadge.innerText = "Fallback Rule-Based Schedule Used";
+              statusBadge.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200 ml-3";
+              statusBadge.classList.remove("hidden");
+            }
+            if (alertBanner) alertBanner.classList.remove("hidden");
           }
         } catch (error) {
           console.error("Error loading detailed analysis:", error);
           card.classList.add("hidden");
+          if (statusBadge) {
+            statusBadge.innerText = "Fallback Rule-Based Schedule Used";
+            statusBadge.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200 ml-3";
+            statusBadge.classList.remove("hidden");
+          }
+          if (alertBanner) alertBanner.classList.remove("hidden");
         }
       }
 
@@ -1745,7 +1846,7 @@
       }
 
       function regenerateSchedule() {
-        generateSchedule();
+        generateSchedule(true);
       }
 
       function downloadSchedulePDF() {
@@ -1765,7 +1866,7 @@
         const slider = document.getElementById("studyHoursSlider");
         if (slider) {
           slider.addEventListener("change", () => {
-            generateSchedule();
+            markPreferencesModified();
           });
         }
         
@@ -1773,7 +1874,7 @@
         if (constraintsContainer) {
           constraintsContainer.querySelectorAll("input[type='checkbox']").forEach(cb => {
             cb.addEventListener("change", () => {
-              generateSchedule();
+              markPreferencesModified();
             });
           });
         }
