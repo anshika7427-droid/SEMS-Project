@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from sqlalchemy.orm import Session
 from pathlib import Path
 from datetime import date
+from typing import Optional
 import logging
 import shutil
 import os
@@ -15,29 +16,31 @@ from app.analytics import get_user_analytics
 router = APIRouter()
 logger = logging.getLogger("profile_routes")
 
-# Ensure avatar upload directory exists
+# Ensure avatar upload directory exists outside frontend source code
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-AVATAR_DIR = BASE_DIR / "frontend" / "assets" / "avatars"
+AVATAR_DIR = BASE_DIR / "storage" / "avatars"
 AVATAR_DIR.mkdir(parents=True, exist_ok=True)
 
+@router.get("/me", response_model=ProfileResponse)
 @router.get("/{user_id}", response_model=ProfileResponse)
 def get_profile(
-    user_id: int,
+    user_id: Optional[int] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    if current_user.id != user_id:
+    target_user_id = user_id if user_id is not None else current_user.id
+    if current_user.id != target_user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to view this profile."
         )
         
-    subjects_count = db.query(Subject).filter(Subject.user_id == user_id).count()
-    milestones_count = db.query(Milestone).filter(Milestone.user_id == user_id).count()
-    resources_count = db.query(Resource).filter(Resource.user_id == user_id).count()
-    sessions_count = db.query(StudySession).filter(StudySession.user_id == user_id).count()
+    subjects_count = db.query(Subject).filter(Subject.user_id == target_user_id).count()
+    milestones_count = db.query(Milestone).filter(Milestone.user_id == target_user_id).count()
+    resources_count = db.query(Resource).filter(Resource.user_id == target_user_id).count()
+    sessions_count = db.query(StudySession).filter(StudySession.user_id == target_user_id).count()
     
-    analytics = get_user_analytics(user_id, db)
+    analytics = get_user_analytics(target_user_id, db)
     
     # Generate default join date if not present
     join_date = current_user.created_at
@@ -60,6 +63,7 @@ def get_profile(
         sessions_count=sessions_count
     )
 
+@router.put("/me", response_model=ProfileUpdateResponse)
 @router.put("/update", response_model=ProfileUpdateResponse)
 def update_profile(
     profile: ProfileUpdate,
@@ -108,6 +112,7 @@ def change_password(
     logger.info(f"User password changed successfully. User ID: {current_user.id}")
     return MessageResponse(message="Password changed successfully")
 
+@router.post("/avatar", response_model=AvatarResponse)
 @router.post("/upload-avatar", response_model=AvatarResponse)
 async def upload_avatar(
     file: UploadFile = File(...),
@@ -184,7 +189,7 @@ async def upload_avatar(
         with file_path.open("wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
             
-        avatar_url = f"/static/assets/avatars/{filename}"
+        avatar_url = f"/uploads/avatars/{filename}"
         current_user.avatar_url = avatar_url
         db.commit()
         

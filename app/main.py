@@ -167,6 +167,15 @@ app.mount(
     name="static"
 )
 
+# Mount avatar uploads directory outside frontend directory
+avatar_storage_path = BASE_DIR / "storage" / "avatars"
+avatar_storage_path.mkdir(parents=True, exist_ok=True)
+app.mount(
+    "/uploads/avatars",
+    StaticFiles(directory=avatar_storage_path),
+    name="avatars"
+)
+
 # -----------------------------------
 # LANDING PAGE ROUTE
 # -----------------------------------

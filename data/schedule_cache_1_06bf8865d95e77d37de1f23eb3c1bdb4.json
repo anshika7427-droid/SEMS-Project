@@ -1,0 +1,209 @@
+{
+  "schedule": [
+    {
+      "day": "Monday",
+      "subject": "Botney",
+      "hours": 2.0,
+      "start_time": "08:00",
+      "end_time": "10:00",
+      "session_type": "Deep Focus",
+      "reason": "2 cycles of Deep Focus to cover critical topics, given the upcoming exam on June 20"
+    },
+    {
+      "day": "Monday",
+      "subject": "English",
+      "hours": 1.5,
+      "start_time": "11:00",
+      "end_time": "12:30",
+      "session_type": "Deep Focus",
+      "reason": "1.5 hours to review and practice English, maintaining consistency"
+    },
+    {
+      "day": "Monday",
+      "subject": "zoology",
+      "hours": 2.5,
+      "start_time": "14:00",
+      "end_time": "16:30",
+      "session_type": "Deep Focus",
+      "reason": "2.5 hours for zoology, focusing on areas needing improvement"
+    },
+    {
+      "day": "Tuesday",
+      "subject": "Botney",
+      "hours": 2.0,
+      "start_time": "08:00",
+      "end_time": "10:00",
+      "session_type": "Deep Focus",
+      "reason": "Continued focus on Botney due to the approaching exam"
+    },
+    {
+      "day": "Tuesday",
+      "subject": "Physics",
+      "hours": 1.5,
+      "start_time": "11:00",
+      "end_time": "12:30",
+      "session_type": "Deep Focus",
+      "reason": "Reviewing Physics to maintain a balanced study routine"
+    },
+    {
+      "day": "Tuesday",
+      "subject": "Chemistry",
+      "hours": 2.0,
+      "start_time": "14:00",
+      "end_time": "16:00",
+      "session_type": "Deep Focus",
+      "reason": "Focusing on Chemistry, ensuring progress in medium-difficulty subjects"
+    },
+    {
+      "day": "Wednesday",
+      "subject": "Botney",
+      "hours": 2.0,
+      "start_time": "08:00",
+      "end_time": "10:00",
+      "session_type": "Deep Focus",
+      "reason": "Intensive review of Botney, given its upcoming exam"
+    },
+    {
+      "day": "Wednesday",
+      "subject": "Physical Education",
+      "hours": 1.0,
+      "start_time": "11:00",
+      "end_time": "12:00",
+      "session_type": "Deep Focus",
+      "reason": "Reviewing Physical Education, maintaining a balanced approach"
+    },
+    {
+      "day": "Wednesday",
+      "subject": "zoology",
+      "hours": 3.0,
+      "start_time": "14:00",
+      "end_time": "17:00",
+      "session_type": "Deep Focus",
+      "reason": "In-depth study of zoology, focusing on challenging areas"
+    },
+    {
+      "day": "Thursday",
+      "subject": "English",
+      "hours": 2.0,
+      "start_time": "08:00",
+      "end_time": "10:00",
+      "session_type": "Deep Focus",
+      "reason": "Focusing on English, ensuring readiness for the exam"
+    },
+    {
+      "day": "Thursday",
+      "subject": "Chemistry",
+      "hours": 1.5,
+      "start_time": "11:00",
+      "end_time": "12:30",
+      "session_type": "Deep Focus",
+      "reason": "Continued study of Chemistry, aiming for comprehensive understanding"
+    },
+    {
+      "day": "Thursday",
+      "subject": "Physics",
+      "hours": 2.5,
+      "start_time": "14:00",
+      "end_time": "16:30",
+      "session_type": "Deep Focus",
+      "reason": "In-depth review of Physics, focusing on problem-solving"
+    },
+    {
+      "day": "Friday",
+      "subject": "Botney",
+      "hours": 2.0,
+      "start_time": "08:00",
+      "end_time": "10:00",
+      "session_type": "Deep Focus",
+      "reason": "Final intensive review of Botney before the exam"
+    },
+    {
+      "day": "Friday",
+      "subject": "zoology",
+      "hours": 2.0,
+      "start_time": "11:00",
+      "end_time": "13:00",
+      "session_type": "Deep Focus",
+      "reason": "Continued focus on zoology, ensuring progress"
+    },
+    {
+      "day": "Friday",
+      "subject": "Physical Education",
+      "hours": 2.0,
+      "start_time": "14:00",
+      "end_time": "16:00",
+      "session_type": "Deep Focus",
+      "reason": "Reviewing Physical Education, maintaining a balanced study routine"
+    }
+  ],
+  "detailed_analysis": {
+    "focus_title": "Balanced Rhythm Focus Schedule (29.5 Hours/Week)",
+    "focus_description": "The schedule is designed to prioritize morning study sessions, with a focus on the most critical subjects and upcoming exams. It ensures a balance between intensive study and recovery time, aiding in retention and reducing burnout risk.",
+    "focus_blocks": [
+      {
+        "block": "Block 1 (Morning)",
+        "time": "08:00 \u2013 10:00",
+        "mode": "Deep Focus"
+      },
+      {
+        "block": "Block 2 (Late Morning)",
+        "time": "11:00 \u2013 13:00",
+        "mode": "Deep Focus"
+      },
+      {
+        "block": "Block 3 (Afternoon)",
+        "time": "14:00 \u2013 17:00",
+        "mode": "Deep Focus"
+      }
+    ],
+    "phases": [
+      {
+        "title": "Phase 1: Botney Exam Prep",
+        "description": "Intensive preparation for the Botney exam on June 20, focusing on weak areas and comprehensive review.",
+        "allocations": [
+          "Block 1: Botney (Critical Topics)",
+          "Block 2: English (Consistency)",
+          "Block 3: zoology (Challenging Areas)"
+        ]
+      },
+      {
+        "title": "Phase 2: General Review",
+        "description": "Balanced review of all subjects, focusing on areas needing improvement and maintaining consistency across the board.",
+        "allocations": [
+          "Block 1: Physics (Problem-Solving)",
+          "Block 2: Chemistry (Comprehensive Understanding)",
+          "Block 3: Physical Education (Review)"
+        ]
+      }
+    ],
+    "pro_tips": [
+      "Use flashcards for quick reviews of key terms and concepts.",
+      "Practice past exams or quizzes to assess knowledge and identify weak areas."
+    ],
+    "subject_allocation_reasons": {
+      "Botney": "Given its upcoming exam and high difficulty, Botney is prioritized with more hours and earlier time slots.",
+      "zoology": "As a hard subject with a significant portion left to cover, zoology is allocated substantial time for in-depth study.",
+      "Chemistry": "Medium difficulty and progress status warrant consistent review and practice.",
+      "Physics": "Problem-solving practice is crucial; thus, Physics is allocated time for focused review.",
+      "Physical Education": "Easy subject, but maintaining consistency is key; thus, it's reviewed regularly.",
+      "English": "Given its relatively high completion and ease, English is reviewed to maintain consistency and readiness for the exam."
+    },
+    "time_slot_reasons": "Time slots are chosen to prioritize morning focus, ensure breaks, and distribute study sessions realistically throughout the day.",
+    "milestone_reasons": "The schedule is heavily influenced by upcoming exam milestones, with more time allocated to subjects with nearer exam dates.",
+    "preference_reasons": "The student's preference for morning focus is respected, and the schedule is designed to optimize study sessions during this time while still allowing for breaks and other activities."
+  },
+  "quality_scoring": {
+    "balance_score": 82,
+    "burnout_risk": 0,
+    "exam_readiness_score": 49
+  },
+  "transparency": {
+    "requested_study_hours": 6,
+    "actual_study_hours": 29.5,
+    "predicted_burnout_risk": 0,
+    "predicted_exam_readiness": 49,
+    "ai_recommendation": "Your burnout risk is Low. You have a balanced daily load with adequate rest. Readiness score is average. Consider adding more study hours before upcoming milestone exams."
+  },
+  "is_cached": false,
+  "llm_calls_count": 1
+}
