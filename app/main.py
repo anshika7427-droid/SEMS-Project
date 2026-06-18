@@ -323,9 +323,17 @@ app.include_router(
     tags=["Schedule"]
 )
 
-app.include_router(subject_router)
+app.include_router(
+    subject_router,
+    prefix="/api/subjects",
+    tags=["Subjects"]
+)
 
-app.include_router(milestone_routes.router)
+app.include_router(
+    milestone_routes.router,
+    prefix="/api/milestones",
+    tags=["Milestones"]
+)
 
 app.include_router(
     profile_router,

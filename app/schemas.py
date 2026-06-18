@@ -347,8 +347,7 @@ class ResourceResponse(BaseModel):
     subject_id: int
     user_id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ScheduleEventCreate(BaseModel):
     subject_id: int
@@ -365,8 +364,7 @@ class ScheduleEventResponse(BaseModel):
     reason: Optional[str] = None
     user_id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class StudySessionCreate(BaseModel):
     subject_id: Optional[int] = None
@@ -382,8 +380,7 @@ class StudySessionResponse(BaseModel):
     completed_at: str
     session_type: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ProfileUpdate(BaseModel):
     name: str = Field(..., min_length=3, max_length=50)
@@ -412,8 +409,7 @@ class UserResponse(BaseModel):
     name: str
     email: EmailStr
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ProfileResponse(BaseModel):
     id: int
@@ -428,8 +424,7 @@ class ProfileResponse(BaseModel):
     study_hours: float
     sessions_count: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class LoginResponse(BaseModel):
     message: str
@@ -437,28 +432,24 @@ class LoginResponse(BaseModel):
     name: str
     email: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class AuthStatusResponse(BaseModel):
     id: int
     name: str
     email: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class AvatarResponse(BaseModel):
     message: str
     avatar_url: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ProfileUpdateResponse(BaseModel):
     message: str
     name: str
     email: EmailStr
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

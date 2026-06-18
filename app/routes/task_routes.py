@@ -56,7 +56,6 @@ def get_tasks(
         )
 
 @router.get("", response_model=TaskListResponse)
-@router.get("/", response_model=TaskListResponse)
 def list_tasks_envelope(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)

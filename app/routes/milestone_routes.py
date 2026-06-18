@@ -18,7 +18,7 @@ from app.services.milestone_service import MilestoneService
 router = APIRouter()
 logger = logging.getLogger("milestone_routes")
 
-@router.post("/api/milestones/create")
+@router.post("/create")
 def create_milestone(
     milestone: MilestoneCreate,
     current_user: User = Depends(get_current_user),
@@ -40,7 +40,7 @@ def create_milestone(
             detail="Internal server error occurred while creating milestone"
         )
 
-@router.get("/api/milestones/all", response_model=List[MilestoneResponse])
+@router.get("/all", response_model=List[MilestoneResponse])
 def get_all_milestones(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -56,7 +56,7 @@ def get_all_milestones(
             detail="Internal server error occurred while retrieving milestones"
         )
 
-@router.get("/api/milestones", response_model=MilestoneListResponse)
+@router.get("", response_model=MilestoneListResponse)
 def list_milestones_envelope(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -71,7 +71,7 @@ def list_milestones_envelope(
             detail="Internal server error occurred while listing milestones"
         )
 
-@router.get("/api/milestones/{milestone_id}", response_model=MilestoneResponse)
+@router.get("/{milestone_id}", response_model=MilestoneResponse)
 def get_milestone_by_id(
     milestone_id: int,
     current_user: User = Depends(get_current_user),
@@ -90,7 +90,7 @@ def get_milestone_by_id(
             detail="Internal server error occurred while retrieving milestone"
         )
 
-@router.put("/api/milestones/{milestone_id}", response_model=MilestoneResponse)
+@router.put("/{milestone_id}", response_model=MilestoneResponse)
 def update_milestone(
     milestone_id: int,
     milestone_data: MilestoneUpdate,
@@ -110,7 +110,7 @@ def update_milestone(
             detail="Internal server error occurred while updating milestone"
         )
 
-@router.delete("/api/milestones/{milestone_id}")
+@router.delete("/{milestone_id}")
 def delete_milestone(
     milestone_id: int,
     current_user: User = Depends(get_current_user),
@@ -121,12 +121,6 @@ def delete_milestone(
         logger.info(f"Milestone {milestone_id} deleted successfully for User ID: {current_user.id}")
         return {"message": "Deleted"}
     except HTTPException as he:
-<<<<<<< Updated upstream
-        if he.status_code == status.HTTP_404_NOT_FOUND:
-            logger.warning(f"Milestone {milestone_id} not found or not owned by User ID: {current_user.id}")
-            return {"message": "Deleted"}
-=======
->>>>>>> Stashed changes
         raise he
     except Exception as e:
         logger.exception(f"Unexpected error deleting milestone {milestone_id}: {e}")

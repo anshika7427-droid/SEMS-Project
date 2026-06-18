@@ -11,7 +11,7 @@ from app.services.subject_service import SubjectService
 router = APIRouter()
 logger = logging.getLogger("subject_routes")
 
-@router.post("/api/subjects/create", response_model=SubjectResponse)
+@router.post("/create", response_model=SubjectResponse)
 def create_subject(
     subject: SubjectCreate,
     current_user: User = Depends(get_current_user),
@@ -30,7 +30,7 @@ def create_subject(
             detail="Internal server error occurred while creating subject"
         )
 
-@router.get("/api/subjects/all", response_model=List[SubjectResponse])
+@router.get("/all", response_model=List[SubjectResponse])
 def get_all_subjects(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -46,7 +46,7 @@ def get_all_subjects(
             detail="Internal server error occurred while retrieving subjects"
         )
 
-@router.get("/api/subjects", response_model=SubjectListResponse)
+@router.get("", response_model=SubjectListResponse)
 def list_subjects_envelope(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -61,7 +61,7 @@ def list_subjects_envelope(
             detail="Internal server error occurred while listing subjects"
         )
 
-@router.get("/api/subjects/{subject_id}", response_model=SubjectResponse)
+@router.get("/{subject_id}", response_model=SubjectResponse)
 def get_subject_by_id(
     subject_id: int,
     current_user: User = Depends(get_current_user),
@@ -80,7 +80,7 @@ def get_subject_by_id(
             detail="Internal server error occurred while retrieving subject"
         )
 
-@router.put("/api/subjects/{subject_id}", response_model=SubjectResponse)
+@router.put("/{subject_id}", response_model=SubjectResponse)
 def update_subject(
     subject_id: int,
     subject_data: SubjectUpdate,
@@ -100,7 +100,7 @@ def update_subject(
             detail="Internal server error occurred while updating subject"
         )
 
-@router.delete("/api/subjects/{subject_id}")
+@router.delete("/{subject_id}")
 def delete_subject(
     subject_id: int,
     current_user: User = Depends(get_current_user),
@@ -111,12 +111,6 @@ def delete_subject(
         logger.info(f"Subject {subject_id} deleted successfully for User ID: {current_user.id}")
         return {"message": "Deleted"}
     except HTTPException as he:
-<<<<<<< Updated upstream
-        if he.status_code == status.HTTP_404_NOT_FOUND:
-            logger.warning(f"Subject {subject_id} not found or not owned by User ID: {current_user.id}")
-            return {"message": "Subject not found"}
-=======
->>>>>>> Stashed changes
         raise he
     except Exception as e:
         logger.exception(f"Unexpected error deleting subject {subject_id}: {e}")
