@@ -405,8 +405,8 @@ def calculate_schedule_metrics(schedule_events: list, milestones: list, subjects
             h_start = int(start_time_str.split(":")[0])
             if h_end >= 23 or h_end < 5 or h_start < 5:
                 late_sessions += 1
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Failed to parse sleep window times ({start_time_str} - {end_time_str}): {e}")
             
     risk_sleep = 10.0
     if late_sessions in (1, 2):
@@ -457,7 +457,8 @@ def calculate_schedule_metrics(schedule_events: list, milestones: list, subjects
                     return 0
                 try:
                     return time_to_min(st)
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"Failed to parse event start time '{st}' into minutes: {e}")
                     return 0
             day_events.sort(key=get_event_start_min)
             for i in range(len(day_events) - 1):
@@ -494,8 +495,8 @@ def calculate_schedule_metrics(schedule_events: list, milestones: list, subjects
                             
                     if sub1_diff == "Hard" and sub2_diff == "Hard" and gap < 60:
                         stacked_hard_penalty += 20
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Failed to analyze consecutive events overlap or subject difficulty: {e}")
 
     # Balance score modifier
     balance_modifier = 0

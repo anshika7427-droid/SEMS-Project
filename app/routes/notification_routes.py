@@ -4,8 +4,10 @@ from datetime import date, datetime, timedelta
 from app.database import get_db
 from app.auth import get_current_user, User
 from app.models import Milestone, Notification
+import logging
 
 router = APIRouter()
+logger = logging.getLogger("notification_routes")
 
 def generate_exam_notifications(user_id: int, db: Session):
     today = date.today()
@@ -42,8 +44,8 @@ def generate_exam_notifications(user_id: int, db: Session):
                         is_read=False
                     )
                     db.add(notif)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Error generating exam notification for user {user_id}: {e}")
             
     db.commit()
 

@@ -73,8 +73,8 @@ def get_ai_recommendations(user_id: int, db: Session) -> dict:
             days_left = (exam_date - today).days
             if 0 <= days_left <= 7:
                 upcoming_milestones.append((m.subject_name, days_left))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Error parsing milestone exam date '{m.exam_date}': {e}")
             
     if upcoming_milestones:
         # Sort by urgency

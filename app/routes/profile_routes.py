@@ -21,8 +21,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 AVATAR_DIR = BASE_DIR / "storage" / "avatars"
 AVATAR_DIR.mkdir(parents=True, exist_ok=True)
 
-@router.get("/me", response_model=ProfileResponse)
 @router.get("/{user_id}", response_model=ProfileResponse)
+@router.get("/me", response_model=ProfileResponse)
 def get_profile(
     user_id: Optional[int] = None,
     current_user: User = Depends(get_current_user),

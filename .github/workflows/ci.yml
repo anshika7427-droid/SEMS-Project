@@ -32,4 +32,4 @@ jobs:
       env:
         SECRET_KEY: temporary_test_secret_key
         TESTING: "True"
-      run: python -m pytest
+      run: python -m pytest --cov=app

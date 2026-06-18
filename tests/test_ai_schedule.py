@@ -162,6 +162,7 @@ def test_generate_ai_schedule_success(mock_post):
     class MockMilestone:
         subject_name = "DBMS"
         exam_date = "2026-06-20"
+        completion_percentage = 0
 
     analytics = {"active_streak": 3, "weekly_study_hours": 4.5}
 
@@ -253,6 +254,7 @@ def test_calculate_schedule_metrics_burnout():
             self.subject_name = subject_name
             self.exam_date = exam_date
             self.user_id = user_id
+            self.completion_percentage = 0
 
     subjects = [
         MockSubject("Physics", "Hard"),
