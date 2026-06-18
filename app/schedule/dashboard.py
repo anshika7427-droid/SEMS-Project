@@ -31,11 +31,11 @@ def generate_dashboard_metrics(user_id: int, db: Session) -> dict:
         # 1. Subject Count
         subjects_tracked = db.query(Subject).filter(Subject.user_id == user_id).count()
         
-        # 2. Tasks Completed / Pending
+        # 2. Tasks Completed / Pending (calculating pending as total - completed to prevent SQL NULL comparison issues)
+        total_tasks = db.query(Task).filter(Task.user_id == user_id).count()
         tasks_completed = db.query(Task).filter(Task.user_id == user_id, Task.status == "Completed").count()
-        tasks_pending = db.query(Task).filter(Task.user_id == user_id, Task.status != "Completed").count()
+        tasks_pending = total_tasks - tasks_completed
         
-        total_tasks = tasks_completed + tasks_pending
         completion_percentage = round((tasks_completed / total_tasks) * 100, 1) if total_tasks > 0 else 0.0
         
         # 3. Milestones Completed / Pending

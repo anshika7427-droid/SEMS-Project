@@ -159,15 +159,16 @@ def delete_resource(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    resource = db.query(Resource).filter(
-        Resource.id == resource_id,
-        Resource.user_id == current_user.id
-    ).first()
-    
+    resource = db.query(Resource).filter(Resource.id == resource_id).first()
     if not resource:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Resource not found"
+        )
+    if resource.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized access to this resource"
         )
         
     # Delete file from filesystem if it exists

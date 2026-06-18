@@ -78,7 +78,17 @@ class SubjectService:
 
     @staticmethod
     def delete_subject(db: Session, subject_id: int, user_id: int) -> None:
-        subject = SubjectService.get_subject(db, subject_id, user_id)
+        subject = db.query(Subject).filter(Subject.id == subject_id).first()
+        if not subject:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Subject not found"
+            )
+        if subject.user_id != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Unauthorized access to this subject"
+            )
         db.delete(subject)
         db.commit()
 

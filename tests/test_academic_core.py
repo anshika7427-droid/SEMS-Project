@@ -88,6 +88,11 @@ def test_task_validation():
     with pytest.raises(ValueError, match="Priority cannot be negative"):
         TaskCreate(title="Do HW", priority="-1", deadline="2026-06-30")
 
+    # Past deadline validation
+    past_deadline = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
+    with pytest.raises(ValueError, match="Deadline cannot be in the past"):
+        TaskCreate(title="Do HW", priority="1", deadline=past_deadline)
+
     # Invalid status values
     with pytest.raises(ValueError, match="Status must be either 'Pending' or 'Completed'"):
         TaskUpdate(status="In Progress")
@@ -171,9 +176,30 @@ def test_task_service_operations():
     toggled = TaskService.toggle_task(db, task.id, user_a.id)
     assert toggled.status == "Pending"
 
+    # Test subject_id referencing and ownership checks in tasks
+    sub_a = SubjectService.create_subject(db, SubjectCreate(name="Sub A", difficulty="Easy"), user_a.id)
+    sub_b = SubjectService.create_subject(db, SubjectCreate(name="Sub B", difficulty="Easy"), user_b.id)
+
+    # Valid subject reference
+    t_data_valid = TaskCreate(title="Valid Sub Ref", priority="1", deadline="2026-12-31", subject_id=sub_a.id)
+    task_valid = TaskService.create_task(db, t_data_valid, user_a.id)
+    assert task_valid.subject_id == sub_a.id
+
+    # Invalid subject reference (not existing)
+    t_data_invalid_1 = TaskCreate(title="Invalid Sub Ref", priority="1", deadline="2026-12-31", subject_id=9999)
+    with pytest.raises(HTTPException) as exc:
+        TaskService.create_task(db, t_data_invalid_1, user_a.id)
+    assert exc.value.status_code == 400
+
+    # Invalid subject reference (belongs to user B, trying to link in user A's task)
+    t_data_invalid_2 = TaskCreate(title="Cross User Sub Ref", priority="1", deadline="2026-12-31", subject_id=sub_b.id)
+    with pytest.raises(HTTPException) as exc:
+        TaskService.create_task(db, t_data_invalid_2, user_a.id)
+    assert exc.value.status_code == 400
+
     # Delete all tasks
     deleted_count = TaskService.delete_all_tasks(db, user_a.id)
-    assert deleted_count == 1
+    assert deleted_count == 2
     assert len(TaskService.list_tasks(db, user_a.id)) == 0
     db.close()
 

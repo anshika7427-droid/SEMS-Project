@@ -121,10 +121,12 @@ def delete_milestone(
         logger.info(f"Milestone {milestone_id} deleted successfully for User ID: {current_user.id}")
         return {"message": "Deleted"}
     except HTTPException as he:
-        # Compatibility check: if milestone not found, logging warning and returning 200/deleted message is fine for existing tests
+<<<<<<< Updated upstream
         if he.status_code == status.HTTP_404_NOT_FOUND:
             logger.warning(f"Milestone {milestone_id} not found or not owned by User ID: {current_user.id}")
             return {"message": "Deleted"}
+=======
+>>>>>>> Stashed changes
         raise he
     except Exception as e:
         logger.exception(f"Unexpected error deleting milestone {milestone_id}: {e}")

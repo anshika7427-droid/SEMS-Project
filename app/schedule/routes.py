@@ -2,11 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Optional, List
 import logging
-import json
-
-from app.database import get_db, DB_DIR
+from app.database import get_db
 from app.auth import get_current_user, User
-from app.models import StudySession
 
 # Import local schedule components
 from app.schedule.schemas import (
@@ -85,15 +82,7 @@ def get_schedule_analysis(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    analysis_path = DB_DIR / f"user_{current_user.id}_analysis.json"
-    if analysis_path.exists():
-        try:
-            with open(analysis_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            return data
-        except Exception as e:
-            logger.exception(f"Error reading schedule analysis for User ID {current_user.id}: {e}")
-    return {}
+    return services.get_schedule_analysis_data(current_user.id)
 
 @schedule_router.get("/calibration", response_model=AICalibrationPayload)
 def get_calibration(
@@ -186,25 +175,9 @@ def log_session(
     db: Session = Depends(get_db)
 ):
     try:
-        new_session = StudySession(
-            user_id=current_user.id,
-            subject_id=session.subject_id,
-            duration_minutes=session.duration_minutes,
-            completed_at=session.completed_at,
-            session_type=session.session_type
-        )
-        db.add(new_session)
-        db.commit()
-        db.refresh(new_session)
-        
-        logger.info(f"Log study session success. User ID: {current_user.id}, Duration: {session.duration_minutes}")
-        return {
-            "message": "Study session logged successfully",
-            "session_id": new_session.id
-        }
+        return services.log_study_session(current_user.id, session, db)
     except Exception as e:
-        logger.exception(f"Error logging study session: {e}")
-        db.rollback()
+        logger.exception(f"Error in log_session endpoint: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to log study session"

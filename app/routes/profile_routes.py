@@ -54,7 +54,7 @@ def get_profile(
         name=current_user.name,
         email=current_user.email,
         created_at=join_date,
-        avatar_url=current_user.avatar_url or "https://lh3.googleusercontent.com/aida-public/AB6AXuAFcUH75N1o8JqQOcUmxnu2tjKtVBUpyFVyS0a-edF7ah9W2CbtzwbqR-6KzkNr2a5mb3ZWi_skQesjI9T2l5JDZYjQuYfTpCaqN_W62lIJ0Iw8Rii6KBbkHxETFlPJRJpNoYnklX251bxOGvrAi0X_wtWPk7yvf7nER0U_GWaaja1Z0AS3HmE6zRb3qTTU3phLN4NOcEfGG37YYsmUTQLnWAX2OHBrdyikqvQZFdEWtcmqUyfFcajqo2ygXdYFW8qV-rwsEpcItGXV",
+        avatar_url=current_user.avatar_url or "/static/default-avatar.png",
         subjects_count=subjects_count,
         milestones_count=milestones_count,
         resources_count=resources_count,

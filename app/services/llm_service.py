@@ -601,14 +601,9 @@ def calculate_schedule_metrics(schedule_events: list, milestones: list, subjects
             elif days_prox <= 7:
                 proximity_modifier = 0.9
                 
-            # Performance metrics (deterministic matching the LLM prompt)
-            s_name = subj_obj.name if subj_obj else m.subject_name
-            h_hash = int(hashlib.md5(s_name.encode('utf-8')).hexdigest(), 16)
-            completion = 40 + (h_hash % 46)
-            quiz_score = 60 + (h_hash % 31)
-            flashcard_score = 70 + (h_hash % 26)
-            
-            perf_score = 0.4 * completion + 0.3 * quiz_score + 0.3 * flashcard_score
+            # Performance metrics (database-backed milestone completion percentage)
+            completion = m.completion_percentage if m.completion_percentage is not None else 0
+            perf_score = float(completion)
             
             # Completed study sessions count
             sessions_count = 0
@@ -624,6 +619,7 @@ def calculate_schedule_metrics(schedule_events: list, milestones: list, subjects
             
             session_factor = min(100.0, sessions_count * 20.0)
             
+            # Weighted calculation of milestone readiness
             m_readiness = 0.3 * hours_score + 0.4 * perf_score + 0.3 * session_factor
             m_readiness = m_readiness * proximity_modifier
             m_readiness = max(0.0, min(100.0, m_readiness))
@@ -633,7 +629,7 @@ def calculate_schedule_metrics(schedule_events: list, milestones: list, subjects
                 f"Milestone Exam Readiness calculation details for {m.subject_name}:\n"
                 f"- Exam Date: {m.exam_date} (Proximity: {days_prox} days, Modifier: {proximity_modifier:.2f})\n"
                 f"- Difficulty: {difficulty} (Target: {h_target}h, Allocated: {h_allocated}h -> Hours Score: {hours_score:.2f}%)\n"
-                f"- Performance: Completion={completion}%, Quiz={quiz_score}%, Flashcard={flashcard_score}% -> Perf Score: {perf_score:.2f}%\n"
+                f"- Performance: Completion={completion}% -> Perf Score: {perf_score:.2f}%\n"
                 f"- Completed sessions count: {sessions_count} -> Session Factor: {session_factor:.2f}%\n"
                 f"- Calculated Milestone Readiness: {m_readiness:.2f}%"
             )
@@ -903,15 +899,8 @@ def generate_ai_schedule(
     # Compile subjects list details
     subject_details = []
     for s in subjects:
-        h = int(hashlib.md5(s.name.encode('utf-8')).hexdigest(), 16)
-        completion = 40 + (h % 46)
-        quiz_score = 60 + (h % 31)
-        flashcard_score = 70 + (h % 26)
         subject_details.append(
-            f"- {s.name} (Difficulty: {s.difficulty or 'Medium'}, "
-            f"Completion: {completion}%, "
-            f"Quiz Performance: {quiz_score}%, "
-            f"Flashcard Performance: {flashcard_score}%)"
+            f"- {s.name} (Difficulty: {s.difficulty or 'Medium'})"
         )
     subjects_str = "\n".join(subject_details) if subject_details else "None"
     
