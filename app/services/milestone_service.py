@@ -77,7 +77,17 @@ class MilestoneService:
 
     @staticmethod
     def delete_milestone(db: Session, milestone_id: int, user_id: int) -> None:
-        milestone = MilestoneService.get_milestone(db, milestone_id, user_id)
+        milestone = db.query(Milestone).filter(Milestone.id == milestone_id).first()
+        if not milestone:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Milestone not found"
+            )
+        if milestone.user_id != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Unauthorized access to this milestone"
+            )
         db.delete(milestone)
         db.commit()
 

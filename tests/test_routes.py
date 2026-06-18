@@ -126,10 +126,33 @@ def test_integration_flow():
     assert response.status_code == 200
     assert len(response.json()) == 0
 
-    # 12. Verify User B cannot access/delete User A's subject
+    # 12. Verify User B cannot delete User A's subject (returns 403)
     response = client.delete(f"/api/subjects/{subject_id}")
-    assert response.status_code == 200
-    assert response.json()["message"] == "Subject not found"
+    assert response.status_code == 403
+
+    # 12a. Verify deleting a non-existent subject (returns 404)
+    response = client.delete("/api/subjects/99999")
+    assert response.status_code == 404
+
+    # 12b. Verify User B cannot delete User A's task (returns 403)
+    response = client.delete(f"/api/tasks/{task_id}")
+    assert response.status_code == 403
+
+    # 12c. Verify deleting a non-existent task (returns 404)
+    response = client.delete("/api/tasks/99999")
+    assert response.status_code == 404
+
+    # 12d. Verify User B cannot delete User A's milestone (returns 403)
+    response = client.delete(f"/api/milestones/{milestone_id}")
+    assert response.status_code == 403
+
+    # 12e. Verify deleting a non-existent milestone (returns 404)
+    response = client.delete("/api/milestones/99999")
+    assert response.status_code == 404
+
+    # 12f. Verify deleting a non-existent resource (returns 404)
+    response = client.delete("/api/resources/99999")
+    assert response.status_code == 404
 
     # 13. Verify User B can view their own profile details
     response = client.get(f"/api/profile/{user_b_id}")

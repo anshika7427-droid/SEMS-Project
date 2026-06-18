@@ -111,9 +111,12 @@ def delete_subject(
         logger.info(f"Subject {subject_id} deleted successfully for User ID: {current_user.id}")
         return {"message": "Deleted"}
     except HTTPException as he:
+<<<<<<< Updated upstream
         if he.status_code == status.HTTP_404_NOT_FOUND:
             logger.warning(f"Subject {subject_id} not found or not owned by User ID: {current_user.id}")
             return {"message": "Subject not found"}
+=======
+>>>>>>> Stashed changes
         raise he
     except Exception as e:
         logger.exception(f"Unexpected error deleting subject {subject_id}: {e}")

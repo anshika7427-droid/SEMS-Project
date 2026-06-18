@@ -81,7 +81,17 @@ class TaskService:
 
     @staticmethod
     def delete_task(db: Session, task_id: int, user_id: int) -> None:
-        task = TaskService.get_task(db, task_id, user_id)
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if not task:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found"
+            )
+        if task.user_id != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Unauthorized access to this task"
+            )
         db.delete(task)
         db.commit()
 
