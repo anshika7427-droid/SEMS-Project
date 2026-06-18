@@ -30,6 +30,8 @@ SLOTS = [
     {"day": "Friday", "start": "14:00", "end": "16:00"},
     {"day": "Saturday", "start": "10:00", "end": "12:30"},
     {"day": "Saturday", "start": "14:00", "end": "16:30"},
+    {"day": "Sunday", "start": "10:00", "end": "12:30"},
+    {"day": "Sunday", "start": "14:00", "end": "16:30"},
 ]
 
 def parse_deadline_date(date_str: str) -> date:
@@ -82,9 +84,11 @@ def generate_weekly_schedule(user_id: int, db: Session) -> List[ScheduleEvent]:
     """Generates standard rule-based study plan scheduling."""
     logger.info(f"Generating weekly schedule for User ID: {user_id}")
     
-    # 1. Fetch user's subjects and milestones
+    # 1. Fetch user's subjects, milestones and preferences
     subjects = db.query(Subject).filter(Subject.user_id == user_id).all()
     milestones = db.query(Milestone).filter(Milestone.user_id == user_id).all()
+    user = db.query(User).filter(User.id == user_id).first()
+    preserve_weekends = user.weekend_preservation if user else False
     
     if not subjects:
         logger.warning(f"No subjects found for User ID: {user_id}. Cannot generate schedule.")
@@ -124,7 +128,12 @@ def generate_weekly_schedule(user_id: int, db: Session) -> List[ScheduleEvent]:
         logger.warning("Allocating empty pool: fallback to standard subjects.")
         pool = list(subjects)
         
-    for slot in SLOTS:
+    available_days = [0, 1, 2, 3, 4] if preserve_weekends else [0, 1, 2, 3, 4, 5, 6]
+    day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    allowed_days = [day_names[d] for d in available_days]
+    active_slots = [slot for slot in SLOTS if slot["day"] in allowed_days]
+
+    for slot in active_slots:
         chosen_subject = pool[subject_index % len(pool)]
         subject_index += 1
         
@@ -244,7 +253,12 @@ def generate_ai_weekly_schedule(
                 SLOT_STARTS = ["09:00", "14:00", "17:00", "20:00"]
                 
         day_events = defaultdict(list)
+        available_days = [0, 1, 2, 3, 4] if current_user.weekend_preservation else [0, 1, 2, 3, 4, 5, 6]
+        day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        allowed_days = [day_names[d] for d in available_days]
         for item in ai_data.get("schedule", []):
+            if item["day"] not in allowed_days:
+                continue
             day_events[item["day"]].append(item)
             
         events_added = 0

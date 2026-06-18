@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from app.database import Base
-from datetime import date
+from datetime import date, datetime
 
 class User(Base):
     __tablename__ = "users"
@@ -116,3 +116,15 @@ class StudySession(Base):
 
     user = relationship("User", back_populates="study_sessions")
     subject = relationship("Subject", back_populates="study_sessions")
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    title = Column(String, nullable=False)
+    message = Column(String, nullable=False)
+    is_read = Column(Boolean, default=False)
+    created_at = Column(String, nullable=False, default=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+    user = relationship("User", backref="notifications")

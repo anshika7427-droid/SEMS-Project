@@ -104,6 +104,10 @@ def get_user_analytics(user_id: int, db: Session) -> dict:
         # Default distribution for UI fallback
         focus_distribution = []
         
+    # Import grade predictor
+    from app.utils.grade_predictor import get_grade_prediction
+    grade_data = get_grade_prediction(user_id, db)
+
     return {
         "completed_tasks": completed_tasks,
         "total_tasks": total_tasks,
@@ -111,5 +115,6 @@ def get_user_analytics(user_id: int, db: Session) -> dict:
         "weekly_study_hours": weekly_study_hours,
         "total_study_hours": total_study_hours,
         "focus_distribution": focus_distribution,
-        "weekly_days_hours": {day: round(mins / 60.0, 1) for day, mins in weekly_days_minutes.items()}
+        "weekly_days_hours": {day: round(mins / 60.0, 1) for day, mins in weekly_days_minutes.items()},
+        **grade_data
     }

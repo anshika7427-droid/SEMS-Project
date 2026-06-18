@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from datetime import datetime, date
-from app.models import Subject, Milestone, ScheduleEvent
+from app.models import Subject, Milestone, ScheduleEvent, User
 import logging
 
 logger = logging.getLogger("scheduler")
@@ -22,6 +22,8 @@ SLOTS = [
     {"day": "Friday", "start": "14:00", "end": "16:00"},
     {"day": "Saturday", "start": "10:00", "end": "12:30"},
     {"day": "Saturday", "start": "14:00", "end": "16:30"},
+    {"day": "Sunday", "start": "10:00", "end": "12:30"},
+    {"day": "Sunday", "start": "14:00", "end": "16:30"},
 ]
 
 def calculate_priority(subject: Subject, milestones: list) -> float:
@@ -56,9 +58,11 @@ def calculate_priority(subject: Subject, milestones: list) -> float:
 def generate_weekly_schedule(user_id: int, db: Session):
     logger.info(f"Generating weekly schedule for User ID: {user_id}")
     
-    # 1. Fetch user's subjects and milestones
+    # 1. Fetch user's subjects, milestones and preferences
     subjects = db.query(Subject).filter(Subject.user_id == user_id).all()
     milestones = db.query(Milestone).filter(Milestone.user_id == user_id).all()
+    user = db.query(User).filter(User.id == user_id).first()
+    preserve_weekends = user.weekend_preservation if user else False
     
     if not subjects:
         logger.warning(f"No subjects found for User ID: {user_id}. Cannot generate schedule.")
@@ -99,7 +103,12 @@ def generate_weekly_schedule(user_id: int, db: Session):
     if not pool:
         return []
         
-    for slot in SLOTS:
+    available_days = [0, 1, 2, 3, 4] if preserve_weekends else [0, 1, 2, 3, 4, 5, 6]
+    day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    allowed_days = [day_names[d] for d in available_days]
+    active_slots = [slot for slot in SLOTS if slot["day"] in allowed_days]
+
+    for slot in active_slots:
         # Select from pool using round-robin index modulo pool size
         chosen_subject = pool[subject_index % len(pool)]
         subject_index += 1

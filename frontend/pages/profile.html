@@ -138,6 +138,36 @@
       </div>
       <div class="flex items-center gap-3">
         <span id="navName" class="text-on-surface-variant font-medium text-sm hidden md:block">Alex Sterling</span>
+        
+        <!-- Interactive Notifications Dropdown -->
+        <div class="relative">
+          <button
+            id="notificationBell"
+            class="relative p-2 text-slate-600 hover:bg-slate-100 rounded-full transition-all flex items-center justify-center"
+            title="Notifications"
+          >
+            <span class="material-symbols-outlined">notifications</span>
+            <span
+              id="notificationBadge"
+              class="absolute top-1.5 right-1.5 min-w-[16px] h-[16px] px-1 bg-error text-white rounded-full text-[9px] font-bold flex items-center justify-center hidden border border-white"
+            >0</span>
+          </button>
+          
+          <!-- Notifications Popover -->
+          <div
+            id="notificationPopover"
+            class="absolute right-0 mt-3 w-80 bg-white border border-slate-100 rounded-2xl shadow-xl z-50 hidden flex flex-col glass-card overflow-hidden animate-in slide-in-from-top-2 duration-150"
+          >
+            <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <span class="font-headline font-bold text-slate-700 text-xs uppercase tracking-wider">Notifications</span>
+              <button id="markAllReadBtn" class="text-[10px] text-primary font-bold hover:underline">Mark all read</button>
+            </div>
+            <div id="notificationList" class="max-h-64 overflow-y-auto no-scrollbar divide-y divide-slate-100">
+              <!-- Dynamic notification list items -->
+            </div>
+          </div>
+        </div>
+
         <a href="/profile">
           <img id="navAvatar" alt="Profile" class="w-10 h-10 rounded-full object-cover ring-2 ring-primary/10 hover:ring-primary transition-all" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFcUH75N1o8JqQOcUmxnu2tjKtVBUpyFVyS0a-edF7ah9W2CbtzwbqR-6KzkNr2a5mb3ZWi_skQesjI9T2l5JDZYjQuYfTpCaqN_W62lIJ0Iw8Rii6KBbkHxETFlPJRJpNoYnklX251bxOGvrAi0X_wtWPk7yvf7nER0U_GWaaja1Z0AS3HmE6zRb3qTTU3phLN4NOcEfGG37YYsmUTQLnWAX2OHBrdyikqvQZFdEWtcmqUyfFcajqo2ygXdYFW8qV-rwsEpcItGXV" />
         </a>
@@ -632,9 +662,126 @@
       }
     });
 
+      // Notifications Setup and Event Listeners
+      async function setupNotifications() {
+        const bell = document.getElementById("notificationBell");
+        const popover = document.getElementById("notificationPopover");
+        const markAllBtn = document.getElementById("markAllReadBtn");
+        
+        if (bell && popover) {
+          bell.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            popover.classList.toggle("hidden");
+            if (!popover.classList.contains("hidden")) {
+              await loadNotificationList();
+            }
+          });
+          
+          document.addEventListener("click", (e) => {
+            if (!popover.contains(e.target) && !bell.contains(e.target)) {
+              popover.classList.add("hidden");
+            }
+          });
+        }
+        
+        if (markAllBtn) {
+          markAllBtn.addEventListener("click", async () => {
+            try {
+              const res = await fetch("/api/notifications/read-all", { method: "PUT" });
+              if (res.ok) {
+                await updateNotificationBadge();
+                await loadNotificationList();
+              }
+            } catch (err) {
+              console.error("Error marking all read", err);
+            }
+          });
+        }
+        
+        // Initial badge update
+        await updateNotificationBadge();
+      }
+
+      async function updateNotificationBadge() {
+        try {
+          const res = await fetch("/api/notifications/unread-count?t=" + new Date().getTime());
+          if (res.ok) {
+            const data = await res.json();
+            const badge = document.getElementById("notificationBadge");
+            if (badge) {
+              if (data.count > 0) {
+                badge.textContent = data.count;
+                badge.classList.remove("hidden");
+              } else {
+                badge.classList.add("hidden");
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Error updating notification badge", err);
+        }
+      }
+
+      async function loadNotificationList() {
+        try {
+          const res = await fetch("/api/notifications/?t=" + new Date().getTime());
+          if (res.ok) {
+            const list = await res.json();
+            const container = document.getElementById("notificationList");
+            if (!container) return;
+            
+            if (list.length === 0) {
+              container.innerHTML = `
+                <div class="p-8 text-center text-slate-400 text-xs font-semibold">
+                  <span class="material-symbols-outlined text-3xl mb-1 text-slate-300">notifications_off</span>
+                  <p>No new notifications</p>
+                </div>
+              `;
+              return;
+            }
+            
+            container.innerHTML = list.map(n => {
+              const bgClass = n.is_read ? "opacity-60 bg-white" : "bg-primary/5 font-semibold";
+              const checkmarkBtn = n.is_read ? "" : `
+                <button onclick="markNotificationRead(${n.id}, event)" class="p-1 hover:bg-slate-200 rounded text-slate-500 hover:text-primary transition-all flex items-center justify-center" title="Mark as read">
+                  <span class="material-symbols-outlined text-[16px]">done</span>
+                </button>
+              `;
+              return `
+                <div class="px-4 py-3 flex items-start justify-between gap-3 ${bgClass} transition-all">
+                  <div class="flex-1 min-w-0">
+                    <p class="text-xs text-slate-800 leading-snug">${n.title}</p>
+                    <p class="text-[11px] text-slate-500 leading-tight mt-0.5 whitespace-pre-line">${n.message}</p>
+                  </div>
+                  ${checkmarkBtn}
+                </div>
+              `;
+            }).join("");
+          }
+        } catch (err) {
+          console.error("Error loading notifications list", err);
+        }
+      }
+
+      async function markNotificationRead(id, event) {
+        if (event) event.stopPropagation();
+        try {
+          const res = await fetch(`/api/notifications/read/${id}`, { method: "PUT" });
+          if (res.ok) {
+            await updateNotificationBadge();
+            await loadNotificationList();
+          }
+        } catch (err) {
+          console.error("Error marking notification read", err);
+        }
+      }
+
+      window.markNotificationRead = markNotificationRead;
+
     window.onload = async () => {
       initializeShimmer();
       await checkAuth();
+      await setupNotifications();
     };
   </script>
 </body>

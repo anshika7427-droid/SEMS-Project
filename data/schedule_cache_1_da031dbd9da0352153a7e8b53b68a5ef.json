@@ -1,0 +1,218 @@
+{
+  "schedule": [
+    {
+      "day": "Monday",
+      "subject": "DBMS",
+      "hours": 2.0,
+      "start_time": "09:00",
+      "end_time": "11:00",
+      "session_type": "Deep Focus",
+      "reason": "2 hours of Deep Focus to cover critical topics, given the upcoming exam on June 19"
+    },
+    {
+      "day": "Monday",
+      "subject": "Botney",
+      "hours": 2.0,
+      "start_time": "11:30",
+      "end_time": "13:30",
+      "session_type": "Deep Focus",
+      "reason": "2 hours of Deep Focus to cover critical topics, given the upcoming exam on June 20"
+    },
+    {
+      "day": "Monday",
+      "subject": "English",
+      "hours": 2.0,
+      "start_time": "14:30",
+      "end_time": "16:30",
+      "session_type": "Deep Focus",
+      "reason": "2 hours of Deep Focus to review and practice English, considering the exam on June 30"
+    },
+    {
+      "day": "Tuesday",
+      "subject": "Botney",
+      "hours": 2.0,
+      "start_time": "09:00",
+      "end_time": "11:00",
+      "session_type": "Deep Focus",
+      "reason": "Intensive review for Botney exam on June 20"
+    },
+    {
+      "day": "Tuesday",
+      "subject": "DBMS",
+      "hours": 1.0,
+      "start_time": "11:30",
+      "end_time": "12:30",
+      "session_type": "Deep Focus",
+      "reason": "Final review for DBMS exam on June 19"
+    },
+    {
+      "day": "Tuesday",
+      "subject": "Physics",
+      "hours": 3.0,
+      "start_time": "14:00",
+      "end_time": "17:00",
+      "session_type": "Deep Focus",
+      "reason": "3 hours of Deep Focus to cover Physics topics, with breaks in between"
+    },
+    {
+      "day": "Wednesday",
+      "subject": "Chemistry",
+      "hours": 2.0,
+      "start_time": "09:00",
+      "end_time": "11:00",
+      "session_type": "Deep Focus",
+      "reason": "2 hours of Deep Focus to cover Chemistry topics"
+    },
+    {
+      "day": "Wednesday",
+      "subject": "zoology",
+      "hours": 2.0,
+      "start_time": "11:30",
+      "end_time": "13:30",
+      "session_type": "Deep Focus",
+      "reason": "2 hours of Deep Focus to cover zoology topics"
+    },
+    {
+      "day": "Wednesday",
+      "subject": "Physical Education",
+      "hours": 2.0,
+      "start_time": "14:30",
+      "end_time": "16:30",
+      "session_type": "Deep Focus",
+      "reason": "2 hours of Deep Focus to review Physical Education"
+    },
+    {
+      "day": "Thursday",
+      "subject": "DBMS",
+      "hours": 1.0,
+      "start_time": "09:00",
+      "end_time": "10:00",
+      "session_type": "Deep Focus",
+      "reason": "Final review for DBMS exam on June 19"
+    },
+    {
+      "day": "Thursday",
+      "subject": "Botney",
+      "hours": 2.0,
+      "start_time": "10:30",
+      "end_time": "12:30",
+      "session_type": "Deep Focus",
+      "reason": "Intensive review for Botney exam on June 20"
+    },
+    {
+      "day": "Thursday",
+      "subject": "English",
+      "hours": 3.0,
+      "start_time": "14:00",
+      "end_time": "17:00",
+      "session_type": "Deep Focus",
+      "reason": "3 hours of Deep Focus to review and practice English"
+    },
+    {
+      "day": "Friday",
+      "subject": "Botney",
+      "hours": 2.0,
+      "start_time": "09:00",
+      "end_time": "11:00",
+      "session_type": "Deep Focus",
+      "reason": "Final review for Botney exam on June 20"
+    },
+    {
+      "day": "Friday",
+      "subject": "Physics",
+      "hours": 2.0,
+      "start_time": "11:30",
+      "end_time": "13:30",
+      "session_type": "Deep Focus",
+      "reason": "2 hours of Deep Focus to cover Physics topics"
+    },
+    {
+      "day": "Friday",
+      "subject": "Chemistry",
+      "hours": 2.0,
+      "start_time": "14:30",
+      "end_time": "16:30",
+      "session_type": "Deep Focus",
+      "reason": "2 hours of Deep Focus to cover Chemistry topics"
+    }
+  ],
+  "detailed_analysis": {
+    "focus_title": "Morning Focus Schedule (30.0 Hours/Week)",
+    "focus_description": "The daily study quota of 6 hours is split into 2-3 sessions, with the morning session being the longest. This allows for a balance between focused study and breaks, while also prioritizing critical subjects.",
+    "focus_blocks": [
+      {
+        "block": "Block 1 (Morning)",
+        "time": "09:00 \u2013 11:00",
+        "mode": "Deep Focus"
+      },
+      {
+        "block": "Block 2 (Afternoon)",
+        "time": "11:30 \u2013 13:30",
+        "mode": "Deep Focus"
+      },
+      {
+        "block": "Block 3 (Late Afternoon)",
+        "time": "14:00 \u2013 17:00",
+        "mode": "Deep Focus"
+      }
+    ],
+    "phases": [
+      {
+        "title": "Phase 1: DBMS Exam Prep",
+        "description": "Focus on DBMS until the exam on June 19",
+        "allocations": [
+          "Block 1: DBMS",
+          "Block 2: Botney"
+        ]
+      },
+      {
+        "title": "Phase 2: Botney Exam Prep",
+        "description": "Focus on Botney after DBMS exam, until the exam on June 20",
+        "allocations": [
+          "Block 1: Botney",
+          "Block 2: Physics"
+        ]
+      },
+      {
+        "title": "Phase 3: General Review",
+        "description": "Review all subjects, with a focus on upcoming exams",
+        "allocations": [
+          "Block 1: English",
+          "Block 2: Chemistry",
+          "Block 3: zoology"
+        ]
+      }
+    ],
+    "pro_tips": [
+      "Take breaks between study sessions to avoid burnout",
+      "Review notes and practice problems regularly",
+      "Prioritize critical subjects and allocate more time to them"
+    ],
+    "subject_allocation_reasons": {
+      "DBMS": "High priority due to upcoming exam on June 19",
+      "Botney": "High priority due to upcoming exam on June 20",
+      "English": "Medium priority, but still important for overall performance",
+      "Physics": "Medium priority, with a focus on upcoming exam on July 4",
+      "Chemistry": "Medium priority, with a focus on upcoming exam on July 8",
+      "zoology": "Low priority, but still important for overall performance",
+      "Physical Education": "Low priority, but still important for overall performance"
+    },
+    "time_slot_reasons": "Time slots are chosen to allow for focused study, with breaks in between to avoid burnout",
+    "milestone_reasons": "Exam milestones are used to prioritize subjects and allocate study time accordingly",
+    "preference_reasons": "Study preferences, such as avoiding early mornings, are taken into account when scheduling study sessions"
+  },
+  "quality_scoring": {
+    "balance_score": 81,
+    "burnout_risk": 80,
+    "exam_readiness_score": 46
+  },
+  "transparency": {
+    "requested_study_hours": 6,
+    "actual_study_hours": 30.0,
+    "predicted_burnout_risk": 80,
+    "predicted_exam_readiness": 46,
+    "ai_recommendation": "Your burnout risk is Elevated. We have automatically inserted recovery blocks and shifted hard subjects to optimize cognitive load. Readiness score is average. Consider adding more study hours before upcoming milestone exams."
+  },
+  "is_cached": false,
+  "llm_calls_count": 1
+}

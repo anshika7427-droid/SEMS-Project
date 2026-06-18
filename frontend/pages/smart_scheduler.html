@@ -138,6 +138,8 @@
         backdrop-filter: blur(8px);
       }
     </style>
+    <!-- jsPDF Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   </head>
   <body class="selection:bg-primary-fixed selection:text-on-primary-fixed">
     <!-- Internal SEMS Navbar -->
@@ -181,14 +183,34 @@
           <div
             class="flex items-center gap-4 pl-4 border-l border-surface-container-high"
           >
-            <button
-              class="relative p-2 text-slate-600 hover:bg-surface-container-low rounded-full transition-all"
-            >
-              <span class="material-symbols-outlined">notifications</span>
-              <span
-                class="absolute top-2 right-2 w-2 h-2 bg-secondary rounded-full"
-              ></span>
-            </button>
+            <!-- Interactive Notifications Dropdown -->
+            <div class="relative">
+              <button
+                id="notificationBell"
+                class="relative p-2 text-slate-600 hover:bg-slate-100 rounded-full transition-all flex items-center justify-center"
+                title="Notifications"
+              >
+                <span class="material-symbols-outlined">notifications</span>
+                <span
+                  id="notificationBadge"
+                  class="absolute top-1.5 right-1.5 min-w-[16px] h-[16px] px-1 bg-error text-white rounded-full text-[9px] font-bold flex items-center justify-center hidden border border-white"
+                >0</span>
+              </button>
+              
+              <!-- Notifications Popover -->
+              <div
+                id="notificationPopover"
+                class="absolute right-0 mt-3 w-80 bg-white border border-slate-100 rounded-2xl shadow-xl z-50 hidden flex flex-col glass-card overflow-hidden animate-in slide-in-from-top-2 duration-150"
+              >
+                <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                  <span class="font-headline font-bold text-slate-700 text-xs uppercase tracking-wider">Notifications</span>
+                  <button id="markAllReadBtn" class="text-[10px] text-primary font-bold hover:underline">Mark all read</button>
+                </div>
+                <div id="notificationList" class="max-h-64 overflow-y-auto no-scrollbar divide-y divide-slate-100">
+                  <!-- Dynamic notification list items -->
+                </div>
+              </div>
+            </div>
             <a
               href="/profile"
               class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/10 hover:border-primary transition-all block animate-in fade-in duration-300"
@@ -1184,9 +1206,6 @@
         // Reset form
         document.getElementById("milestoneSubject").value = "";
         document.getElementById("milestoneDate").value = "";
-        
-        // Auto-generate schedule when milestone is registered or updated
-        await generateSchedule();
       }
 
       async function loadMilestones() {
@@ -1219,9 +1238,6 @@
         });
 
         await loadMilestones();
-        
-        // Auto-generate schedule when milestone is deleted
-        await generateSchedule();
       }
 
       function editMilestone(id) {
@@ -1849,9 +1865,221 @@
         generateSchedule(true);
       }
 
-      function downloadSchedulePDF() {
-        window.print();
+      async function downloadSchedulePDF() {
+        try {
+          const authRes = await fetch("/api/auth/me");
+          if (!authRes.ok) {
+            alert("Session expired. Please log in again.");
+            return;
+          }
+          const user = await authRes.json();
+          const studentName = user.name;
+
+          const scheduleRes = await fetch("/api/schedule/all");
+          if (!scheduleRes.ok) {
+            alert("Failed to load schedule details.");
+            return;
+          }
+          const events = await scheduleRes.json();
+          
+          if (!events || events.length === 0) {
+            alert("No schedule events to generate PDF for.");
+            return;
+          }
+
+          // Generate PDF using jsPDF
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF();
+
+          // Title
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(22);
+          doc.setTextColor(0, 80, 203); // primary color
+          doc.text("SEMS Study Timetable", 20, 20);
+
+          // Meta Info
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(10);
+          doc.setTextColor(100, 100, 100);
+          doc.text(`Student Name: ${studentName}`, 20, 30);
+          doc.text(`Date Generated: ${new Date().toLocaleDateString()}`, 20, 35);
+          doc.text("----------------------------------------------------------------------------------------------------", 20, 40);
+
+          // Render weekly timetable
+          const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+          let y = 48;
+
+          days.forEach(day => {
+            const dayEvents = events.filter(e => e.day_of_week === day);
+            
+            // Draw Day Header
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(12);
+            doc.setTextColor(174, 49, 0); // secondary color
+            doc.text(day, 20, y);
+            y += 6;
+
+            if (dayEvents.length === 0) {
+              doc.setFont("helvetica", "italic");
+              doc.setFontSize(10);
+              doc.setTextColor(150, 150, 150);
+              doc.text("Rest Day / No Study Sessions", 25, y);
+              y += 8;
+            } else {
+              // Sort events by start time
+              dayEvents.sort((a, b) => a.start_time.localeCompare(b.start_time));
+              
+              dayEvents.forEach(e => {
+                // Formatting time slot
+                const timeSlot = `${e.start_time} - ${e.end_time}`;
+                const subject = e.subject_name;
+                const type = e.session_type || "Study Session";
+                const reason = e.reason ? `(${e.reason})` : "";
+
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(10);
+                doc.setTextColor(30, 30, 30);
+                doc.text(`•  [${timeSlot}]  ${subject}  -  ${type}  ${reason}`, 25, y);
+                y += 6;
+
+                // Page break handling
+                if (y > 280) {
+                  doc.addPage();
+                  y = 20;
+                }
+              });
+              y += 4;
+            }
+
+            if (y > 280) {
+              doc.addPage();
+              y = 20;
+            }
+          });
+
+          // Save the PDF
+          doc.save(`SEMS_Timetable_${studentName.replace(/\s+/g, '_')}.pdf`);
+        } catch (error) {
+          console.error("Error generating PDF:", error);
+          alert("Error generating PDF. Please try again.");
+        }
       }
+
+      // Notifications Setup and Event Listeners
+      async function setupNotifications() {
+        const bell = document.getElementById("notificationBell");
+        const popover = document.getElementById("notificationPopover");
+        const markAllBtn = document.getElementById("markAllReadBtn");
+        
+        if (bell && popover) {
+          bell.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            popover.classList.toggle("hidden");
+            if (!popover.classList.contains("hidden")) {
+              await loadNotificationList();
+            }
+          });
+          
+          document.addEventListener("click", (e) => {
+            if (!popover.contains(e.target) && !bell.contains(e.target)) {
+              popover.classList.add("hidden");
+            }
+          });
+        }
+        
+        if (markAllBtn) {
+          markAllBtn.addEventListener("click", async () => {
+            try {
+              const res = await fetch("/api/notifications/read-all", { method: "PUT" });
+              if (res.ok) {
+                await updateNotificationBadge();
+                await loadNotificationList();
+              }
+            } catch (err) {
+              console.error("Error marking all read", err);
+            }
+          });
+        }
+        
+        // Initial badge update
+        await updateNotificationBadge();
+      }
+
+      async function updateNotificationBadge() {
+        try {
+          const res = await fetch("/api/notifications/unread-count?t=" + new Date().getTime());
+          if (res.ok) {
+            const data = await res.json();
+            const badge = document.getElementById("notificationBadge");
+            if (badge) {
+              if (data.count > 0) {
+                badge.textContent = data.count;
+                badge.classList.remove("hidden");
+              } else {
+                badge.classList.add("hidden");
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Error updating notification badge", err);
+        }
+      }
+
+      async function loadNotificationList() {
+        try {
+          const res = await fetch("/api/notifications/?t=" + new Date().getTime());
+          if (res.ok) {
+            const list = await res.json();
+            const container = document.getElementById("notificationList");
+            if (!container) return;
+            
+            if (list.length === 0) {
+              container.innerHTML = `
+                <div class="p-8 text-center text-slate-400 text-xs font-semibold">
+                  <span class="material-symbols-outlined text-3xl mb-1 text-slate-300">notifications_off</span>
+                  <p>No new notifications</p>
+                </div>
+              `;
+              return;
+            }
+            
+            container.innerHTML = list.map(n => {
+              const bgClass = n.is_read ? "opacity-60 bg-white" : "bg-primary/5 font-semibold";
+              const checkmarkBtn = n.is_read ? "" : `
+                <button onclick="markNotificationRead(${n.id}, event)" class="p-1 hover:bg-slate-200 rounded text-slate-500 hover:text-primary transition-all flex items-center justify-center" title="Mark as read">
+                  <span class="material-symbols-outlined text-[16px]">done</span>
+                </button>
+              `;
+              return `
+                <div class="px-4 py-3 flex items-start justify-between gap-3 ${bgClass} transition-all">
+                  <div class="flex-1 min-w-0">
+                    <p class="text-xs text-slate-800 leading-snug">${n.title}</p>
+                    <p class="text-[11px] text-slate-500 leading-tight mt-0.5 whitespace-pre-line">${n.message}</p>
+                  </div>
+                  ${checkmarkBtn}
+                </div>
+              `;
+            }).join("");
+          }
+        } catch (err) {
+          console.error("Error loading notifications list", err);
+        }
+      }
+
+      async function markNotificationRead(id, event) {
+        if (event) event.stopPropagation();
+        try {
+          const res = await fetch(`/api/notifications/read/${id}`, { method: "PUT" });
+          if (res.ok) {
+            await updateNotificationBadge();
+            await loadNotificationList();
+          }
+        } catch (err) {
+          console.error("Error marking notification read", err);
+        }
+      }
+
+      window.markNotificationRead = markNotificationRead;
 
       // Initial Page Load
       window.onload = async () => {
@@ -1861,6 +2089,7 @@
         await loadSchedule();
         await loadAiInsights();
         await loadDetailedAnalysis();
+        await setupNotifications();
 
         // Add auto-generate change listeners for calibration inputs
         const slider = document.getElementById("studyHoursSlider");
