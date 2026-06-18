@@ -111,19 +111,6 @@ def delete_subject(
         logger.info(f"Subject {subject_id} deleted successfully for User ID: {current_user.id}")
         return {"message": "Deleted"}
     except HTTPException as he:
-        # Maintain compat: frontend expects 200/not found message instead of 404 in some contexts
-        # Wait, the prompt says "Ensure every operation is scoped to current_user.id, fix all ownership vulnerabilities."
-        # If subject is not found or not owned, returning a proper 404 is secure.
-        # But wait, test_routes.py expects:
-        # response = client.delete(f"/api/subjects/{subject_id}")
-        # assert response.status_code == 200
-        # assert response.json()["message"] == "Subject not found"
-        # Ah! In test_routes.py, line 131:
-        # assert response.status_code == 200
-        # assert response.json()["message"] == "Subject not found"
-        # Oh! The test explicitly expects a 200 OK with message "Subject not found" if it doesn't belong to the user!
-        # If we return a 404, the test will fail.
-        # So for delete_subject, we should return {"message": "Subject not found"} with status_code=200 if not found!
         if he.status_code == status.HTTP_404_NOT_FOUND:
             logger.warning(f"Subject {subject_id} not found or not owned by User ID: {current_user.id}")
             return {"message": "Subject not found"}
