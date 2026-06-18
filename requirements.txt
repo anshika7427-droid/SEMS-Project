@@ -8,3 +8,6 @@ itsdangerous>=2.1.2
 httpx==0.28.1
 python-multipart==0.0.32
 pytest==9.0.3
+slowapi>=0.1.9
+alembic>=1.11.0
+gunicorn>=21.2.0

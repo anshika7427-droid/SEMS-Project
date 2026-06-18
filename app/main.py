@@ -4,6 +4,15 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 from pathlib import Path
+from contextlib import asynccontextmanager
+import sys
+import os
+import logging
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from app.utils.limiter import limiter
+from alembic.config import Config
+from alembic import command
 
 # -----------------------------------
 # IMPORT DATABASE
@@ -11,7 +20,7 @@ from pathlib import Path
 
 from app.database import engine
 from app.models import Base
-from app.config import SECRET_KEY
+from app.config import SECRET_KEY, CORS_ORIGINS, LLM_API_KEY
 
 # -----------------------------------
 # IMPORT ROUTES
@@ -32,107 +41,45 @@ from app.routes.notification_routes import router as notification_router
 # CREATE DATABASE TABLES
 # -----------------------------------
 
-Base.metadata.create_all(bind=engine)
+# Table creation and migrations are managed by Alembic.
 
-# Proactive SQLite migrations for existing users table
-from sqlalchemy import text
-with engine.connect() as conn:
-    try:
-        conn.execute(text("ALTER TABLE users ADD COLUMN avatar_url VARCHAR;"))
-        conn.commit()
-    except Exception:
-        pass
-    try:
-        conn.execute(text("ALTER TABLE users ADD COLUMN created_at VARCHAR;"))
-        conn.commit()
-    except Exception:
-        pass
-    try:
-        conn.execute(text("ALTER TABLE schedule_events ADD COLUMN reason VARCHAR;"))
-        conn.commit()
-    except Exception:
-        pass
-    try:
-        conn.execute(text("ALTER TABLE schedule_events ADD COLUMN session_type VARCHAR DEFAULT 'Deep Focus';"))
-        conn.commit()
-    except Exception:
-        pass
-    # Calibration migrations
-    try:
-        conn.execute(text("ALTER TABLE users ADD COLUMN daily_quota INTEGER DEFAULT 6;"))
-        conn.commit()
-    except Exception:
-        pass
-    try:
-        conn.execute(text("ALTER TABLE subjects ADD COLUMN semester INTEGER;"))
-        conn.commit()
-    except Exception:
-        pass
-    try:
-        conn.execute(text("ALTER TABLE milestones ADD COLUMN title VARCHAR;"))
-        conn.commit()
-    except Exception:
-        pass
-    try:
-        conn.execute(text("ALTER TABLE milestones ADD COLUMN completion_percentage INTEGER DEFAULT 0;"))
-        conn.commit()
-    except Exception:
-        pass
-    try:
-        conn.execute(text("ALTER TABLE tasks ADD COLUMN subject_id INTEGER;"))
-        conn.commit()
-    except Exception:
-        pass
-    try:
-        conn.execute(text("ALTER TABLE users ADD COLUMN focus_period VARCHAR DEFAULT 'Morning';"))
-        conn.commit()
-    except Exception:
-        pass
-    try:
-        conn.execute(text("ALTER TABLE users ADD COLUMN focus_method VARCHAR DEFAULT 'Classic Pomodoro';"))
-        conn.commit()
-    except Exception:
-        pass
-    try:
-        conn.execute(text("ALTER TABLE users ADD COLUMN avoid_early_mornings BOOLEAN DEFAULT 0;"))
-        conn.commit()
-    except Exception:
-        pass
-    try:
-        conn.execute(text("ALTER TABLE users ADD COLUMN prioritize_critical BOOLEAN DEFAULT 1;"))
-        conn.commit()
-    except Exception:
-        pass
-    try:
-        conn.execute(text("ALTER TABLE users ADD COLUMN intensive_pre_exam BOOLEAN DEFAULT 1;"))
-        conn.commit()
-    except Exception:
-        pass
-    try:
-        conn.execute(text("ALTER TABLE users ADD COLUMN weekend_preservation BOOLEAN DEFAULT 0;"))
-        conn.commit()
-    except Exception:
-        pass
+logger = logging.getLogger("main")
 
-# -----------------------------------
-# FASTAPI APP
-# -----------------------------------
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        logger.info("Running database migrations via Alembic...")
+        base_dir = Path(__file__).resolve().parent.parent
+        alembic_cfg = Config(str(base_dir / "alembic.ini"))
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Database migrations applied successfully.")
+    except Exception as e:
+        logger.error(f"Error applying database migrations during startup: {e}")
+
+    if not LLM_API_KEY:
+        logger.warning("WARNING: LLM_API_KEY environment variable is not configured. AI schedule generation will fail.")
+    yield
 
 app = FastAPI(
     title="AI-Based Education Recommendation System",
     description="Modern AI Student Productivity Platform",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
-# -----------------------------------
-# SESSION MIDDLEWARE
-# -----------------------------------
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+is_testing = "pytest" in sys.modules or os.getenv("TESTING") == "True"
+
+# RECOMMENDATION: For enhanced production security, implement CSRF protection (e.g., using asgi-csrf middleware or double-submit cookie patterns) to safeguard session-based requests.
 app.add_middleware(
     SessionMiddleware,
     secret_key=SECRET_KEY,
     session_cookie="session",
-    max_age=14 * 24 * 3600  # 14 days
+    max_age=14 * 24 * 3600,  # 14 days
+    same_site="lax",
+    https_only=not is_testing
 )
 
 # -----------------------------------
@@ -142,10 +89,7 @@ app.add_middleware(
 # Using specific allowed origins rather than "*" to support credentials (session cookies)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://127.0.0.1:8000",
-        "http://localhost:8000"
-    ],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -278,8 +222,28 @@ async def api_test():
 
 @app.get("/health")
 async def health_check():
+    db_connected = False
+    try:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        db_connected = True
+    except Exception as e:
+        logger.error(f"Health check database query failed: {e}")
+        
+    llm_configured = bool(LLM_API_KEY)
+    
+    if db_connected and llm_configured:
+        server_status = "healthy"
+    elif db_connected:
+        server_status = "degraded"
+    else:
+        server_status = "unhealthy"
+        
     return {
-        "status": "running",
+        "status": server_status,
+        "database_connected": db_connected,
+        "llm_configured": llm_configured,
         "project": "AI-Based Education Recommendation System"
     }
 

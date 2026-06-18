@@ -204,3 +204,37 @@ All endpoints listed below are prefixed with `/api` unless serving static fronte
 ### Performance Analytics (`/api/analytics`)
 - `GET /summary`: Combine progress rates and AI recommendations.
 - `POST /log-session`: Log a study session (duration in minutes and type).
+
+---
+
+## Production Deployment
+
+### 1. Docker & Docker Compose (Recommended)
+You can deploy the entire application using Docker. The multi-stage build packages the backend application and copies only the required runtime files.
+
+1. Configure production environment variables in a `.env` file (ensure `SECRET_KEY` is secure and `CORS_ORIGINS` points to production domains).
+2. Start the services using docker-compose:
+   ```bash
+   docker-compose up -d --build
+   ```
+3. Docker Compose configures named volumes (`sems_data` and `sems_storage`) to persist the SQLite database and uploaded profile avatars across container restarts.
+
+### 2. Manual Production Execution
+To host manually on a production server:
+1. Set the production environment variables:
+   ```bash
+   export SECRET_KEY="a-very-long-secure-random-key"
+   export LLM_API_KEY="your-production-llm-key"
+   export CORS_ORIGINS="https://yourdomain.com"
+   export HOST="0.0.0.0"
+   export PORT="8000"
+   ```
+2. Run database migrations:
+   ```bash
+   alembic upgrade head
+   ```
+3. Run the FastAPI application using Gunicorn with Uvicorn workers:
+   ```bash
+   gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
+   ```
+

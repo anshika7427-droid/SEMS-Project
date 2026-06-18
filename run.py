@@ -2,10 +2,14 @@ import subprocess
 import time
 import webbrowser
 import sys
+import os
 from pathlib import Path
 
 def start_server():
     print("\n🚀 Starting AI-Based Education Recommendation System (SEMS Backend)...\n")
+    
+    host = os.getenv("HOST", "127.0.0.1")
+    port = os.getenv("PORT", "8000")
     
     try:
         # Start uvicorn as a subprocess using the current Python executable
@@ -16,17 +20,18 @@ def start_server():
             "app.main:app",
             "--reload",
             "--host",
-            "127.0.0.1",
+            host,
             "--port",
-            "8000"
+            port
         ])
         
         # Wait a couple of seconds for the server to bind
         time.sleep(2)
         
         # Open Landing Page Automatically
-        print("✅ Opening browser at http://127.0.0.1:8000")
-        webbrowser.open("http://127.0.0.1:8000")
+        web_host = host if host != "0.0.0.0" else "127.0.0.1"
+        print(f"✅ Opening browser at http://{web_host}:{port}")
+        webbrowser.open(f"http://{web_host}:{port}")
         
         # Wait for the process to exit
         proc.wait()

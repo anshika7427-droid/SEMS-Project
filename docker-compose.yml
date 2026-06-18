@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: sems-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=$SECRET_KEY
+      - LLM_API_KEY=$LLM_API_KEY
+      - LLM_MODEL=$LLM_MODEL
+      - LLM_API_URL=$LLM_API_URL
+      - CORS_ORIGINS=$CORS_ORIGINS
+    volumes:
+      - sems_data:/app/data
+      - sems_storage:/app/storage
+    restart: always
+
+volumes:
+  sems_data:
+  sems_storage:

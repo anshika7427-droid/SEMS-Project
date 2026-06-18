@@ -4,3 +4,6 @@ __pycache__/
 *.pyc
 
 data/database.db
+.pytest_cache/
+.mypy_cache/
+.DS_Store
