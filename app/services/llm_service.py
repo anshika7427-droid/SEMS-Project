@@ -832,6 +832,175 @@ def verify_consistency(schedule_events: list, detailed_analysis: dict, milestone
     logger.info("Consistency Validation Successful!")
     return True
 
+def enforce_weekend_preservation(schedule_events, milestones, daily_quota):
+    # Filter weekday events
+    weekday_events = [e for e in schedule_events if e.get("day") in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]]
+    
+    # Filter weekend events
+    weekend_events = [e for e in schedule_events if e.get("day") in ["Saturday", "Sunday"]]
+    
+    # Check if any milestone exam is less than 5 days away
+    exam_soon = False
+    today = date.today()
+    upcoming_exam_subject = None
+    for m in milestones:
+        try:
+            exam_date = None
+            try:
+                exam_date = datetime.strptime(m.exam_date.split()[0], "%Y-%m-%d").date()
+            except Exception:
+                try:
+                    dt = datetime.strptime(m.exam_date, "%B %d")
+                    exam_date = dt.date().replace(year=2026)
+                except Exception:
+                    pass
+            if exam_date:
+                days_left = (exam_date - today).days
+                if 0 <= days_left < 5:
+                    exam_soon = True
+                    upcoming_exam_subject = m.subject_name
+                    break
+        except Exception:
+            pass
+            
+    retained_weekend_study = None
+    redistribute_list = []
+    
+    for e in weekend_events:
+        is_study = e.get("session_type") not in ["Rest", "Recovery", "Mindfulness", "Break", "Buffer Time"]
+        if is_study:
+            if exam_soon and not retained_weekend_study and e.get("subject") == upcoming_exam_subject:
+                # Keep this one lightweight study session, max 1.5 hours
+                retained_weekend_study = e
+                retained_weekend_study["session_type"] = "Revision"
+                retained_weekend_study["hours"] = 1.5
+                retained_weekend_study["start_time"] = "13:00"
+                retained_weekend_study["end_time"] = "14:30"
+                retained_weekend_study["reason"] = f"Lightweight exam preparation review for {retained_weekend_study.get('subject')}."
+            else:
+                redistribute_list.append(e)
+                
+    # Redistribute the other weekend study hours to weekdays
+    if redistribute_list:
+        weekday_hours = {d: 0.0 for d in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]}
+        for we in weekday_events:
+            weekday_hours[we.get("day")] = weekday_hours.get(we.get("day"), 0.0) + float(we.get("hours", 0.0))
+            
+        for e in redistribute_list:
+            target_day = min(weekday_hours, key=weekday_hours.get)
+            
+            # Try to extend existing session of same subject on that day
+            found_same_subject = False
+            for we in weekday_events:
+                if we.get("day") == target_day and we.get("subject") == e.get("subject"):
+                    we["hours"] = float(we.get("hours", 0.0)) + float(e.get("hours", 0.0))
+                    try:
+                        h, m = map(int, we["start_time"].split(":"))
+                        total_m = h * 60 + m + int(we["hours"] * 60)
+                        new_h = (total_m // 60) % 24
+                        new_m = total_m % 60
+                        we["end_time"] = f"{new_h:02d}:{new_m:02d}"
+                    except Exception:
+                        pass
+                    found_same_subject = True
+                    break
+                    
+            if not found_same_subject:
+                start_time = "14:00"
+                max_end_minutes = 0
+                for we in weekday_events:
+                    if we.get("day") == target_day:
+                        try:
+                            h, m = map(int, we["end_time"].split(":"))
+                            end_min = h * 60 + m
+                            if end_min > max_end_minutes:
+                                max_end_minutes = end_min
+                        except Exception:
+                            pass
+                if max_end_minutes > 0:
+                    start_min = max_end_minutes + 120
+                    if start_min >= 22 * 60:
+                        start_min = 9 * 60
+                    new_h = (start_min // 60) % 24
+                    new_m = start_min % 60
+                    start_time = f"{new_h:02d}:{new_m:02d}"
+                    
+                try:
+                    h, m = map(int, start_time.split(":"))
+                    end_min = h * 60 + m + int(float(e.get("hours", 0.0)) * 60)
+                    new_h = (end_min // 60) % 24
+                    new_m = end_min % 60
+                    end_time = f"{new_h:02d}:{new_m:02d}"
+                except Exception:
+                    end_time = start_time
+                    
+                new_event = {
+                    "day": target_day,
+                    "subject": e.get("subject"),
+                    "hours": float(e.get("hours", 0.0)),
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "session_type": e.get("session_type"),
+                    "reason": f"Shifted from weekend to preserve rest: {e.get('reason')}"
+                }
+                weekday_events.append(new_event)
+                
+            weekday_hours[target_day] += float(e.get("hours", 0.0))
+            
+    # Reassemble final schedule
+    final_events = []
+    final_events.extend(weekday_events)
+    
+    if retained_weekend_study:
+        final_events.append(retained_weekend_study)
+        
+    # Append the Rest/Recovery/Mindfulness blocks to Saturday and Sunday
+    default_sat_blocks = [
+        {
+            "day": "Saturday",
+            "subject": "Rest & Recharge",
+            "hours": 2.0,
+            "start_time": "10:00",
+            "end_time": "12:00",
+            "session_type": "Recovery",
+            "reason": "Protected recovery slot to prevent academic burnout."
+        },
+        {
+            "day": "Saturday",
+            "subject": "Mindfulness",
+            "hours": 1.5,
+            "start_time": "15:00",
+            "end_time": "16:30",
+            "session_type": "Mindfulness",
+            "reason": "Mental decompression and stress management session."
+        }
+    ]
+    default_sun_blocks = [
+        {
+            "day": "Sunday",
+            "subject": "Rest & Recharge",
+            "hours": 2.0,
+            "start_time": "10:00",
+            "end_time": "12:00",
+            "session_type": "Rest",
+            "reason": "Complete downtime to build cognitive reserves for the week ahead."
+        },
+        {
+            "day": "Sunday",
+            "subject": "Mindfulness",
+            "hours": 1.5,
+            "start_time": "15:00",
+            "end_time": "16:30",
+            "session_type": "Recovery",
+            "reason": "Restorative relaxation block to boost mental clarity."
+        }
+    ]
+    
+    final_events.extend(default_sat_blocks)
+    final_events.extend(default_sun_blocks)
+    
+    return final_events
+
 def generate_ai_schedule(
     user_id: int,
     subjects: list,
@@ -844,6 +1013,7 @@ def generate_ai_schedule(
     Generates a personalized weekly study timetable and detailed strategic analysis in a single LLM call.
     Uses file-based caching to prevent redundant API calls.
     """
+    
     logger.info(f"Generating AI study plan for user {user_id} using model {LLM_MODEL}")
     
     # Standardize calibration defaults
@@ -862,6 +1032,22 @@ def generate_ai_schedule(
     for k, v in calibration_defaults.items():
         if k not in calibration or calibration[k] is None:
             calibration[k] = v
+            
+    class CalibrationDict(dict):
+        @property
+        def weekend_preservation(self):
+            return self.get("weekend_preservation")
+            
+    calibration = CalibrationDict(calibration)
+    
+    logger.info(
+        f"Weekend Preservation: {calibration.weekend_preservation}"
+    )
+    
+    weekend_preservation = calibration.weekend_preservation
+    logger.info(
+        f"Applying weekend preservation: {weekend_preservation}"
+    )
             
     force_refresh = calibration.get("force_refresh", False)
     
@@ -1055,6 +1241,9 @@ def generate_ai_schedule(
                 raise ValueError("No valid schedule structure returned by LLM.")
                 
             schedule_events = schedule_data.get("schedule", [])
+            if weekend_preservation:
+                schedule_events = enforce_weekend_preservation(schedule_events, milestones, requested_hours)
+                schedule_data["schedule"] = schedule_events
             detailed_analysis = schedule_data.get("detailed_analysis", {})
             
             # Check consistency of the generated map

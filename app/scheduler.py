@@ -43,7 +43,11 @@ def generate_weekly_schedule(user_id: int, db: Session):
     subjects = db.query(Subject).filter(Subject.user_id == user_id).all()
     milestones = db.query(Milestone).filter(Milestone.user_id == user_id).all()
     user = db.query(User).filter(User.id == user_id).first()
-    preserve_weekends = user.weekend_preservation if user else False
+    weekend_preservation = user.weekend_preservation if user else False
+    logger.info(
+        f"Applying weekend preservation: {weekend_preservation}"
+    )
+    preserve_weekends = weekend_preservation
     
     if not subjects:
         logger.warning(f"No subjects found for User ID: {user_id}. Cannot generate schedule.")

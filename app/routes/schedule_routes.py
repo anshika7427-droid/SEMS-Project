@@ -41,6 +41,10 @@ def generate_ai_schedule_endpoint(
         focus_period = "Morning"
         avoid_early_mornings = False
         if payload:
+            calibration = payload
+            logger.info(
+                f"Weekend Preservation: {calibration.weekend_preservation}"
+            )
             try:
                 current_user.daily_quota = payload.daily_quota
                 current_user.focus_period = payload.focus_period

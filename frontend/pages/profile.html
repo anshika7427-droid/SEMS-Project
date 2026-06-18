@@ -459,6 +459,70 @@
         });
     }
 
+    function getErrorMessage(error, response) {
+        console.error("Detailed error logs:", error, response);
+        
+        function formatValue(val) {
+          if (val === undefined || val === null) return null;
+          if (Array.isArray(val)) {
+            return val.map(item => {
+              if (item && typeof item === 'object') {
+                return item.msg || item.message || JSON.stringify(item);
+              }
+              return String(item);
+            }).join(', ');
+          }
+          if (typeof val === 'object') {
+            return val.msg || val.message || val.detail || JSON.stringify(val);
+          }
+          return String(val);
+        }
+
+        // 1. error.detail
+        if (error && error.detail !== undefined && error.detail !== null) {
+          const msg = formatValue(error.detail);
+          if (msg) return msg;
+        }
+
+        // 2. error.message
+        if (error && error.message !== undefined && error.message !== null) {
+          const msg = formatValue(error.message);
+          if (msg) return msg;
+        }
+
+        // 3. response.detail
+        if (response && response.detail !== undefined && response.detail !== null) {
+          const msg = formatValue(response.detail);
+          if (msg) return msg;
+        }
+        if (error && error.response && error.response.detail !== undefined && error.response.detail !== null) {
+          const msg = formatValue(error.response.detail);
+          if (msg) return msg;
+        }
+
+        // 4. response.message
+        if (response && response.message !== undefined && response.message !== null) {
+          const msg = formatValue(response.message);
+          if (msg) return msg;
+        }
+        if (error && error.response && error.response.message !== undefined && error.response.message !== null) {
+          const msg = formatValue(error.response.message);
+          if (msg) return msg;
+        }
+
+        // 5. JSON.stringify(error)
+        if (error) {
+          try {
+            if (typeof error === 'string') return error;
+            return JSON.stringify(error);
+          } catch (e) {
+            return String(error);
+          }
+        }
+
+        return "An unexpected error occurred.";
+    }
+
     // Toast alert notices
     function showToast(text, type = "success") {
         const toast = document.getElementById("toastNotification");
@@ -466,7 +530,14 @@
         const textNode = document.getElementById("toastText");
         
         toast.className = toast.className.replace("hidden", "").trim();
-        textNode.textContent = text;
+        
+        let displayText = text;
+        if (text && typeof text === 'object') {
+          displayText = getErrorMessage(text);
+        } else {
+          displayText = String(text);
+        }
+        textNode.textContent = displayText;
         
         if (type === "success") {
           toast.className = "fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-green-400 px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 toast";
@@ -569,12 +640,16 @@
           document.getElementById("navAvatar").src = data.avatar_url;
           showToast("Profile image updated!", "success");
         } else {
-          const data = await res.json();
-          showToast(data.detail || "Upload failed", "error");
+          let data;
+          try {
+            data = await res.json();
+          } catch (e) {
+            data = { detail: "Upload failed" };
+          }
+          showToast(getErrorMessage(data), "error");
         }
       } catch (err) {
-        console.error("Avatar upload error", err);
-        showToast("Error uploading profile photo", "error");
+        showToast(getErrorMessage(err), "error");
       }
     }
 
@@ -599,12 +674,16 @@
           toggleEdit();
           await loadUserProfile();
         } else {
-          const data = await res.json();
-          showToast(data.detail || "Update details failed", "error");
+          let data;
+          try {
+            data = await res.json();
+          } catch (e) {
+            data = { detail: "Update details failed" };
+          }
+          showToast(getErrorMessage(data), "error");
         }
       } catch (err) {
-        console.error("Profile update error", err);
-        showToast("Network connection error", "error");
+        showToast(getErrorMessage(err), "error");
       }
     });
 
@@ -643,12 +722,16 @@
           closeModal("passwordModal");
           document.getElementById("changePasswordForm").reset();
         } else {
-          const data = await res.json();
-          showToast(data.detail || "Incorrect current password", "error");
+          let data;
+          try {
+            data = await res.json();
+          } catch (e) {
+            data = { detail: "Incorrect current password" };
+          }
+          showToast(getErrorMessage(data), "error");
         }
       } catch (err) {
-        console.error("Password change error", err);
-        showToast("Failed to change password", "error");
+        showToast(getErrorMessage(err), "error");
       }
     });
 

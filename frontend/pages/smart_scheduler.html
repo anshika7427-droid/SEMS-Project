@@ -883,6 +883,70 @@
       </div>
     </div>
     <script>
+      function getErrorMessage(error, response) {
+        console.error("Detailed error logs:", error, response);
+        
+        function formatValue(val) {
+          if (val === undefined || val === null) return null;
+          if (Array.isArray(val)) {
+            return val.map(item => {
+              if (item && typeof item === 'object') {
+                return item.msg || item.message || JSON.stringify(item);
+              }
+              return String(item);
+            }).join(', ');
+          }
+          if (typeof val === 'object') {
+            return val.msg || val.message || val.detail || JSON.stringify(val);
+          }
+          return String(val);
+        }
+
+        // 1. error.detail
+        if (error && error.detail !== undefined && error.detail !== null) {
+          const msg = formatValue(error.detail);
+          if (msg) return msg;
+        }
+
+        // 2. error.message
+        if (error && error.message !== undefined && error.message !== null) {
+          const msg = formatValue(error.message);
+          if (msg) return msg;
+        }
+
+        // 3. response.detail
+        if (response && response.detail !== undefined && response.detail !== null) {
+          const msg = formatValue(response.detail);
+          if (msg) return msg;
+        }
+        if (error && error.response && error.response.detail !== undefined && error.response.detail !== null) {
+          const msg = formatValue(error.response.detail);
+          if (msg) return msg;
+        }
+
+        // 4. response.message
+        if (response && response.message !== undefined && response.message !== null) {
+          const msg = formatValue(response.message);
+          if (msg) return msg;
+        }
+        if (error && error.response && error.response.message !== undefined && error.response.message !== null) {
+          const msg = formatValue(error.response.message);
+          if (msg) return msg;
+        }
+
+        // 5. JSON.stringify(error)
+        if (error) {
+          try {
+            if (typeof error === 'string') return error;
+            return JSON.stringify(error);
+          } catch (e) {
+            return String(error);
+          }
+        }
+
+        return "An unexpected error occurred.";
+      }
+
       function formatTime12Hour(timeStr) {
         if (!timeStr) return "";
         if (timeStr.includes("AM") || timeStr.includes("PM") || timeStr.includes("am") || timeStr.includes("pm")) {
@@ -1077,11 +1141,16 @@
             toggleSubjectModal();
             await loadSubjects();
           } else {
-            const data = await response.json();
-            alert(data.detail || "Error adding subject");
+            let data;
+            try {
+              data = await response.json();
+            } catch (e) {
+              data = { detail: "Error adding subject" };
+            }
+            alert(getErrorMessage(data));
           }
         } catch (error) {
-          console.error("Error adding subject:", error);
+          alert(getErrorMessage(error));
         }
       }
 
@@ -1382,6 +1451,11 @@
         }
 
         const calibrationPayload = gatherCalibrationInputs();
+        const calibration = calibrationPayload;
+        console.log(
+            "Weekend Preservation:",
+            calibration.weekend_preservation
+        );
         calibrationPayload.force_refresh = forceRefresh;
 
         try {
@@ -1425,12 +1499,16 @@
               }
             }
           } else {
-            const data = await response.json();
-            alert(data.detail || "Failed to generate schedule");
+            let data;
+            try {
+              data = await response.json();
+            } catch (e) {
+              data = { detail: "Failed to generate schedule" };
+            }
+            alert(getErrorMessage(data));
           }
         } catch (error) {
-          console.error("Error generating schedule:", error);
-          alert("An unexpected error occurred while generating the schedule.");
+          alert(getErrorMessage(error));
         } finally {
           hideLoading();
           if (generateBtn) {
@@ -1834,6 +1912,11 @@
 
       async function saveCalibrationPreferences() {
         const calibrationPayload = gatherCalibrationInputs();
+        const calibration = calibrationPayload;
+        console.log(
+            "Weekend Preservation:",
+            calibration.weekend_preservation
+        );
         try {
           showLoading("Saving preferences...");
           const response = await fetch("/api/schedule/calibration", {
@@ -1846,12 +1929,16 @@
           if (response.ok) {
             alert("Routine Calibration and Intelligence Constraints saved to database successfully!");
           } else {
-            const data = await response.json();
-            alert(data.detail || "Failed to save preferences");
+            let data;
+            try {
+              data = await response.json();
+            } catch (e) {
+              data = { detail: "Failed to save preferences" };
+            }
+            alert(getErrorMessage(data));
           }
         } catch (error) {
-          console.error("Error saving preferences:", error);
-          alert("An unexpected error occurred.");
+          alert(getErrorMessage(error));
         } finally {
           hideLoading();
         }
