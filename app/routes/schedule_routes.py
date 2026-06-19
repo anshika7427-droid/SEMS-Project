@@ -118,12 +118,18 @@ def generate_ai_schedule_endpoint(
                 SLOT_STARTS = ["09:00", "14:00", "17:00", "20:00"]
         
         day_events = defaultdict(list)
-        available_days = [0, 1, 2, 3, 4] if current_user.weekend_preservation else [0, 1, 2, 3, 4, 5, 6]
-        day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-        allowed_days = [day_names[d] for d in available_days]
+
+        print("\n" + "=" * 60)
+        print("DEBUG WEEKEND PRESERVATION:", current_user.weekend_preservation)
+
+        if payload:
+            print("DEBUG PAYLOAD WEEKEND:", payload.weekend_preservation)
+
+        print("DEBUG ALLOWED DAYS WILL BE:",
+            [0, 1, 2, 3, 4] if current_user.weekend_preservation else [0, 1, 2, 3, 4, 5, 6])
+        print("=" * 60 + "\n")
+
         for item in ai_data.get("schedule", []):
-            if item["day"] not in allowed_days:
-                continue
             day_events[item["day"]].append(item)
             
         events_added = 0

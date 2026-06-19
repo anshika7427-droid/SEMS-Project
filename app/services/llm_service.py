@@ -1187,33 +1187,20 @@ def generate_ai_schedule(
         "Strict Rules & Constraints:\n"
         "1. Daily Quota Compliance & Weekday Consistency: You MUST schedule study sessions on EVERY weekday (Monday, Tuesday, Wednesday, Thursday, and Friday). Do NOT leave any weekday with 0 study hours. The sum of scheduled study hours for each of these weekdays must match the requested Daily Study Quota target within a strict tolerance of ±30 minutes (e.g. if daily quota is 7, the total hours for Monday, Tuesday, Wednesday, Thursday, and Friday must each be between 6.5 and 7.5 hours). Avoid under-allocations or leaving weekdays completely blank.\n"
         "2. STUDY HOUR DISTRIBUTION (Daily Quota Split): The requested daily study quota MUST be split and distributed across 2-4 study sessions throughout the day. You must NEVER place the entire quota into a single continuous study period (e.g., never schedule 7 hours consecutively). Interleave sessions with healthy recovery gaps.\n"
-        "   - Example 7-hour quota: Afternoon: 2 hours, Evening: 2 hours, Night: 3 hours\n"
-        "   - Example 9-hour quota: Afternoon: 3 hours, Evening: 2 hours, Night: 4 hours\n"
-        "   - Example 12-hour quota: Afternoon: 4 hours, Evening: 3 hours, Night: 5 hours\n"
-        "3. RECOVERY GAPS (Burnout Prevention): Between major study sessions, there MUST be recovery time. You must schedule a mandatory break/recovery gap of at least 60 minutes (preferred gap: 2-3 hours) between sessions. Do not schedule sessions back-to-back without a break. For example, rather than studying continuously from 2:00 PM to 9:00 PM, a realistic and burnout-preventive schedule is:\n"
-        "   - 2:00 PM - 4:00 PM: Study (2 hours)\n"
-        "   - 4:00 PM - 6:00 PM: Break/Recovery (2 hours gap)\n"
-        "   - 6:00 PM - 8:00 PM: Study (2 hours)\n"
-        "   - 8:00 PM - 9:00 PM: Dinner/Rest (1 hour gap)\n"
-        "   - 9:00 PM - 11:00 PM: Study (2 hours)\n"
+        "3. RECOVERY GAPS (Burnout Prevention): Between major study sessions, there MUST be recovery time. You must schedule a mandatory break/recovery gap of at least 60 minutes (preferred gap: 2-3 hours) between sessions. Do not schedule sessions back-to-back without a break.\n"
         "4. Sleeping Window: No study session is allowed between 12:00 AM (midnight) and 6:00 AM. For users with Night preference, the absolute no-study window is 3:00 AM to 7:00 AM.\n"
-        "5. AVOID EARLY MORNINGS: If 'Avoid Early Mornings' is enabled, do NOT schedule any sessions before 9:00 AM. Preferred start windows are 9:00 AM onwards, 10:00 AM onwards, or 11:00 AM onwards. It does NOT mean starting at night only; you should still use afternoon and evening slots to distribute study sessions throughout the day.\n"
-        "6. Each study session duration must correspond to complete Pomodoro/Deep Focus cycles:\n"
-        "   - Classic Pomodoro: multiples of 0.5 hours.\n"
-        "   - Deep Focus: multiples of 1.0 hour.\n"
+        "5. AVOID EARLY MORNINGS: If 'Avoid Early Mornings' is enabled, do NOT schedule any sessions before 9:00 AM. Preferred start windows are 9:00 AM onwards, 10:00 AM onwards, or 11:00 AM onwards.\n"
+        "6. Each study session duration must correspond to complete Pomodoro/Deep Focus cycles: Classic Pomodoro: multiples of 0.5 hours; Deep Focus: multiples of 1.0 hour.\n"
         "7. Subject Rotation & Cognitive Load (Anti-Stacking & Mixing):\n"
-        "   - Do NOT schedule identical subjects back-to-back on the same day. Interleave different subjects to aid retention.\n"
-        "   - Do NOT stack multiple Hard subjects consecutively (e.g., Botany, Zoology, Physics back-to-back-to-back). Mix difficult and easier subjects, separated by breaks, to reduce mental fatigue (e.g., Botany, Break, English, Break, Zoology).\n"
+        "   - Do NOT schedule identical subjects back-to-back on the same day.\n"
+        "   - Do NOT stack multiple Hard subjects consecutively. Mix difficult and easier subjects, separated by breaks.\n"
         "8. Routine Calibration Weighting (Focus preference without dominating):\n"
-        "   - Focus Period means 'most productive study window', NOT the 'only study window'. The focus period should receive the largest share of study time, but the rest of the day must still contain study sessions.\n"
-        "   - Night Preference: Night study (preferably 6:00 PM – 12:00 AM) should receive 40-50% of the daily study quota, with the remaining 50-60% distributed during afternoon/evening blocks.\n"
-        "   - Evening Preference: Evening study (preferably 4:00 PM – 9:00 PM) should receive 40-50% of the daily study quota, with the remaining 50-60% distributed in afternoon + night blocks.\n"
-        "   - Morning Preference: Morning study (preferably 8:00 AM – 1:00 PM) should receive 40-50% of the daily study quota, with the remaining 50-60% distributed in afternoon + evening blocks.\n"
-        "   - Weekend Preservation: If Weekend Preservation is active, you MUST NOT schedule any study sessions on Saturday and Sunday (weekends remain completely free, 0 study hours). If Weekend Preservation is NOT active, weekends should still have study sessions, either matching the daily quota or slightly reduced (e.g. 70-100% of daily quota). Only override weekend preservation and scale up hours if an exam milestone is less than 5 days away.\n"
+        "   - Focus Period means 'most productive study window', NOT the 'only study window'.\n"
+        "   - Weekend Preservation: If 'Weekend preservation: Yes' is specified, you MUST NOT schedule any study sessions on Saturday and Sunday (weekends remain completely free, 0 study hours). If 'Weekend preservation: No' is specified, Saturday and Sunday MUST receive study sessions, either matching the weekday daily quota or slightly reduced (e.g. 70-100% of daily quota). Do NOT leave weekends completely free of study sessions if 'Weekend preservation: No' is specified.\n"
         "   - Prioritize Critical Subjects: Allocate more hours and preferred slots to Hard subjects and subjects close to their exam dates.\n"
         "9. Chronological Phase Ordering: The preparation phases in `phases` MUST be ordered chronologically by milestone exam date. You MUST follow this exact order:\n"
         f"   - {milestones_chronology_str}\n"
-        "10. Human Realism Safeguard (Human-like Scheduling): The generated schedule must feel like it was designed for a real college student. Assume they have classes, meals, family time, travel, personal activities, and rest. The student is NOT available for uninterrupted studying all day. Generate realistic schedules rather than maximizing study density. Optimize for consistency, focus, and burnout prevention, not merely mathematical allocation.\n"
+        "10. Human Realism Safeguard (Human-like Scheduling): The generated schedule must feel like it was designed for a real college student.\n"
         "11. Respond with ONLY the raw JSON output, without any markdown formatting wrappers or conversational text."
     )
 
@@ -1227,6 +1214,7 @@ def generate_ai_schedule(
         f"JSON output:"
     )
 
+    requested_hours = calibration.get("daily_quota", 6)
     schedule_data = {}
     llm_calls_made = 0
     consistency_retries = 3

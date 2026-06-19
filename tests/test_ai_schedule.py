@@ -287,3 +287,100 @@ def test_calculate_schedule_metrics_burnout():
     metrics_good = calculate_schedule_metrics(good_schedule, [], subjects)
     assert metrics_good["burnout_risk"] < metrics_bad["burnout_risk"]
 
+
+@patch("app.services.llm_service.LLM_API_KEY", "mock_key")
+@patch("app.services.llm_service.call_llm_api")
+def test_weekend_preservation_in_ai_schedule(mock_call):
+    from datetime import date, timedelta
+    
+    # Setup mock LLM response
+    mock_llm_response = {
+        "schedule": [
+            {"day": "Monday", "subject": "DBMS", "hours": 2, "session_type": "Deep Focus", "reason": "Exam prep", "start_time": "09:00", "end_time": "11:00"},
+            {"day": "Saturday", "subject": "DBMS", "hours": 2, "session_type": "Deep Focus", "reason": "Weekend study", "start_time": "10:00", "end_time": "12:00"}
+        ],
+        "detailed_analysis": {
+            "focus_title": "Evening Study Plan",
+            "focus_description": "Desc",
+            "focus_blocks": [],
+            "phases": [],
+            "pro_tips": [],
+            "subject_allocation_reasons": {},
+            "time_slot_reasons": "",
+            "milestone_reasons": "",
+            "preference_reasons": ""
+        },
+        "quality_scoring": {
+            "balance_score": 80,
+            "burnout_risk": 20,
+            "exam_readiness_score": 90
+        }
+    }
+    import copy
+    mock_call.side_effect = lambda *args, **kwargs: copy.deepcopy(mock_llm_response)
+
+    class MockSubject:
+        name = "DBMS"
+        difficulty = "Hard"
+
+    class MockMilestone:
+        subject_name = "DBMS"
+        exam_date = (date.today() + timedelta(days=30)).strftime("%Y-%m-%d")
+        completion_percentage = 0
+
+    analytics = {"active_streak": 3, "weekly_study_hours": 4.5}
+
+    # 1. With weekend_preservation = True, and no upcoming exam:
+    # Saturday study session should be shifted to weekdays, and Saturday/Sunday should only have Rest & Recharge / Mindfulness
+    calibration_with_preservation = {
+        "daily_quota": 6,
+        "focus_period": "Morning",
+        "focus_method": "Classic Pomodoro",
+        "avoid_early_mornings": False,
+        "prioritize_critical": True,
+        "intensive_pre_exam": True,
+        "weekend_preservation": True,
+        "force_refresh": True
+    }
+    
+    result = generate_ai_schedule(1, [MockSubject()], [MockMilestone()], analytics, calibration_with_preservation)
+    
+    # Study session on Saturday should be shifted
+    sat_study_sessions = [e for e in result["schedule"] if e["day"] == "Saturday" and e["session_type"] not in ["Rest", "Recovery", "Mindfulness"]]
+    assert len(sat_study_sessions) == 0
+    
+    # 2. With weekend_preservation = True, and an upcoming exam (e.g. tomorrow)
+    # The Saturday study session should be retained (converted to Revision)
+    class MockMilestoneSoon:
+        subject_name = "DBMS"
+        exam_date = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
+        completion_percentage = 0
+        
+    result_soon = generate_ai_schedule(1, [MockSubject()], [MockMilestoneSoon()], analytics, calibration_with_preservation)
+    
+    # Lightweight exam prep study session on Saturday should be retained
+    sat_study_sessions_soon = [e for e in result_soon["schedule"] if e["day"] == "Saturday" and e["session_type"] == "Revision"]
+    assert len(sat_study_sessions_soon) == 1
+    assert sat_study_sessions_soon[0]["subject"] == "DBMS"
+    assert sat_study_sessions_soon[0]["hours"] == 1.5
+
+    # 3. With weekend_preservation = False:
+    # Saturday study session should remain as-is
+    calibration_no_preservation = {
+        "daily_quota": 6,
+        "focus_period": "Morning",
+        "focus_method": "Classic Pomodoro",
+        "avoid_early_mornings": False,
+        "prioritize_critical": True,
+        "intensive_pre_exam": True,
+        "weekend_preservation": False,
+        "force_refresh": True
+    }
+    
+    result_no_pres = generate_ai_schedule(1, [MockSubject()], [MockMilestone()], analytics, calibration_no_preservation)
+    
+    # The Saturday study session is kept
+    sat_study_sessions_no_pres = [e for e in result_no_pres["schedule"] if e["day"] == "Saturday" and e["session_type"] == "Deep Focus"]
+    assert len(sat_study_sessions_no_pres) == 1
+
+

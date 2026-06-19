@@ -469,10 +469,10 @@
             </div>
             <div class="flex items-center justify-between">
               <span class="font-medium text-on-surface"
-                >Weekend Preservation</span
+                >Include Weekends</span
               >
               <label class="relative inline-flex items-center cursor-pointer">
-                <input class="sr-only peer" type="checkbox" />
+                <input checked class="sr-only peer" type="checkbox" />
                 <div
                   class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"
                 ></div>
@@ -1413,7 +1413,7 @@
           avoidEarlyMornings = checkboxes[0].checked;
           prioritizeCritical = checkboxes[1].checked;
           intensivePreExam = checkboxes[2].checked;
-          weekendPreservation = checkboxes[3].checked;
+          weekendPreservation = !checkboxes[3].checked;
         }
 
         return {
@@ -1453,7 +1453,7 @@
         const calibrationPayload = gatherCalibrationInputs();
         const calibration = calibrationPayload;
         console.log(
-            "Weekend Preservation:",
+            "Weekend Preservation (mapped from Include Weekends):",
             calibration.weekend_preservation
         );
         calibrationPayload.force_refresh = forceRefresh;
@@ -1901,7 +1901,7 @@
                 checkboxes[0].checked = data.avoid_early_mornings;
                 checkboxes[1].checked = data.prioritize_critical;
                 checkboxes[2].checked = data.intensive_pre_exam;
-                checkboxes[3].checked = data.weekend_preservation;
+                checkboxes[3].checked = !data.weekend_preservation;
               }
             }
           }
@@ -1914,7 +1914,7 @@
         const calibrationPayload = gatherCalibrationInputs();
         const calibration = calibrationPayload;
         console.log(
-            "Weekend Preservation:",
+            "Weekend Preservation (mapped from Include Weekends):",
             calibration.weekend_preservation
         );
         try {

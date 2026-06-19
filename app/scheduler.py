@@ -43,10 +43,25 @@ def generate_weekly_schedule(user_id: int, db: Session):
     subjects = db.query(Subject).filter(Subject.user_id == user_id).all()
     milestones = db.query(Milestone).filter(Milestone.user_id == user_id).all()
     user = db.query(User).filter(User.id == user_id).first()
+
     weekend_preservation = user.weekend_preservation if user else False
+
+    print("\n" + "=" * 70)
+    print("SCHEDULER DEBUG")
+    print("USER ID:", user_id)
+
+    if user:
+        print("DB VALUE:", user.weekend_preservation)
+    else:
+        print("USER NOT FOUND")
+
+    print("WEEKEND_PRESERVATION:", weekend_preservation)
+    print("=" * 70 + "\n")
+
     logger.info(
         f"Applying weekend preservation: {weekend_preservation}"
     )
+    
     preserve_weekends = weekend_preservation
     
     if not subjects:
