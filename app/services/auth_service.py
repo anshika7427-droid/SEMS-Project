@@ -1,4 +1,5 @@
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 import logging
 import bcrypt
@@ -27,10 +28,9 @@ class AuthService:
             return False
 
     @classmethod
-    def register(cls, db: Session, user: UserCreate) -> User:
-        existing_user_email = db.query(User).filter(
-            User.email == user.email
-        ).first()
+    async def register(cls, db: AsyncSession, user: UserCreate) -> User:
+        result = await db.execute(select(User).where(User.email == user.email))
+        existing_user_email = result.scalars().first()
 
         if existing_user_email:
             logger.warning(f"Registration failed: Email {user.email} already exists.")
@@ -39,9 +39,8 @@ class AuthService:
                 detail="Email already exists"
             )
 
-        existing_user_name = db.query(User).filter(
-            User.name == user.name
-        ).first()
+        result = await db.execute(select(User).where(User.name == user.name))
+        existing_user_name = result.scalars().first()
 
         if existing_user_name:
             logger.warning(f"Registration failed: Username '{user.name}' is already taken.")
@@ -57,16 +56,15 @@ class AuthService:
         )
 
         db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
+        await db.commit()
+        await db.refresh(new_user)
         logger.info(f"User {new_user.email} (ID: {new_user.id}) registered successfully via AuthService.")
         return new_user
 
     @classmethod
-    def login(cls, db: Session, credentials: UserLogin, session: dict) -> User:
-        db_user = db.query(User).filter(
-            User.email == credentials.email
-        ).first()
+    async def login(cls, db: AsyncSession, credentials: UserLogin, session: dict) -> User:
+        result = await db.execute(select(User).where(User.email == credentials.email))
+        db_user = result.scalars().first()
 
         if not db_user or not cls.verify_password(credentials.password, db_user.password):
             logger.warning(f"Failed login attempt for email: {credentials.email}")
@@ -92,7 +90,7 @@ class AuthService:
         logger.info(f"User with ID {user_id} logged out. Session cleared via AuthService.")
 
     @staticmethod
-    def validate_session(session: dict, db: Session) -> User:
+    async def validate_session(session: dict, db: AsyncSession) -> User:
         user_id = session.get("user_id")
         logger.info(f"[Auth Audit] Resolving user_id from session: {user_id}")
         
@@ -102,7 +100,8 @@ class AuthService:
                 detail="Not authenticated. Please log in."
             )
         
-        user = db.query(User).filter(User.id == user_id).first()
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalars().first()
         if not user:
             session.clear()
             raise HTTPException(
@@ -114,5 +113,5 @@ class AuthService:
         return user
 
     @classmethod
-    def get_current_user(cls, session: dict, db: Session) -> User:
-        return cls.validate_session(session, db)
+    async def get_current_user(cls, session: dict, db: AsyncSession) -> User:
+        return await cls.validate_session(session, db)

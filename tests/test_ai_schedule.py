@@ -1,38 +1,8 @@
 import pytest
 import json
 from unittest.mock import patch
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
-from app.main import app
-from app.database import get_db, Base
-from app.models import User, Subject, Milestone, ScheduleEvent
+from datetime import date, timedelta
 from app.services.llm_service import validate_schedule_json, generate_ai_schedule
-
-# Configure local test DB
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
-TestingSessionLocal = sessionmaker(
-    autocommit=False, autoflush=False, bind=engine
-)
-
-Base.metadata.create_all(bind=engine)
-
-def override_get_db():
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-app.dependency_overrides[get_db] = override_get_db
-client = TestClient(app)
 
 def test_validate_schedule_json():
     # Valid structure
@@ -99,9 +69,10 @@ def test_validate_schedule_json():
     }
     assert validate_schedule_json(invalid_data_2) is False
 
+
 @patch("app.services.llm_service.LLM_API_KEY", "mock_key")
 @patch("httpx.Client.post")
-def test_generate_ai_schedule_success(mock_post):
+async def test_generate_ai_schedule_success(mock_post):
     def side_effect(*args, **kwargs):
         class MockResponse:
             status_code = 200
@@ -161,29 +132,30 @@ def test_generate_ai_schedule_success(mock_post):
 
     class MockMilestone:
         subject_name = "DBMS"
-        exam_date = "2026-06-20"
+        exam_date = date(2026, 6, 20)
         completion_percentage = 0
 
     analytics = {"active_streak": 3, "weekly_study_hours": 4.5}
 
-    result = generate_ai_schedule(1, [MockSubject()], [MockMilestone()], analytics)
+    result = await generate_ai_schedule(1, [MockSubject()], [MockMilestone()], analytics)
     assert result["schedule"][0]["subject"] == "DBMS"
     assert result["schedule"][0]["hours"] == 2
 
-def test_api_generate_ai_schedule_flow():
+
+async def test_api_generate_ai_schedule_flow(client):
     # 1. Sign up user
-    client.post(
+    await client.post(
         "/api/auth/signup",
         json={"name": "Test User AI", "email": "ai@example.com", "password": "password"}
     )
     # 2. Log in user
-    client.post(
+    await client.post(
         "/api/auth/login",
         json={"email": "ai@example.com", "password": "password"}
     )
 
     # 3. Create a subject
-    sub_res = client.post(
+    sub_res = await client.post(
         "/api/subjects/create",
         json={"name": "DBMS", "difficulty": "Hard"}
     )
@@ -214,14 +186,14 @@ def test_api_generate_ai_schedule_flow():
     }
 
     with patch("app.routes.schedule_routes.generate_ai_schedule", return_value=mock_schedule):
-        res = client.post("/api/schedule/generate-ai")
+        res = await client.post("/api/schedule/generate-ai")
         assert res.status_code == 200
         data = res.json()
         assert data["is_ai"] is True
         assert data["events_count"] == 2
 
         # Check in DB
-        all_res = client.get("/api/schedule/all")
+        all_res = await client.get("/api/schedule/all")
         assert all_res.status_code == 200
         events = all_res.json()
         assert len(events) == 2
@@ -231,17 +203,36 @@ def test_api_generate_ai_schedule_flow():
         assert monday_event["end_time"] == "17:30"
         assert monday_event["subject_name"] == "DBMS"
 
-def test_api_generate_ai_schedule_fallback():
+
+async def test_api_generate_ai_schedule_fallback(client):
+    # 1. Sign up user
+    await client.post(
+        "/api/auth/signup",
+        json={"name": "Test User Fallback", "email": "fallback@example.com", "password": "password"}
+    )
+    # 2. Log in user
+    await client.post(
+        "/api/auth/login",
+        json={"email": "fallback@example.com", "password": "password"}
+    )
+
+    # 3. Create a subject
+    await client.post(
+        "/api/subjects/create",
+        json={"name": "DBMS", "difficulty": "Hard"}
+    )
+
     # Simulate API/LLM error to check fallback to rule-based algorithm
     with patch("app.routes.schedule_routes.generate_ai_schedule", side_effect=RuntimeError("LLM offline")):
-        res = client.post("/api/schedule/generate-ai")
+        res = await client.post("/api/schedule/generate-ai")
         assert res.status_code == 200
         data = res.json()
         # Should succeed with is_ai = False
         assert data["is_ai"] is False
         assert data["events_count"] > 0
 
-def test_calculate_schedule_metrics_burnout():
+
+async def test_calculate_schedule_metrics_burnout():
     from app.services.llm_service import calculate_schedule_metrics
     
     class MockSubject:
@@ -271,7 +262,7 @@ def test_calculate_schedule_metrics_burnout():
         {"day": "Tuesday", "subject": "Physics", "hours": 6.0, "start_time": "14:00", "end_time": "20:00", "session_type": "Deep Focus", "reason": "Long block"}
     ]
     
-    metrics_bad = calculate_schedule_metrics(bad_schedule, [], subjects)
+    metrics_bad = await calculate_schedule_metrics(bad_schedule, [], subjects)
     assert metrics_bad["burnout_risk"] > 50  # Should be elevated
     
     # Scenario 2: Good schedule (well distributed, healthy recovery gaps, weekend recovery, balanced load)
@@ -284,15 +275,13 @@ def test_calculate_schedule_metrics_burnout():
         {"day": "Tuesday", "subject": "Physics", "hours": 2.0, "start_time": "14:00", "end_time": "16:00", "session_type": "Deep Focus", "reason": "Distributed"}
     ]
     
-    metrics_good = calculate_schedule_metrics(good_schedule, [], subjects)
+    metrics_good = await calculate_schedule_metrics(good_schedule, [], subjects)
     assert metrics_good["burnout_risk"] < metrics_bad["burnout_risk"]
 
 
 @patch("app.services.llm_service.LLM_API_KEY", "mock_key")
 @patch("app.services.llm_service.call_llm_api")
-def test_weekend_preservation_in_ai_schedule(mock_call):
-    from datetime import date, timedelta
-    
+async def test_weekend_preservation_in_ai_schedule(mock_call):
     # Setup mock LLM response
     mock_llm_response = {
         "schedule": [
@@ -325,7 +314,7 @@ def test_weekend_preservation_in_ai_schedule(mock_call):
 
     class MockMilestone:
         subject_name = "DBMS"
-        exam_date = (date.today() + timedelta(days=30)).strftime("%Y-%m-%d")
+        exam_date = date.today() + timedelta(days=30)
         completion_percentage = 0
 
     analytics = {"active_streak": 3, "weekly_study_hours": 4.5}
@@ -343,7 +332,7 @@ def test_weekend_preservation_in_ai_schedule(mock_call):
         "force_refresh": True
     }
     
-    result = generate_ai_schedule(1, [MockSubject()], [MockMilestone()], analytics, calibration_with_preservation)
+    result = await generate_ai_schedule(1, [MockSubject()], [MockMilestone()], analytics, calibration_with_preservation)
     
     # Study session on Saturday should be shifted
     sat_study_sessions = [e for e in result["schedule"] if e["day"] == "Saturday" and e["session_type"] not in ["Rest", "Recovery", "Mindfulness"]]
@@ -353,10 +342,10 @@ def test_weekend_preservation_in_ai_schedule(mock_call):
     # The Saturday study session should be retained (converted to Revision)
     class MockMilestoneSoon:
         subject_name = "DBMS"
-        exam_date = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
+        exam_date = date.today() + timedelta(days=1)
         completion_percentage = 0
         
-    result_soon = generate_ai_schedule(1, [MockSubject()], [MockMilestoneSoon()], analytics, calibration_with_preservation)
+    result_soon = await generate_ai_schedule(1, [MockSubject()], [MockMilestoneSoon()], analytics, calibration_with_preservation)
     
     # Lightweight exam prep study session on Saturday should be retained
     sat_study_sessions_soon = [e for e in result_soon["schedule"] if e["day"] == "Saturday" and e["session_type"] == "Revision"]
@@ -377,10 +366,8 @@ def test_weekend_preservation_in_ai_schedule(mock_call):
         "force_refresh": True
     }
     
-    result_no_pres = generate_ai_schedule(1, [MockSubject()], [MockMilestone()], analytics, calibration_no_preservation)
+    result_no_pres = await generate_ai_schedule(1, [MockSubject()], [MockMilestone()], analytics, calibration_no_preservation)
     
     # The Saturday study session is kept
     sat_study_sessions_no_pres = [e for e in result_no_pres["schedule"] if e["day"] == "Saturday" and e["session_type"] == "Deep Focus"]
     assert len(sat_study_sessions_no_pres) == 1
-
-

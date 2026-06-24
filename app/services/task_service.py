@@ -1,4 +1,5 @@
-from sqlalchemy.orm import Session
+from sqlalchemy import select, delete
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 from typing import List
 from app.models import Task, Subject
@@ -6,12 +7,15 @@ from app.schemas import TaskCreate, TaskUpdate
 
 class TaskService:
     @staticmethod
-    def create_task(db: Session, task: TaskCreate, user_id: int) -> Task:
+    async def create_task(db: AsyncSession, task: TaskCreate, user_id: int) -> Task:
         if task.subject_id is not None:
-            subject = db.query(Subject).filter(
-                Subject.id == task.subject_id,
-                Subject.user_id == user_id
-            ).first()
+            result = await db.execute(
+                select(Subject).where(
+                    Subject.id == task.subject_id,
+                    Subject.user_id == user_id
+                )
+            )
+            subject = result.scalars().first()
             if not subject:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -28,16 +32,19 @@ class TaskService:
             user_id=user_id
         )
         db.add(new_task)
-        db.commit()
-        db.refresh(new_task)
+        await db.commit()
+        await db.refresh(new_task)
         return new_task
 
     @staticmethod
-    def get_task(db: Session, task_id: int, user_id: int) -> Task:
-        task = db.query(Task).filter(
-            Task.id == task_id,
-            Task.user_id == user_id
-        ).first()
+    async def get_task(db: AsyncSession, task_id: int, user_id: int) -> Task:
+        result = await db.execute(
+            select(Task).where(
+                Task.id == task_id,
+                Task.user_id == user_id
+            )
+        )
+        task = result.scalars().first()
         if not task:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -46,14 +53,17 @@ class TaskService:
         return task
 
     @staticmethod
-    def update_task(db: Session, task_id: int, task_data: TaskUpdate, user_id: int) -> Task:
-        task = TaskService.get_task(db, task_id, user_id)
+    async def update_task(db: AsyncSession, task_id: int, task_data: TaskUpdate, user_id: int) -> Task:
+        task = await TaskService.get_task(db, task_id, user_id)
 
         if task_data.subject_id is not None:
-            subject = db.query(Subject).filter(
-                Subject.id == task_data.subject_id,
-                Subject.user_id == user_id
-            ).first()
+            result = await db.execute(
+                select(Subject).where(
+                    Subject.id == task_data.subject_id,
+                    Subject.user_id == user_id
+                )
+            )
+            subject = result.scalars().first()
             if not subject:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -75,13 +85,14 @@ class TaskService:
         if task_data.status is not None:
             task.status = task_data.status
 
-        db.commit()
-        db.refresh(task)
+        await db.commit()
+        await db.refresh(task)
         return task
 
     @staticmethod
-    def delete_task(db: Session, task_id: int, user_id: int) -> None:
-        task = db.query(Task).filter(Task.id == task_id).first()
+    async def delete_task(db: AsyncSession, task_id: int, user_id: int) -> None:
+        result = await db.execute(select(Task).where(Task.id == task_id))
+        task = result.scalars().first()
         if not task:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -92,23 +103,24 @@ class TaskService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Unauthorized access to this task"
             )
-        db.delete(task)
-        db.commit()
+        await db.delete(task)
+        await db.commit()
 
     @staticmethod
-    def list_tasks(db: Session, user_id: int) -> List[Task]:
-        return db.query(Task).filter(Task.user_id == user_id).all()
+    async def list_tasks(db: AsyncSession, user_id: int) -> List[Task]:
+        result = await db.execute(select(Task).where(Task.user_id == user_id))
+        return list(result.scalars().all())
 
     @staticmethod
-    def toggle_task(db: Session, task_id: int, user_id: int) -> Task:
-        task = TaskService.get_task(db, task_id, user_id)
+    async def toggle_task(db: AsyncSession, task_id: int, user_id: int) -> Task:
+        task = await TaskService.get_task(db, task_id, user_id)
         task.status = "Pending" if task.status == "Completed" else "Completed"
-        db.commit()
-        db.refresh(task)
+        await db.commit()
+        await db.refresh(task)
         return task
 
     @staticmethod
-    def delete_all_tasks(db: Session, user_id: int) -> int:
-        deleted = db.query(Task).filter(Task.user_id == user_id).delete()
-        db.commit()
-        return deleted
+    async def delete_all_tasks(db: AsyncSession, user_id: int) -> int:
+        result = await db.execute(delete(Task).where(Task.user_id == user_id))
+        await db.commit()
+        return result.rowcount

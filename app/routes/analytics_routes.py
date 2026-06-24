@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 import logging
 
@@ -20,13 +20,13 @@ async def analytics_home():
     }
 
 @router.get("/summary")
-def get_summary(
+async def get_summary(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     try:
-        analytics = get_user_analytics(current_user.id, db)
-        ai_recs = get_ai_recommendations(current_user.id, db)
+        analytics = await get_user_analytics(current_user.id, db)
+        ai_recs = await get_ai_recommendations(current_user.id, db)
         
         # Combine analytics and AI recommendations
         return {
@@ -41,10 +41,10 @@ def get_summary(
         )
 
 @router.post("/log-session")
-def log_session(
+async def log_session(
     session: StudySessionCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     try:
         new_session = StudySession(
@@ -55,8 +55,8 @@ def log_session(
             session_type=session.session_type
         )
         db.add(new_session)
-        db.commit()
-        db.refresh(new_session)
+        await db.commit()
+        await db.refresh(new_session)
         
         logger.info(f"Log study session success. User ID: {current_user.id}, Duration: {session.duration_minutes}")
         return {

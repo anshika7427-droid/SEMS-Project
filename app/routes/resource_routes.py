@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.responses import FileResponse
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from pathlib import Path
 from datetime import date
 import logging
@@ -32,13 +33,16 @@ async def upload_resource(
     link: str = Form(None),
     file: UploadFile = File(None),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     # Verify subject belongs to user
-    subject = db.query(Subject).filter(
-        Subject.id == subject_id,
-        Subject.user_id == current_user.id
-    ).first()
+    result = await db.execute(
+        select(Subject).where(
+            Subject.id == subject_id,
+            Subject.user_id == current_user.id
+        )
+    )
+    subject = result.scalars().first()
     
     if not subject:
         raise HTTPException(
@@ -88,8 +92,8 @@ async def upload_resource(
     )
     
     db.add(new_resource)
-    db.commit()
-    db.refresh(new_resource)
+    await db.commit()
+    await db.refresh(new_resource)
     
     logger.info(f"Resource created in DB. ID: {new_resource.id}, User ID: {current_user.id}")
     return {
@@ -98,14 +102,20 @@ async def upload_resource(
     }
 
 @router.get("/all")
-def get_resources(
+async def get_resources(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
-    resources = db.query(Resource).filter(Resource.user_id == current_user.id).all()
+    result_res = await db.execute(
+        select(Resource).where(Resource.user_id == current_user.id)
+    )
+    resources = result_res.scalars().all()
     result = []
     for r in resources:
-        subject = db.query(Subject).filter(Subject.id == r.subject_id).first()
+        sub_res = await db.execute(
+            select(Subject).where(Subject.id == r.subject_id)
+        )
+        subject = sub_res.scalars().first()
         result.append({
             "id": r.id,
             "title": r.title,
@@ -118,15 +128,18 @@ def get_resources(
     return result
 
 @router.get("/download/{resource_id}")
-def download_resource(
+async def download_resource(
     resource_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
-    resource = db.query(Resource).filter(
-        Resource.id == resource_id,
-        Resource.user_id == current_user.id
-    ).first()
+    result = await db.execute(
+        select(Resource).where(
+            Resource.id == resource_id,
+            Resource.user_id == current_user.id
+        )
+    )
+    resource = result.scalars().first()
     
     if not resource or not resource.file_path:
         raise HTTPException(
@@ -154,12 +167,13 @@ def download_resource(
     )
 
 @router.delete("/{resource_id}")
-def delete_resource(
+async def delete_resource(
     resource_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
-    resource = db.query(Resource).filter(Resource.id == resource_id).first()
+    result = await db.execute(select(Resource).where(Resource.id == resource_id))
+    resource = result.scalars().first()
     if not resource:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -181,7 +195,7 @@ def delete_resource(
             except Exception as e:
                 logger.error(f"Error deleting file {file_path}: {e}")
                 
-    db.delete(resource)
-    db.commit()
+    await db.delete(resource)
+    await db.commit()
     logger.info(f"Resource ID {resource_id} deleted successfully by user {current_user.id}")
     return {"message": "Resource deleted successfully"}

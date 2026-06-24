@@ -1,51 +1,19 @@
 import pytest
 import json
 from unittest.mock import patch
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
-from app.main import app
-from app.database import get_db, Base
+from sqlalchemy import select
 from app.models import User, Subject, Milestone, ScheduleEvent
-
-# Setup clean SQLite in-memory DB for tests
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=StaticPool)
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-@pytest.fixture(name="db_session")
-def db_session_fixture():
-    Base.metadata.create_all(bind=engine)
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-        Base.metadata.drop_all(bind=engine)
-
-@pytest.fixture(name="client")
-def client_fixture(db_session):
-    def override_get_db():
-        try:
-            yield db_session
-        finally:
-            pass
-    app.dependency_overrides[get_db] = override_get_db
-    yield TestClient(app)
-    app.dependency_overrides.pop(get_db, None)
 
 @patch("app.services.llm_service.LLM_API_KEY", "mock_key")
 @patch("app.services.llm_service.call_llm_api")
-def test_weekend_inclusion_regression(mock_call, client, db_session):
+async def test_weekend_inclusion_regression(mock_call, client, db):
     # 1. Sign up and log in
-    client.post("/api/auth/signup", json={"name": "Test User", "email": "test@example.com", "password": "password"})
-    client.post("/api/auth/login", json={"email": "test@example.com", "password": "password"})
+    await client.post("/api/auth/signup", json={"name": "Test User", "email": "test@example.com", "password": "password"})
+    await client.post("/api/auth/login", json={"email": "test@example.com", "password": "password"})
 
     # 2. Create study subjects
-    client.post("/api/subjects/create", json={"name": "Math", "difficulty": "Medium"})
-    client.post("/api/subjects/create", json={"name": "Science", "difficulty": "Hard"})
+    await client.post("/api/subjects/create", json={"name": "Math", "difficulty": "Medium"})
+    await client.post("/api/subjects/create", json={"name": "Science", "difficulty": "Hard"})
 
     # Setup mock LLM response containing study sessions on both weekdays and weekends
     mock_llm_response = {
@@ -91,11 +59,12 @@ def test_weekend_inclusion_regression(mock_call, client, db_session):
         "force_refresh": True
     }
     
-    resp_on = client.post("/api/schedule/generate-ai", json=payload_on)
+    resp_on = await client.post("/api/schedule/generate-ai", json=payload_on)
     assert resp_on.status_code == 200
     
     # Query database and verify weekend study events were created and saved
-    events_on = db_session.query(ScheduleEvent).all()
+    events_on_res = await db.execute(select(ScheduleEvent))
+    events_on = events_on_res.scalars().all()
     
     # Weekday check
     monday_events = [e for e in events_on if e.day_of_week == "Monday"]
@@ -125,11 +94,12 @@ def test_weekend_inclusion_regression(mock_call, client, db_session):
         "force_refresh": True
     }
     
-    resp_off = client.post("/api/schedule/generate-ai", json=payload_off)
+    resp_off = await client.post("/api/schedule/generate-ai", json=payload_off)
     assert resp_off.status_code == 200
     
     # Query database and verify weekend study events were removed / weekday ones kept
-    events_off = db_session.query(ScheduleEvent).all()
+    events_off_res = await db.execute(select(ScheduleEvent))
+    events_off = events_off_res.scalars().all()
     
     # Weekday check: should be unaffected and still scheduled
     monday_events_off = [e for e in events_off if e.day_of_week == "Monday"]

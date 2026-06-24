@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 import logging
 
@@ -19,13 +19,13 @@ router = APIRouter()
 logger = logging.getLogger("milestone_routes")
 
 @router.post("/create")
-def create_milestone(
+async def create_milestone(
     milestone: MilestoneCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     try:
-        new_milestone = MilestoneService.create_milestone(db, milestone, current_user.id)
+        new_milestone = await MilestoneService.create_milestone(db, milestone, current_user.id)
         logger.info(f"Milestone created successfully. ID: {new_milestone.id}, User ID: {current_user.id}")
         return {
             "message": "Milestone created",
@@ -41,12 +41,12 @@ def create_milestone(
         )
 
 @router.get("/all", response_model=List[MilestoneResponse])
-def get_all_milestones(
+async def get_all_milestones(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     try:
-        milestones = MilestoneService.list_milestones(db, current_user.id)
+        milestones = await MilestoneService.list_milestones(db, current_user.id)
         logger.info(f"Retrieved {len(milestones)} milestones for User ID: {current_user.id}")
         return milestones
     except Exception as e:
@@ -57,12 +57,12 @@ def get_all_milestones(
         )
 
 @router.get("", response_model=MilestoneListResponse)
-def list_milestones_envelope(
+async def list_milestones_envelope(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     try:
-        milestones = MilestoneService.list_milestones(db, current_user.id)
+        milestones = await MilestoneService.list_milestones(db, current_user.id)
         return MilestoneListResponse(milestones=milestones)
     except Exception as e:
         logger.exception(f"Unexpected error listing milestones: {e}")
@@ -70,15 +70,54 @@ def list_milestones_envelope(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error occurred while listing milestones"
         )
+# -----------------------------------
+# PROGRESS & STATISTICS ENDPOINTS
+# -----------------------------------
 
-@router.get("/{milestone_id}", response_model=MilestoneResponse)
-def get_milestone_by_id(
-    milestone_id: int,
+@router.get("/api/progress", response_model=ProgressResponse)
+async def get_progress(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     try:
-        milestone = MilestoneService.get_milestone(db, milestone_id, current_user.id)
+        progress = await MilestoneService.get_progress(db, current_user.id)
+        logger.info(f"Progress calculated successfully for User ID: {current_user.id}")
+        return progress
+    except Exception as e:
+        logger.exception(f"Unexpected error calculating progress: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error occurred while calculating progress"
+        )
+
+@router.get("/statistics", response_model=StatisticsResponse)
+async def get_statistics(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        stats = await MilestoneService.get_statistics(db, current_user.id)
+        logger.info(f"Statistics calculated successfully for User ID: {current_user.id}")
+        return stats
+    except Exception as e:
+        logger.exception(f"Unexpected error calculating statistics: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error occurred while calculating statistics"
+        )
+
+# -----------------------------------
+# MILESTONE CRUD ENDPOINTS
+# -----------------------------------
+
+@router.get("/{milestone_id}", response_model=MilestoneResponse)
+async def get_milestone_by_id(
+    milestone_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        milestone = await MilestoneService.get_milestone(db, milestone_id, current_user.id)
         logger.info(f"Retrieved milestone {milestone_id} for User ID: {current_user.id}")
         return milestone
     except HTTPException as he:
@@ -91,14 +130,14 @@ def get_milestone_by_id(
         )
 
 @router.put("/{milestone_id}", response_model=MilestoneResponse)
-def update_milestone(
+async def update_milestone(
     milestone_id: int,
     milestone_data: MilestoneUpdate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     try:
-        updated_milestone = MilestoneService.update_milestone(db, milestone_id, milestone_data, current_user.id)
+        updated_milestone = await MilestoneService.update_milestone(db, milestone_id, milestone_data, current_user.id)
         logger.info(f"Milestone {milestone_id} updated successfully for User ID: {current_user.id}")
         return updated_milestone
     except HTTPException as he:
@@ -111,13 +150,13 @@ def update_milestone(
         )
 
 @router.delete("/{milestone_id}")
-def delete_milestone(
+async def delete_milestone(
     milestone_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     try:
-        MilestoneService.delete_milestone(db, milestone_id, current_user.id)
+        await MilestoneService.delete_milestone(db, milestone_id, current_user.id)
         logger.info(f"Milestone {milestone_id} deleted successfully for User ID: {current_user.id}")
         return {"message": "Deleted"}
     except HTTPException as he:
@@ -127,40 +166,4 @@ def delete_milestone(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error occurred while deleting milestone"
-        )
-
-# -----------------------------------
-# PROGRESS & STATISTICS ENDPOINTS
-# -----------------------------------
-
-@router.get("/api/progress", response_model=ProgressResponse)
-def get_progress(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    try:
-        progress = MilestoneService.get_progress(db, current_user.id)
-        logger.info(f"Progress calculated successfully for User ID: {current_user.id}")
-        return progress
-    except Exception as e:
-        logger.exception(f"Unexpected error calculating progress: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error occurred while calculating progress"
-        )
-
-@router.get("/api/statistics", response_model=StatisticsResponse)
-def get_statistics(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    try:
-        stats = MilestoneService.get_statistics(db, current_user.id)
-        logger.info(f"Statistics calculated successfully for User ID: {current_user.id}")
-        return stats
-    except Exception as e:
-        logger.exception(f"Unexpected error calculating statistics: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error occurred while calculating statistics"
         )

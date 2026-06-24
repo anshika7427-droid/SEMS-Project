@@ -1,23 +1,34 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
 from datetime import date, datetime, timedelta
 import hashlib
 from app.models import Task, Subject, Milestone, StudySession
 
-def get_grade_prediction(user_id: int, db: Session) -> dict:
+async def get_grade_prediction(user_id: int, db: AsyncSession) -> dict:
     # 1. Task Completion
-    total_tasks = db.query(Task).filter(Task.user_id == user_id).count()
-    completed_tasks = db.query(Task).filter(Task.user_id == user_id, Task.status == "Completed").count()
+    total_tasks_res = await db.execute(select(func.count()).select_from(Task).where(Task.user_id == user_id))
+    total_tasks = total_tasks_res.scalar_one()
+    
+    completed_tasks_res = await db.execute(
+        select(func.count()).select_from(Task).where(Task.user_id == user_id, Task.status == "Completed")
+    )
+    completed_tasks = completed_tasks_res.scalar_one()
+    
     task_completion = (completed_tasks / total_tasks * 100.0) if total_tasks > 0 else 85.0
     
     # 2. Milestone Completion
-    milestones = db.query(Milestone).filter(Milestone.user_id == user_id).all()
+    milestones_res = await db.execute(select(Milestone).where(Milestone.user_id == user_id))
+    milestones = milestones_res.scalars().all()
+    
     milestone_completion = 80.0
     if milestones:
         milestone_completion = sum(m.completion_percentage for m in milestones) / len(milestones)
         
     # 3. Attendance (Consistency based on study sessions)
     # Let's count how many days the user studied in the last 7 days.
-    sessions = db.query(StudySession).filter(StudySession.user_id == user_id).all()
+    sessions_res = await db.execute(select(StudySession).where(StudySession.user_id == user_id))
+    sessions = sessions_res.scalars().all()
+    
     study_days = set()
     today = date.today()
     for s in sessions:
@@ -33,7 +44,9 @@ def get_grade_prediction(user_id: int, db: Session) -> dict:
     
     # 4. Past Performance / Previous Grade
     # Deterministic calculation using subject names as a seed
-    subjects = db.query(Subject).filter(Subject.user_id == user_id).all()
+    subjects_res = await db.execute(select(Subject).where(Subject.user_id == user_id))
+    subjects = subjects_res.scalars().all()
+    
     past_performance = 78.0
     if subjects:
         subj_scores = []

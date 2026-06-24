@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
 from pathlib import Path
 from datetime import date
 from typing import Optional
@@ -23,10 +24,10 @@ AVATAR_DIR.mkdir(parents=True, exist_ok=True)
 
 @router.get("/{user_id}", response_model=ProfileResponse)
 @router.get("/me", response_model=ProfileResponse)
-def get_profile(
+async def get_profile(
     user_id: Optional[int] = None,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     target_user_id = user_id if user_id is not None else current_user.id
     if current_user.id != target_user_id:
@@ -35,19 +36,19 @@ def get_profile(
             detail="You do not have permission to view this profile."
         )
         
-    subjects_count = db.query(Subject).filter(Subject.user_id == target_user_id).count()
-    milestones_count = db.query(Milestone).filter(Milestone.user_id == target_user_id).count()
-    resources_count = db.query(Resource).filter(Resource.user_id == target_user_id).count()
-    sessions_count = db.query(StudySession).filter(StudySession.user_id == target_user_id).count()
+    subjects_count = (await db.execute(select(func.count()).select_from(Subject).where(Subject.user_id == target_user_id))).scalar_one()
+    milestones_count = (await db.execute(select(func.count()).select_from(Milestone).where(Milestone.user_id == target_user_id))).scalar_one()
+    resources_count = (await db.execute(select(func.count()).select_from(Resource).where(Resource.user_id == target_user_id))).scalar_one()
+    sessions_count = (await db.execute(select(func.count()).select_from(StudySession).where(StudySession.user_id == target_user_id))).scalar_one()
     
-    analytics = get_user_analytics(target_user_id, db)
+    analytics = await get_user_analytics(target_user_id, db)
     
     # Generate default join date if not present
     join_date = current_user.created_at
     if not join_date:
         join_date = date.today()
         current_user.created_at = join_date
-        db.commit()
+        await db.commit()
 
     return ProfileResponse(
         id=current_user.id,
@@ -65,16 +66,17 @@ def get_profile(
 
 @router.put("/me", response_model=ProfileUpdateResponse)
 @router.put("/update", response_model=ProfileUpdateResponse)
-def update_profile(
+async def update_profile(
     profile: ProfileUpdate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     # Check if email is already taken by another user
-    existing_user = db.query(User).filter(
+    existing_user_result = await db.execute(select(User).where(
         User.email == profile.email,
         User.id != current_user.id
-    ).first()
+    ))
+    existing_user = existing_user_result.scalars().first()
     
     if existing_user:
         raise HTTPException(
@@ -84,8 +86,8 @@ def update_profile(
         
     current_user.name = profile.name
     current_user.email = profile.email
-    db.commit()
-    db.refresh(current_user)
+    await db.commit()
+    await db.refresh(current_user)
     
     logger.info(f"User profile updated successfully. User ID: {current_user.id}")
     return ProfileUpdateResponse(
@@ -95,10 +97,10 @@ def update_profile(
     )
 
 @router.put("/change-password", response_model=MessageResponse)
-def change_password(
+async def change_password(
     password_data: PasswordChange,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     if not verify_password(password_data.current_password, current_user.password):
         raise HTTPException(
@@ -107,7 +109,7 @@ def change_password(
         )
         
     current_user.password = hash_password(password_data.new_password)
-    db.commit()
+    await db.commit()
     
     logger.info(f"User password changed successfully. User ID: {current_user.id}")
     return MessageResponse(message="Password changed successfully")
@@ -117,7 +119,7 @@ def change_password(
 async def upload_avatar(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     # Sanitize and guard against path traversal in filename
     if ".." in file.filename or "/" in file.filename or "\\" in file.filename:
@@ -191,7 +193,7 @@ async def upload_avatar(
             
         avatar_url = f"/uploads/avatars/{filename}"
         current_user.avatar_url = avatar_url
-        db.commit()
+        await db.commit()
         
         logger.info(f"Avatar uploaded successfully for user {current_user.id}: {avatar_url}")
         return AvatarResponse(

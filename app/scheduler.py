@@ -1,4 +1,5 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, delete
 from datetime import datetime, date
 from app.models import Subject, Milestone, ScheduleEvent, User
 import logging
@@ -36,13 +37,16 @@ def calculate_priority(subject: Subject, milestones: list) -> float:
             
     return score
 
-def generate_weekly_schedule(user_id: int, db: Session):
+async def generate_weekly_schedule(user_id: int, db: AsyncSession):
     logger.info(f"Generating weekly schedule for User ID: {user_id}")
     
     # 1. Fetch user's subjects, milestones and preferences
-    subjects = db.query(Subject).filter(Subject.user_id == user_id).all()
-    milestones = db.query(Milestone).filter(Milestone.user_id == user_id).all()
-    user = db.query(User).filter(User.id == user_id).first()
+    subjects_res = await db.execute(select(Subject).where(Subject.user_id == user_id))
+    subjects = subjects_res.scalars().all()
+    milestones_res = await db.execute(select(Milestone).where(Milestone.user_id == user_id))
+    milestones = milestones_res.scalars().all()
+    user_res = await db.execute(select(User).where(User.id == user_id))
+    user = user_res.scalars().first()
 
     weekend_preservation = user.weekend_preservation if user else False
 
@@ -77,8 +81,8 @@ def generate_weekly_schedule(user_id: int, db: Session):
     subject_priorities.sort(key=lambda x: x[1], reverse=True)
     
     # 3. Clear existing schedule events for user
-    db.query(ScheduleEvent).filter(ScheduleEvent.user_id == user_id).delete()
-    db.commit()
+    await db.execute(delete(ScheduleEvent).where(ScheduleEvent.user_id == user_id))
+    await db.commit()
     
     # 4. Allocate subjects to slots
     # Simple round-robin distribution based on priority
@@ -123,6 +127,6 @@ def generate_weekly_schedule(user_id: int, db: Session):
         db.add(event)
         allocated_events.append(event)
         
-    db.commit()
+    await db.commit()
     logger.info(f"Successfully generated {len(allocated_events)} schedule events for User ID: {user_id}")
     return allocated_events

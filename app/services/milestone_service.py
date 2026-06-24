@@ -1,4 +1,5 @@
-from sqlalchemy.orm import Session
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 from typing import List
 from datetime import date
@@ -7,12 +8,15 @@ from app.schemas import MilestoneCreate, MilestoneUpdate, ProgressResponse, Stat
 
 class MilestoneService:
     @staticmethod
-    def create_milestone(db: Session, milestone: MilestoneCreate, user_id: int) -> Milestone:
+    async def create_milestone(db: AsyncSession, milestone: MilestoneCreate, user_id: int) -> Milestone:
         # Verify subject belongs to the current user
-        subject = db.query(Subject).filter(
-            Subject.id == milestone.subject_id,
-            Subject.user_id == user_id
-        ).first()
+        result = await db.execute(
+            select(Subject).where(
+                Subject.id == milestone.subject_id,
+                Subject.user_id == user_id
+            )
+        )
+        subject = result.scalars().first()
         if not subject:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -29,16 +33,19 @@ class MilestoneService:
             user_id=user_id
         )
         db.add(new_milestone)
-        db.commit()
-        db.refresh(new_milestone)
+        await db.commit()
+        await db.refresh(new_milestone)
         return new_milestone
 
     @staticmethod
-    def get_milestone(db: Session, milestone_id: int, user_id: int) -> Milestone:
-        milestone = db.query(Milestone).filter(
-            Milestone.id == milestone_id,
-            Milestone.user_id == user_id
-        ).first()
+    async def get_milestone(db: AsyncSession, milestone_id: int, user_id: int) -> Milestone:
+        result = await db.execute(
+            select(Milestone).where(
+                Milestone.id == milestone_id,
+                Milestone.user_id == user_id
+            )
+        )
+        milestone = result.scalars().first()
         if not milestone:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -47,15 +54,18 @@ class MilestoneService:
         return milestone
 
     @staticmethod
-    def update_milestone(db: Session, milestone_id: int, milestone_data: MilestoneUpdate, user_id: int) -> Milestone:
-        milestone = MilestoneService.get_milestone(db, milestone_id, user_id)
+    async def update_milestone(db: AsyncSession, milestone_id: int, milestone_data: MilestoneUpdate, user_id: int) -> Milestone:
+        milestone = await MilestoneService.get_milestone(db, milestone_id, user_id)
 
         if milestone_data.subject_id is not None:
             # Verify subject belongs to the current user
-            subject = db.query(Subject).filter(
-                Subject.id == milestone_data.subject_id,
-                Subject.user_id == user_id
-            ).first()
+            result = await db.execute(
+                select(Subject).where(
+                    Subject.id == milestone_data.subject_id,
+                    Subject.user_id == user_id
+                )
+            )
+            subject = result.scalars().first()
             if not subject:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -71,13 +81,14 @@ class MilestoneService:
         if milestone_data.completion_percentage is not None:
             milestone.completion_percentage = milestone_data.completion_percentage
 
-        db.commit()
-        db.refresh(milestone)
+        await db.commit()
+        await db.refresh(milestone)
         return milestone
 
     @staticmethod
-    def delete_milestone(db: Session, milestone_id: int, user_id: int) -> None:
-        milestone = db.query(Milestone).filter(Milestone.id == milestone_id).first()
+    async def delete_milestone(db: AsyncSession, milestone_id: int, user_id: int) -> None:
+        result = await db.execute(select(Milestone).where(Milestone.id == milestone_id))
+        milestone = result.scalars().first()
         if not milestone:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -88,20 +99,31 @@ class MilestoneService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Unauthorized access to this milestone"
             )
-        db.delete(milestone)
-        db.commit()
+        await db.delete(milestone)
+        await db.commit()
 
     @staticmethod
-    def list_milestones(db: Session, user_id: int) -> List[Milestone]:
-        return db.query(Milestone).filter(Milestone.user_id == user_id).all()
+    async def list_milestones(db: AsyncSession, user_id: int) -> List[Milestone]:
+        result = await db.execute(select(Milestone).where(Milestone.user_id == user_id))
+        return list(result.scalars().all())
 
     @staticmethod
-    def get_progress(db: Session, user_id: int) -> ProgressResponse:
-        completed_tasks = db.query(Task).filter(Task.user_id == user_id, Task.status == "Completed").count()
-        total_tasks = db.query(Task).filter(Task.user_id == user_id).count()
+    async def get_progress(db: AsyncSession, user_id: int) -> ProgressResponse:
+        completed_tasks_res = await db.execute(
+            select(func.count(Task.id)).where(Task.user_id == user_id, Task.status == "Completed")
+        )
+        completed_tasks = completed_tasks_res.scalar() or 0
+
+        total_tasks_res = await db.execute(
+            select(func.count(Task.id)).where(Task.user_id == user_id)
+        )
+        total_tasks = total_tasks_res.scalar() or 0
         pending_tasks = total_tasks - completed_tasks
 
-        milestones = db.query(Milestone).filter(Milestone.user_id == user_id).all()
+        milestones_res = await db.execute(
+            select(Milestone).where(Milestone.user_id == user_id)
+        )
+        milestones = list(milestones_res.scalars().all())
         total_milestones = len(milestones)
 
         # Milestone progress: average completion percentage
@@ -110,7 +132,10 @@ class MilestoneService:
             milestone_progress = sum(m.completion_percentage for m in milestones) / total_milestones
 
         # Subject progress: average progress of all subjects
-        subjects = db.query(Subject).filter(Subject.user_id == user_id).all()
+        subjects_res = await db.execute(
+            select(Subject).where(Subject.user_id == user_id)
+        )
+        subjects = list(subjects_res.scalars().all())
         subject_progress = 0.0
         if subjects:
             total_subj_progress = 0.0
@@ -141,12 +166,22 @@ class MilestoneService:
         )
 
     @staticmethod
-    def get_statistics(db: Session, user_id: int) -> StatisticsResponse:
-        completed_tasks = db.query(Task).filter(Task.user_id == user_id, Task.status == "Completed").count()
-        total_tasks = db.query(Task).filter(Task.user_id == user_id).count()
+    async def get_statistics(db: AsyncSession, user_id: int) -> StatisticsResponse:
+        completed_tasks_res = await db.execute(
+            select(func.count(Task.id)).where(Task.user_id == user_id, Task.status == "Completed")
+        )
+        completed_tasks = completed_tasks_res.scalar() or 0
+
+        total_tasks_res = await db.execute(
+            select(func.count(Task.id)).where(Task.user_id == user_id)
+        )
+        total_tasks = total_tasks_res.scalar() or 0
         pending_tasks = total_tasks - completed_tasks
 
-        milestones = db.query(Milestone).filter(Milestone.user_id == user_id).all()
+        milestones_res = await db.execute(
+            select(Milestone).where(Milestone.user_id == user_id)
+        )
+        milestones = list(milestones_res.scalars().all())
         today = date.today()
 
         milestones_completed = 0
@@ -162,10 +197,16 @@ class MilestoneService:
         completion_rate = (completed_items / total_items * 100) if total_items > 0 else 0.0
 
         # Subject Performance Metrics
-        subjects = db.query(Subject).filter(Subject.user_id == user_id).all()
+        subjects_res = await db.execute(
+            select(Subject).where(Subject.user_id == user_id)
+        )
+        subjects = list(subjects_res.scalars().all())
         
         # Optimize performance: single aggregated query for study sessions to avoid N+1 query pattern
-        sessions = db.query(StudySession).filter(StudySession.user_id == user_id).all()
+        sessions_res = await db.execute(
+            select(StudySession).where(StudySession.user_id == user_id)
+        )
+        sessions = list(sessions_res.scalars().all())
         sessions_by_subject = {}
         for s in sessions:
             if s.subject_id:

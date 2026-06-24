@@ -208,7 +208,7 @@ def call_llm_api(system_instruction: str, user_prompt: str) -> dict:
             time.sleep(1.0)
     raise RuntimeError("Max retries exceeded in call_llm_api.")
 
-def calculate_schedule_metrics(schedule_events: list, milestones: list, subjects: list, db=None) -> dict:
+async def calculate_schedule_metrics(schedule_events: list, milestones: list, subjects: list, db=None) -> dict:
     """
     Calculates Balance Score, Burnout Risk, and Exam Readiness based on the final generated timetable,
     milestones, and user performance statistics.
@@ -608,10 +608,14 @@ def calculate_schedule_metrics(schedule_events: list, milestones: list, subjects
             if db is not None and subj_obj is not None:
                 try:
                     from app.models import StudySession
-                    sessions_count = db.query(StudySession).filter(
-                        StudySession.user_id == m.user_id,
-                        StudySession.subject_id == subj_obj.id
-                    ).count()
+                    from sqlalchemy import select, func
+                    sessions_count_result = await db.execute(
+                        select(func.count()).select_from(StudySession).where(
+                            StudySession.user_id == m.user_id,
+                            StudySession.subject_id == subj_obj.id
+                        )
+                    )
+                    sessions_count = sessions_count_result.scalar_one()
                 except Exception as db_err:
                     logger.error(f"Error querying study sessions count for readiness: {db_err}")
             
@@ -990,7 +994,7 @@ def enforce_weekend_preservation(schedule_events, milestones, daily_quota):
     
     return final_events
 
-def generate_ai_schedule(
+async def generate_ai_schedule(
     user_id: int,
     subjects: list,
     milestones: list,
@@ -1048,7 +1052,7 @@ def generate_ai_schedule(
     
     # Generate unique cache path based on inputs
     sub_sig = sorted([(s.name.lower().strip(), s.difficulty) for s in subjects])
-    mil_sig = sorted([(m.subject_name.lower().strip(), m.exam_date) for m in milestones])
+    mil_sig = sorted([(m.subject_name.lower().strip(), m.exam_date.isoformat() if hasattr(m.exam_date, "isoformat") else str(m.exam_date)) for m in milestones])
     cal_sig = sorted([(str(k), str(v)) for k, v in calibration.items() if k != "force_refresh"])
     
     cache_inputs = {
@@ -1241,7 +1245,7 @@ def generate_ai_schedule(
     # Generate analytics locally using backend algorithms
     # This guarantees they are perfectly derived from the final generated schedule.
     logger.info("Computing metrics locally from the final schedule...")
-    best_metrics = calculate_schedule_metrics(schedule_events, milestones, subjects, db=db)
+    best_metrics = await calculate_schedule_metrics(schedule_events, milestones, subjects, db=db)
 
     # Burnout Heuristics and self-correcting optimization
     if best_metrics.get("burnout_risk", 0) > 70:
@@ -1277,7 +1281,7 @@ def generate_ai_schedule(
                         hard_count = 0
                         
         # Recalculate metrics locally
-        best_metrics = calculate_schedule_metrics(schedule_events, milestones, subjects, db=db)
+        best_metrics = await calculate_schedule_metrics(schedule_events, milestones, subjects, db=db)
 
     # Compile transparency details
     actual_hours = sum(float(event.get("hours", 0.0)) for event in schedule_events)

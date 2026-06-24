@@ -1,4 +1,5 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from datetime import datetime, date
 from app.models import Subject, Milestone, Resource
 import logging
@@ -45,11 +46,13 @@ DEFAULT_RESOURCES = [
     {"title": "Wolfram Alpha - Computational Engine", "link": "https://www.wolframalpha.com"}
 ]
 
-def get_ai_recommendations(user_id: int, db: Session) -> dict:
+async def get_ai_recommendations(user_id: int, db: AsyncSession) -> dict:
     logger.info(f"Generating AI recommendations for User ID: {user_id}")
     
-    subjects = db.query(Subject).filter(Subject.user_id == user_id).all()
-    milestones = db.query(Milestone).filter(Milestone.user_id == user_id).all()
+    subjects_res = await db.execute(select(Subject).where(Subject.user_id == user_id))
+    subjects = subjects_res.scalars().all()
+    milestones_res = await db.execute(select(Milestone).where(Milestone.user_id == user_id))
+    milestones = milestones_res.scalars().all()
     
     if not subjects:
         return {

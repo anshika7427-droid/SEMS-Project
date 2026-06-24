@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 import logging
 
@@ -18,13 +18,13 @@ async def tasks_home():
     }
 
 @router.post("/create", response_model=TaskCreateResponse)
-def create_task(
+async def create_task(
     task: TaskCreate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     try:
-        new_task = TaskService.create_task(db, task, current_user.id)
+        new_task = await TaskService.create_task(db, task, current_user.id)
         logger.info(f"Task created successfully. ID: {new_task.id}, User ID: {current_user.id}")
         return TaskCreateResponse(
             message="Task created successfully",
@@ -40,12 +40,12 @@ def create_task(
         )
 
 @router.get("/all", response_model=List[TaskResponse])
-def get_tasks(
+async def get_tasks(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     try:
-        tasks = TaskService.list_tasks(db, current_user.id)
+        tasks = await TaskService.list_tasks(db, current_user.id)
         logger.info(f"Retrieved {len(tasks)} tasks for User ID: {current_user.id}")
         return tasks
     except Exception as e:
@@ -56,12 +56,12 @@ def get_tasks(
         )
 
 @router.get("", response_model=TaskListResponse)
-def list_tasks_envelope(
+async def list_tasks_envelope(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     try:
-        tasks = TaskService.list_tasks(db, current_user.id)
+        tasks = await TaskService.list_tasks(db, current_user.id)
         return TaskListResponse(tasks=tasks)
     except Exception as e:
         logger.exception(f"Unexpected error listing tasks: {e}")
@@ -71,13 +71,13 @@ def list_tasks_envelope(
         )
 
 @router.get("/{task_id}", response_model=TaskResponse)
-def get_task_by_id(
+async def get_task_by_id(
     task_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     try:
-        task = TaskService.get_task(db, task_id, current_user.id)
+        task = await TaskService.get_task(db, task_id, current_user.id)
         logger.info(f"Retrieved task {task_id} for User ID: {current_user.id}")
         return task
     except HTTPException as he:
@@ -90,14 +90,14 @@ def get_task_by_id(
         )
 
 @router.put("/{task_id}", response_model=TaskResponse)
-def update_task(
+async def update_task(
     task_id: int,
     task_data: TaskUpdate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     try:
-        updated_task = TaskService.update_task(db, task_id, task_data, current_user.id)
+        updated_task = await TaskService.update_task(db, task_id, task_data, current_user.id)
         logger.info(f"Task {task_id} updated successfully for User ID: {current_user.id}")
         return updated_task
     except HTTPException as he:
@@ -110,13 +110,13 @@ def update_task(
         )
 
 @router.delete("/{task_id}")
-def delete_task(
+async def delete_task(
     task_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     try:
-        TaskService.delete_task(db, task_id, current_user.id)
+        await TaskService.delete_task(db, task_id, current_user.id)
         logger.info(f"Task {task_id} deleted successfully for User ID: {current_user.id}")
         return {"message": "Task deleted successfully"}
     except HTTPException as he:
@@ -129,12 +129,12 @@ def delete_task(
         )
 
 @router.delete("/delete-all")
-def delete_all_tasks(
+async def delete_all_tasks(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     try:
-        deleted_count = TaskService.delete_all_tasks(db, current_user.id)
+        deleted_count = await TaskService.delete_all_tasks(db, current_user.id)
         logger.info(f"Deleted {deleted_count} tasks for User ID: {current_user.id}")
         return {
             "message": f"All {deleted_count} tasks deleted"
@@ -148,16 +148,17 @@ def delete_all_tasks(
 
 @router.put("/complete/{task_id}")
 @router.put("/toggle/{task_id}")
-def toggle_task(
+async def toggle_task(
     task_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     try:
-        task = TaskService.toggle_task(db, task_id, current_user.id)
+        task = await TaskService.toggle_task(db, task_id, current_user.id)
         logger.info(f"Task {task_id} status updated to {task.status} for User ID: {current_user.id}")
         return {
-            "message": "Task status updated"
+            "message": "Task status updated",
+            "status": task.status
         }
     except HTTPException as he:
         raise he

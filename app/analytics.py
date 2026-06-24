@@ -1,19 +1,30 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
 from datetime import datetime, date, timedelta
 from app.models import Task, StudySession, Subject
 import logging
 
 logger = logging.getLogger("analytics")
 
-def get_user_analytics(user_id: int, db: Session) -> dict:
+async def get_user_analytics(user_id: int, db: AsyncSession) -> dict:
     logger.info(f"Computing user analytics for User ID: {user_id}")
     
     # 1. Tasks metrics
-    total_tasks = db.query(Task).filter(Task.user_id == user_id).count()
-    completed_tasks = db.query(Task).filter(Task.user_id == user_id, Task.status == "Completed").count()
+    total_tasks_res = await db.execute(select(func.count()).select_from(Task).where(Task.user_id == user_id))
+    total_tasks = total_tasks_res.scalar_one()
+    
+    completed_tasks_res = await db.execute(
+        select(func.count()).select_from(Task).where(Task.user_id == user_id, Task.status == "Completed")
+    )
+    completed_tasks = completed_tasks_res.scalar_one()
     
     # 2. Get all study sessions for this user
-    sessions = db.query(StudySession).filter(StudySession.user_id == user_id).all()
+    sessions_res = await db.execute(select(StudySession).where(StudySession.user_id == user_id))
+    sessions = sessions_res.scalars().all()
+    
+    # Fetch all subjects for the user to map names efficiently
+    subjects_res = await db.execute(select(Subject).where(Subject.user_id == user_id))
+    subjects_map = {sub.id: sub for sub in subjects_res.scalars().all()}
     
     # Calculate streak from study session completion dates
     session_dates = set()
@@ -52,7 +63,7 @@ def get_user_analytics(user_id: int, db: Session) -> dict:
                 
             # Aggregate by subject
             if s.subject_id:
-                sub = db.query(Subject).filter(Subject.id == s.subject_id).first()
+                sub = subjects_map.get(s.subject_id)
                 sub_name = sub.name if sub else "Other"
             else:
                 sub_name = "Other"
@@ -105,7 +116,7 @@ def get_user_analytics(user_id: int, db: Session) -> dict:
         
     # Import grade predictor
     from app.utils.grade_predictor import get_grade_prediction
-    grade_data = get_grade_prediction(user_id, db)
+    grade_data = await get_grade_prediction(user_id, db)
 
     return {
         "completed_tasks": completed_tasks,

@@ -1,4 +1,5 @@
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 from typing import List
 from app.models import Subject
@@ -6,12 +7,15 @@ from app.schemas import SubjectCreate, SubjectUpdate
 
 class SubjectService:
     @staticmethod
-    def create_subject(db: Session, subject: SubjectCreate, user_id: int) -> Subject:
+    async def create_subject(db: AsyncSession, subject: SubjectCreate, user_id: int) -> Subject:
         # Check for duplicate name (case-insensitive) for the same user
-        existing = db.query(Subject).filter(
-            Subject.user_id == user_id,
-            Subject.name.ilike(subject.name.strip())
-        ).first()
+        result = await db.execute(
+            select(Subject).where(
+                Subject.user_id == user_id,
+                Subject.name.ilike(subject.name.strip())
+            )
+        )
+        existing = result.scalars().first()
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -27,16 +31,19 @@ class SubjectService:
             user_id=user_id
         )
         db.add(new_subject)
-        db.commit()
-        db.refresh(new_subject)
+        await db.commit()
+        await db.refresh(new_subject)
         return new_subject
 
     @staticmethod
-    def get_subject(db: Session, subject_id: int, user_id: int) -> Subject:
-        subject = db.query(Subject).filter(
-            Subject.id == subject_id,
-            Subject.user_id == user_id
-        ).first()
+    async def get_subject(db: AsyncSession, subject_id: int, user_id: int) -> Subject:
+        result = await db.execute(
+            select(Subject).where(
+                Subject.id == subject_id,
+                Subject.user_id == user_id
+            )
+        )
+        subject = result.scalars().first()
         if not subject:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -45,17 +52,20 @@ class SubjectService:
         return subject
 
     @staticmethod
-    def update_subject(db: Session, subject_id: int, subject_data: SubjectUpdate, user_id: int) -> Subject:
-        subject = SubjectService.get_subject(db, subject_id, user_id)
+    async def update_subject(db: AsyncSession, subject_id: int, subject_data: SubjectUpdate, user_id: int) -> Subject:
+        subject = await SubjectService.get_subject(db, subject_id, user_id)
 
         if subject_data.name is not None:
             name_stripped = subject_data.name.strip()
             # If name has changed, verify uniqueness
             if name_stripped.lower() != subject.name.lower():
-                existing = db.query(Subject).filter(
-                    Subject.user_id == user_id,
-                    Subject.name.ilike(name_stripped)
-                ).first()
+                result = await db.execute(
+                    select(Subject).where(
+                        Subject.user_id == user_id,
+                        Subject.name.ilike(name_stripped)
+                    )
+                )
+                existing = result.scalars().first()
                 if existing:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
@@ -72,13 +82,14 @@ class SubjectService:
         if subject_data.semester is not None:
             subject.semester = subject_data.semester
 
-        db.commit()
-        db.refresh(subject)
+        await db.commit()
+        await db.refresh(subject)
         return subject
 
     @staticmethod
-    def delete_subject(db: Session, subject_id: int, user_id: int) -> None:
-        subject = db.query(Subject).filter(Subject.id == subject_id).first()
+    async def delete_subject(db: AsyncSession, subject_id: int, user_id: int) -> None:
+        result = await db.execute(select(Subject).where(Subject.id == subject_id))
+        subject = result.scalars().first()
         if not subject:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -89,9 +100,10 @@ class SubjectService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Unauthorized access to this subject"
             )
-        db.delete(subject)
-        db.commit()
+        await db.delete(subject)
+        await db.commit()
 
     @staticmethod
-    def list_subjects(db: Session, user_id: int) -> List[Subject]:
-        return db.query(Subject).filter(Subject.user_id == user_id).all()
+    async def list_subjects(db: AsyncSession, user_id: int) -> List[Subject]:
+        result = await db.execute(select(Subject).where(Subject.user_id == user_id))
+        return list(result.scalars().all())

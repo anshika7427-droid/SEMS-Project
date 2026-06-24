@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 from pathlib import Path
 from contextlib import asynccontextmanager
+import asyncio
 import sys
 import os
 import logging
@@ -51,7 +52,7 @@ async def lifespan(app: FastAPI):
         logger.info("Running database migrations via Alembic...")
         base_dir = Path(__file__).resolve().parent.parent
         alembic_cfg = Config(str(base_dir / "alembic.ini"))
-        command.upgrade(alembic_cfg, "head")
+        await asyncio.to_thread(command.upgrade, alembic_cfg, "head")
         logger.info("Database migrations applied successfully.")
     except Exception as e:
         logger.error(f"Error applying database migrations during startup: {e}")
@@ -225,8 +226,8 @@ async def health_check():
     db_connected = False
     try:
         from sqlalchemy import text
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
         db_connected = True
     except Exception as e:
         logger.error(f"Health check database query failed: {e}")

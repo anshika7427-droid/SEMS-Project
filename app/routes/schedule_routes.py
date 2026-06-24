@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy import select, delete
+from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 from collections import defaultdict
 from typing import Optional
@@ -22,19 +23,22 @@ async def schedule_home():
     }
 
 @router.post("/generate-ai")
-def generate_ai_schedule_endpoint(
+async def generate_ai_schedule_endpoint(
     payload: Optional[AICalibrationPayload] = None,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
+    user_id = current_user.id
     try:
-        logger.info(f"AI Study Plan requested for User ID: {current_user.id} with payload: {payload}")
-        subjects = db.query(Subject).filter(Subject.user_id == current_user.id).all()
-        milestones = db.query(Milestone).filter(Milestone.user_id == current_user.id).all()
-        analytics = get_user_analytics(current_user.id, db)
+        logger.info(f"AI Study Plan requested for User ID: {user_id} with payload: {payload}")
+        result_subs = await db.execute(select(Subject).where(Subject.user_id == user_id))
+        subjects = list(result_subs.scalars().all())
+        result_mils = await db.execute(select(Milestone).where(Milestone.user_id == user_id))
+        milestones = list(result_mils.scalars().all())
+        analytics = await get_user_analytics(user_id, db)
         
         if not subjects:
-            logger.warning(f"No subjects found for user {current_user.id}. Cannot generate schedule.")
+            logger.warning(f"No subjects found for user {user_id}. Cannot generate schedule.")
             return {"message": "No subjects found. Please add subjects first.", "events_count": 0, "is_ai": False}
             
         calibration_dict = None
@@ -53,10 +57,10 @@ def generate_ai_schedule_endpoint(
                 current_user.prioritize_critical = payload.prioritize_critical
                 current_user.intensive_pre_exam = payload.intensive_pre_exam
                 current_user.weekend_preservation = payload.weekend_preservation
-                db.commit()
+                await db.commit()
             except Exception as e:
                 logger.error(f"Failed to auto-save user preferences to database: {e}")
-                db.rollback()
+                await db.rollback()
             calibration_dict = payload.model_dump()
             focus_period = payload.focus_period or "Morning"
             avoid_early_mornings = payload.avoid_early_mornings or False
@@ -73,14 +77,14 @@ def generate_ai_schedule_endpoint(
             focus_period = current_user.focus_period or "Morning"
             avoid_early_mornings = bool(current_user.avoid_early_mornings)
             
-        ai_data = generate_ai_schedule(current_user.id, subjects, milestones, analytics, calibration_dict, db=db)
+        ai_data = await generate_ai_schedule(user_id, subjects, milestones, analytics, calibration_dict, db=db)
         
-        db.query(ScheduleEvent).filter(ScheduleEvent.user_id == current_user.id).delete()
+        await db.execute(delete(ScheduleEvent).where(ScheduleEvent.user_id == user_id))
         
         # Save detailed analysis to user-specific JSON file in the data/ directory
         import json
         from app.database import DB_DIR
-        analysis_path = DB_DIR / f"user_{current_user.id}_analysis.json"
+        analysis_path = DB_DIR / f"user_{user_id}_analysis.json"
         
         detailed_analysis = ai_data.get("detailed_analysis", {})
         quality_scoring = ai_data.get("quality_scoring", {})
@@ -173,13 +177,13 @@ def generate_ai_schedule_endpoint(
                     end_time=end_time,
                     reason=item.get("reason"),
                     session_type=item.get("session_type", "Deep Focus"),
-                    user_id=current_user.id
+                    user_id=user_id
                 )
                 db.add(event)
                 events_added += 1
                 
-        db.commit()
-        logger.info(f"AI generated schedule saved. Created {events_added} events for User ID: {current_user.id}. Total LLM calls: {ai_data.get('llm_calls_count', 0)}, Cached: {ai_data.get('is_cached', False)}")
+        await db.commit()
+        logger.info(f"AI generated schedule saved. Created {events_added} events for User ID: {user_id}. Total LLM calls: {ai_data.get('llm_calls_count', 0)}, Cached: {ai_data.get('is_cached', False)}")
         return {
             "message": "AI study plan generated successfully",
             "events_count": events_added,
@@ -191,12 +195,12 @@ def generate_ai_schedule_endpoint(
     except Exception as e:
         logger.exception(f"AI study plan generation failed. Falling back to rule-based schedule. Error: {e}")
         try:
-            db.rollback()
-            events = generate_weekly_schedule(current_user.id, db)
+            await db.rollback()
+            events = await generate_weekly_schedule(user_id, db)
             
             # Delete stale detailed analysis file if fallback happens
             from app.database import DB_DIR
-            analysis_path = DB_DIR / f"user_{current_user.id}_analysis.json"
+            analysis_path = DB_DIR / f"user_{user_id}_analysis.json"
             if analysis_path.exists():
                 try:
                     analysis_path.unlink()
@@ -218,12 +222,12 @@ def generate_ai_schedule_endpoint(
             )
 
 @router.post("/generate")
-def generate_schedule(
+async def generate_schedule(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     try:
-        events = generate_weekly_schedule(current_user.id, db)
+        events = await generate_weekly_schedule(current_user.id, db)
         return {"message": "Schedule generated successfully", "events_count": len(events)}
     except Exception as e:
         logger.error(f"Error generating schedule: {e}")
@@ -233,15 +237,17 @@ def generate_schedule(
         )
 
 @router.get("/all")
-def get_schedule(
+async def get_schedule(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
-    events = db.query(ScheduleEvent).filter(ScheduleEvent.user_id == current_user.id).all()
+    result_events = await db.execute(select(ScheduleEvent).where(ScheduleEvent.user_id == current_user.id))
+    events = list(result_events.scalars().all())
     # Format response including subject name for UI convenience
     result = []
     for event in events:
-        subject = db.query(Subject).filter(Subject.id == event.subject_id).first()
+        sub_res = await db.execute(select(Subject).where(Subject.id == event.subject_id))
+        subject = sub_res.scalars().first()
         result.append({
             "id": event.id,
             "subject_id": event.subject_id,
@@ -256,9 +262,9 @@ def get_schedule(
     return result
 
 @router.get("/analysis")
-def get_schedule_analysis(
+async def get_schedule_analysis(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     from app.database import DB_DIR
     import json
@@ -274,9 +280,9 @@ def get_schedule_analysis(
     return {}
 
 @router.get("/calibration")
-def get_calibration(
+async def get_calibration(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     return {
         "daily_quota": current_user.daily_quota if current_user.daily_quota is not None else 6,
@@ -289,10 +295,10 @@ def get_calibration(
     }
 
 @router.post("/calibration")
-def save_calibration(
+async def save_calibration(
     payload: AICalibrationPayload,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     try:
         current_user.daily_quota = payload.daily_quota
@@ -302,24 +308,25 @@ def save_calibration(
         current_user.prioritize_critical = payload.prioritize_critical
         current_user.intensive_pre_exam = payload.intensive_pre_exam
         current_user.weekend_preservation = payload.weekend_preservation
-        db.commit()
+        await db.commit()
         logger.info(f"Saved calibration preferences to database for user {current_user.id}")
         return {"message": "Preferences saved successfully"}
     except Exception as e:
         logger.error(f"Error saving calibration: {e}")
-        db.rollback()
+        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to save calibration preferences"
         )
 
 @router.delete("/reset")
-def reset_schedule(
+async def reset_schedule(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
-    deleted_count = db.query(ScheduleEvent).filter(ScheduleEvent.user_id == current_user.id).delete()
-    db.commit()
+    res = await db.execute(delete(ScheduleEvent).where(ScheduleEvent.user_id == current_user.id))
+    deleted_count = res.rowcount
+    await db.commit()
     
     # Delete stale detailed analysis file if it exists
     from app.database import DB_DIR

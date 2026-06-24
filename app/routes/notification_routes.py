@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func, update
 from datetime import date, datetime, timedelta
 from app.database import get_db
 from app.auth import get_current_user, User
@@ -9,12 +10,13 @@ import logging
 router = APIRouter()
 logger = logging.getLogger("notification_routes")
 
-def generate_exam_notifications(user_id: int, db: Session):
+async def generate_exam_notifications(user_id: int, db: AsyncSession):
     today = date.today()
     tomorrow = today + timedelta(days=1)
     
     # Fetch milestones for tomorrow
-    milestones = db.query(Milestone).filter(Milestone.user_id == user_id).all()
+    milestones_res = await db.execute(select(Milestone).where(Milestone.user_id == user_id))
+    milestones = milestones_res.scalars().all()
     
     for m in milestones:
         try:
@@ -26,11 +28,14 @@ def generate_exam_notifications(user_id: int, db: Session):
                 message = f"{m.subject_name} Mid Semester Exam\nDate: {exam_date.strftime('%d %b')}\nTime: 10:00 AM"
                 
                 # Check duplicate
-                exists = db.query(Notification).filter(
-                    Notification.user_id == user_id,
-                    Notification.title == title,
-                    Notification.message == message
-                ).first()
+                exists_res = await db.execute(
+                    select(Notification).where(
+                        Notification.user_id == user_id,
+                        Notification.title == title,
+                        Notification.message == message
+                    )
+                )
+                exists = exists_res.scalars().first()
                 
                 if not exists:
                     notif = Notification(
@@ -43,15 +48,20 @@ def generate_exam_notifications(user_id: int, db: Session):
         except Exception as e:
             logger.error(f"Error generating exam notification for user {user_id}: {e}")
             
-    db.commit()
+    await db.commit()
 
 @router.get("/")
-def get_notifications(
+async def get_notifications(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
-    generate_exam_notifications(current_user.id, db)
-    notifications = db.query(Notification).filter(Notification.user_id == current_user.id).order_by(Notification.created_at.desc()).all()
+    await generate_exam_notifications(current_user.id, db)
+    notifications_res = await db.execute(
+        select(Notification)
+        .where(Notification.user_id == current_user.id)
+        .order_by(Notification.created_at.desc())
+    )
+    notifications = notifications_res.scalars().all()
     
     return [
         {
@@ -65,32 +75,48 @@ def get_notifications(
     ]
 
 @router.get("/unread-count")
-def get_unread_count(
+async def get_unread_count(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
-    generate_exam_notifications(current_user.id, db)
-    count = db.query(Notification).filter(Notification.user_id == current_user.id, Notification.is_read == False).count()
+    await generate_exam_notifications(current_user.id, db)
+    count_res = await db.execute(
+        select(func.count()).select_from(Notification).where(
+            Notification.user_id == current_user.id,
+            Notification.is_read == False
+        )
+    )
+    count = count_res.scalar_one()
     return {"count": count}
 
 @router.put("/read/{notification_id}")
-def mark_read(
+async def mark_read(
     notification_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
-    notif = db.query(Notification).filter(Notification.id == notification_id, Notification.user_id == current_user.id).first()
+    notif_res = await db.execute(
+        select(Notification).where(
+            Notification.id == notification_id,
+            Notification.user_id == current_user.id
+        )
+    )
+    notif = notif_res.scalars().first()
     if not notif:
         raise HTTPException(status_code=404, detail="Notification not found")
     notif.is_read = True
-    db.commit()
+    await db.commit()
     return {"message": "Notification marked as read"}
 
 @router.put("/read-all")
-def mark_all_read(
+async def mark_all_read(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
-    db.query(Notification).filter(Notification.user_id == current_user.id).update({Notification.is_read: True})
-    db.commit()
+    await db.execute(
+        update(Notification)
+        .where(Notification.user_id == current_user.id)
+        .values(is_read=True)
+    )
+    await db.commit()
     return {"message": "All notifications marked as read"}

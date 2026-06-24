@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Request
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 
 from app.database import get_db
@@ -16,8 +16,8 @@ logger = logging.getLogger("auth_routes")
 @router.post("/register", response_model=MessageResponse)
 @router.post("/signup", response_model=MessageResponse)
 @limiter.limit("5/minute")
-def register(request: Request, user: UserCreate, db: Session = Depends(get_db)):
-    AuthService.register(db, user)
+async def register(request: Request, user: UserCreate, db: AsyncSession = Depends(get_db)):
+    await AuthService.register(db, user)
     return MessageResponse(
         message="Account created successfully"
     )
@@ -25,8 +25,8 @@ def register(request: Request, user: UserCreate, db: Session = Depends(get_db)):
 # LOGIN
 @router.post("/login", response_model=LoginResponse)
 @limiter.limit("5/minute")
-def login(request: Request, user: UserLogin, db: Session = Depends(get_db)):
-    db_user = AuthService.login(db, user, request.session)
+async def login(request: Request, user: UserLogin, db: AsyncSession = Depends(get_db)):
+    db_user = await AuthService.login(db, user, request.session)
     return LoginResponse(
         message="Login successful",
         user_id=db_user.id,
