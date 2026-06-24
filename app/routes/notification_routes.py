@@ -20,7 +20,8 @@ async def generate_exam_notifications(user_id: int, db: AsyncSession):
     
     for m in milestones:
         try:
-            exam_date = m.exam_date
+            from app.utils.helpers import parse_date
+            exam_date = parse_date(m.exam_date)
             
             # Check if tomorrow
             if exam_date == tomorrow:

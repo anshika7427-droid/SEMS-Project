@@ -187,7 +187,8 @@ class MilestoneService:
         milestones_completed = 0
         milestones_pending = 0
         for m in milestones:
-            if m.completion_percentage == 100 or m.exam_date <= today:
+            from app.utils.helpers import parse_date
+            if m.completion_percentage == 100 or parse_date(m.exam_date) <= today:
                 milestones_completed += 1
             else:
                 milestones_pending += 1
@@ -215,7 +216,8 @@ class MilestoneService:
         performance_metrics = {}
         for subj in subjects:
             subj_milestones = [m for m in milestones if m.subject_id == subj.id]
-            subj_milestones_completed = sum(1 for m in subj_milestones if m.completion_percentage == 100 or m.exam_date <= today)
+            from app.utils.helpers import parse_date
+            subj_milestones_completed = sum(1 for m in subj_milestones if m.completion_percentage == 100 or parse_date(m.exam_date) <= today)
             
             # Study sessions hours grouped in-memory
             subj_sessions = sessions_by_subject.get(subj.id, [])

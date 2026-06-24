@@ -48,7 +48,8 @@ async def get_user_analytics(user_id: int, db: AsyncSession) -> dict:
         # Parse completion date
         try:
             # completed_at is a DateTime object
-            sess_date = s.completed_at.date()
+            from app.utils.helpers import parse_date
+            sess_date = parse_date(s.completed_at)
             session_dates.add(sess_date)
             
             # Check if within last 7 days

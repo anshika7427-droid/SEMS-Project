@@ -33,7 +33,8 @@ async def get_grade_prediction(user_id: int, db: AsyncSession) -> dict:
     today = date.today()
     for s in sessions:
         try:
-            sess_date = s.completed_at.date()
+            from app.utils.helpers import parse_date
+            sess_date = parse_date(s.completed_at)
             if today - sess_date <= timedelta(days=7):
                 study_days.add(sess_date)
         except Exception:
@@ -62,7 +63,8 @@ async def get_grade_prediction(user_id: int, db: AsyncSession) -> dict:
     critical_exam = False
     for m in milestones:
         try:
-            exam_date = m.exam_date
+            from app.utils.helpers import parse_date
+            exam_date = parse_date(m.exam_date)
             days_left = (exam_date - today).days
             if 0 <= days_left <= 3:
                 critical_exam = True
