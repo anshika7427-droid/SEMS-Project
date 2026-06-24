@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 from collections import defaultdict
@@ -9,7 +9,8 @@ from app.database import get_db
 from app.auth import get_current_user, User
 from app.scheduler import generate_weekly_schedule
 from app.models import ScheduleEvent, Subject, Milestone
-from app.schemas import ScheduleEventResponse, AICalibrationPayload
+from app.schemas import ScheduleEventResponse, AICalibrationPayload, ScheduleEventListResponse, ScheduleEventDetailResponse
+from app.utils.helpers import pagination_params
 from app.analytics import get_user_analytics
 from app.services.llm_service import generate_ai_schedule
 
@@ -239,9 +240,17 @@ async def generate_schedule(
 @router.get("/all")
 async def get_schedule(
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    pagination: dict = Depends(pagination_params)
 ):
-    result_events = await db.execute(select(ScheduleEvent).where(ScheduleEvent.user_id == current_user.id))
+    skip = pagination["skip"]
+    limit = pagination["limit"]
+    result_events = await db.execute(
+        select(ScheduleEvent)
+        .where(ScheduleEvent.user_id == current_user.id)
+        .offset(skip)
+        .limit(limit)
+    )
     events = list(result_events.scalars().all())
     # Format response including subject name for UI convenience
     result = []
@@ -260,6 +269,46 @@ async def get_schedule(
             "session_type": event.session_type or "Deep Focus"
         })
     return result
+
+@router.get("/events", response_model=ScheduleEventListResponse)
+async def get_schedule_events(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    pagination: dict = Depends(pagination_params)
+):
+    skip = pagination["skip"]
+    limit = pagination["limit"]
+    
+    count_stmt = select(func.count(ScheduleEvent.id)).where(ScheduleEvent.user_id == current_user.id)
+    total = (await db.execute(count_stmt)).scalar_one()
+    
+    stmt = (
+        select(ScheduleEvent)
+        .where(ScheduleEvent.user_id == current_user.id)
+        .offset(skip)
+        .limit(limit)
+    )
+    result_events = await db.execute(stmt)
+    events = list(result_events.scalars().all())
+    
+    result = []
+    for event in events:
+        sub_res = await db.execute(select(Subject).where(Subject.id == event.subject_id))
+        subject = sub_res.scalars().first()
+        result.append(
+            ScheduleEventDetailResponse(
+                id=event.id,
+                subject_id=event.subject_id,
+                subject_name=subject.name if subject else "Unknown",
+                subject_difficulty=subject.difficulty if subject else "Medium",
+                day_of_week=event.day_of_week,
+                start_time=event.start_time,
+                end_time=event.end_time,
+                reason=event.reason,
+                session_type=event.session_type or "Deep Focus"
+            )
+        )
+    return ScheduleEventListResponse(events=result, total=total)
 
 @router.get("/analysis")
 async def get_schedule_analysis(

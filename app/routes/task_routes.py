@@ -7,6 +7,7 @@ from app.database import get_db
 from app.auth import get_current_user, User
 from app.schemas import TaskCreate, TaskUpdate, TaskResponse, TaskListResponse, TaskCreateResponse
 from app.services.task_service import TaskService
+from app.utils.helpers import pagination_params
 
 router = APIRouter()
 logger = logging.getLogger("task_routes")
@@ -42,10 +43,13 @@ async def create_task(
 @router.get("/all", response_model=List[TaskResponse])
 async def get_tasks(
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    pagination: dict = Depends(pagination_params)
 ):
     try:
-        tasks = await TaskService.list_tasks(db, current_user.id)
+        tasks = await TaskService.list_tasks(
+            db, current_user.id, skip=pagination["skip"], limit=pagination["limit"]
+        )
         logger.info(f"Retrieved {len(tasks)} tasks for User ID: {current_user.id}")
         return tasks
     except Exception as e:
@@ -58,11 +62,18 @@ async def get_tasks(
 @router.get("", response_model=TaskListResponse)
 async def list_tasks_envelope(
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    pagination: dict = Depends(pagination_params)
 ):
     try:
-        tasks = await TaskService.list_tasks(db, current_user.id)
-        return TaskListResponse(tasks=tasks)
+        tasks = await TaskService.list_tasks(
+            db, current_user.id, skip=pagination["skip"], limit=pagination["limit"]
+        )
+        from sqlalchemy import func, select
+        from app.models import Task
+        count_res = await db.execute(select(func.count(Task.id)).where(Task.user_id == current_user.id))
+        total = count_res.scalar_one()
+        return TaskListResponse(tasks=tasks, total=total)
     except Exception as e:
         logger.exception(f"Unexpected error listing tasks: {e}")
         raise HTTPException(

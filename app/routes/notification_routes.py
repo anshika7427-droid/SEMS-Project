@@ -5,6 +5,8 @@ from datetime import date, datetime, timedelta
 from app.database import get_db
 from app.auth import get_current_user, User
 from app.models import Milestone, Notification
+from app.schemas import NotificationListResponse, NotificationResponse
+from app.utils.helpers import pagination_params
 import logging
 
 router = APIRouter()
@@ -51,36 +53,57 @@ async def generate_exam_notifications(user_id: int, db: AsyncSession):
             
     await db.commit()
 
-@router.get("/")
-async def get_notifications(
+@router.post("/generate")
+async def generate_notifications(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     await generate_exam_notifications(current_user.id, db)
-    notifications_res = await db.execute(
+    return {"message": "Notifications generated successfully"}
+
+@router.get("/", response_model=NotificationListResponse)
+async def get_notifications(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    pagination: dict = Depends(pagination_params)
+):
+    skip = pagination["skip"]
+    limit = pagination["limit"]
+    
+    stmt = (
         select(Notification)
         .where(Notification.user_id == current_user.id)
         .order_by(Notification.created_at.desc())
     )
+    
+    # Query total count
+    count_stmt = select(func.count(Notification.id)).where(Notification.user_id == current_user.id)
+    total = (await db.execute(count_stmt)).scalar_one()
+    
+    # Apply offset/limit
+    stmt = stmt.offset(skip).limit(limit)
+    notifications_res = await db.execute(stmt)
     notifications = notifications_res.scalars().all()
     
-    return [
-        {
-            "id": n.id,
-            "title": n.title,
-            "message": n.message,
-            "is_read": n.is_read,
-            "created_at": n.created_at
-        }
-        for n in notifications
-    ]
+    return NotificationListResponse(
+        notifications=[
+            NotificationResponse(
+                id=n.id,
+                title=n.title,
+                message=n.message,
+                is_read=n.is_read,
+                created_at=n.created_at
+            )
+            for n in notifications
+        ],
+        total=total
+    )
 
 @router.get("/unread-count")
 async def get_unread_count(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    await generate_exam_notifications(current_user.id, db)
     count_res = await db.execute(
         select(func.count()).select_from(Notification).where(
             Notification.user_id == current_user.id,

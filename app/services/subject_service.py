@@ -104,6 +104,11 @@ class SubjectService:
         await db.commit()
 
     @staticmethod
-    async def list_subjects(db: AsyncSession, user_id: int) -> List[Subject]:
-        result = await db.execute(select(Subject).where(Subject.user_id == user_id))
+    async def list_subjects(db: AsyncSession, user_id: int, skip: int = None, limit: int = None) -> List[Subject]:
+        stmt = select(Subject).where(Subject.user_id == user_id)
+        if skip is not None:
+            stmt = stmt.offset(skip)
+        if limit is not None:
+            stmt = stmt.limit(limit)
+        result = await db.execute(stmt)
         return list(result.scalars().all())

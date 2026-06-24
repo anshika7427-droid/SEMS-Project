@@ -7,6 +7,7 @@ from app.schemas import SubjectCreate, SubjectUpdate, SubjectResponse, SubjectLi
 from app.database import get_db
 from app.auth import get_current_user, User
 from app.services.subject_service import SubjectService
+from app.utils.helpers import pagination_params
 
 router = APIRouter()
 logger = logging.getLogger("subject_routes")
@@ -33,10 +34,13 @@ async def create_subject(
 @router.get("/all", response_model=List[SubjectResponse])
 async def get_all_subjects(
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    pagination: dict = Depends(pagination_params)
 ):
     try:
-        subjects = await SubjectService.list_subjects(db, current_user.id)
+        subjects = await SubjectService.list_subjects(
+            db, current_user.id, skip=pagination["skip"], limit=pagination["limit"]
+        )
         logger.info(f"Retrieved {len(subjects)} subjects for User ID: {current_user.id}")
         return subjects
     except Exception as e:
@@ -49,11 +53,18 @@ async def get_all_subjects(
 @router.get("", response_model=SubjectListResponse)
 async def list_subjects_envelope(
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    pagination: dict = Depends(pagination_params)
 ):
     try:
-        subjects = await SubjectService.list_subjects(db, current_user.id)
-        return SubjectListResponse(subjects=subjects)
+        subjects = await SubjectService.list_subjects(
+            db, current_user.id, skip=pagination["skip"], limit=pagination["limit"]
+        )
+        from sqlalchemy import func, select
+        from app.models import Subject
+        count_res = await db.execute(select(func.count(Subject.id)).where(Subject.user_id == current_user.id))
+        total = count_res.scalar_one()
+        return SubjectListResponse(subjects=subjects, total=total)
     except Exception as e:
         logger.exception(f"Unexpected error listing subjects: {e}")
         raise HTTPException(

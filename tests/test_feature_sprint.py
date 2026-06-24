@@ -90,8 +90,9 @@ async def test_exam_notification_system(client):
     })
     
     # Fetch notifications -> triggers generation
+    await client.post("/api/notifications/generate")
     notifications_res = await client.get("/api/notifications/")
-    notifications = notifications_res.json()
+    notifications = notifications_res.json()["notifications"]
     assert len(notifications) == 1
     assert "Upcoming Exam Tomorrow" in notifications[0]["title"]
     assert "OS Mid Semester Exam" in notifications[0]["message"]

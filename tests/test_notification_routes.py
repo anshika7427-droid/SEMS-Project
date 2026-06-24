@@ -11,7 +11,8 @@ async def test_notification_routes_flow(client, db):
     # 2. Get notifications (empty)
     res = await client.get("/api/notifications/")
     assert res.status_code == 200
-    assert len(res.json()) == 0
+    assert len(res.json()["notifications"]) == 0
+    assert res.json()["total"] == 0
 
     # 3. Create a Milestone due tomorrow to trigger notification generation
     sub_resp = await client.post("/api/subjects/create", json={"name": "Maths", "difficulty": "Medium"})
@@ -24,10 +25,16 @@ async def test_notification_routes_flow(client, db):
         "exam_date": tomorrow_str
     })
 
-    # Get notifications again - should trigger generate_exam_notifications
+    # Trigger generation manually (since it is moved out of the GET handler)
+    gen_res = await client.post("/api/notifications/generate")
+    assert gen_res.status_code == 200
+
+    # Get notifications again
     res2 = await client.get("/api/notifications/")
     assert res2.status_code == 200
-    notifs = res2.json()
+    data = res2.json()
+    notifs = data["notifications"]
+    assert data["total"] == 1
     assert len(notifs) == 1
     assert "Maths" in notifs[0]["message"]
     assert notifs[0]["is_read"] is False

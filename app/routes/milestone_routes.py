@@ -13,6 +13,7 @@ from app.schemas import (
     ProgressResponse,
     StatisticsResponse
 )
+from app.utils.helpers import pagination_params
 from app.services.milestone_service import MilestoneService
 
 router = APIRouter()
@@ -43,10 +44,13 @@ async def create_milestone(
 @router.get("/all", response_model=List[MilestoneResponse])
 async def get_all_milestones(
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    pagination: dict = Depends(pagination_params)
 ):
     try:
-        milestones = await MilestoneService.list_milestones(db, current_user.id)
+        milestones = await MilestoneService.list_milestones(
+            db, current_user.id, skip=pagination["skip"], limit=pagination["limit"]
+        )
         logger.info(f"Retrieved {len(milestones)} milestones for User ID: {current_user.id}")
         return milestones
     except Exception as e:
@@ -59,11 +63,18 @@ async def get_all_milestones(
 @router.get("", response_model=MilestoneListResponse)
 async def list_milestones_envelope(
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    pagination: dict = Depends(pagination_params)
 ):
     try:
-        milestones = await MilestoneService.list_milestones(db, current_user.id)
-        return MilestoneListResponse(milestones=milestones)
+        milestones = await MilestoneService.list_milestones(
+            db, current_user.id, skip=pagination["skip"], limit=pagination["limit"]
+        )
+        from sqlalchemy import func, select
+        from app.models import Milestone
+        count_res = await db.execute(select(func.count(Milestone.id)).where(Milestone.user_id == current_user.id))
+        total = count_res.scalar_one()
+        return MilestoneListResponse(milestones=milestones, total=total)
     except Exception as e:
         logger.exception(f"Unexpected error listing milestones: {e}")
         raise HTTPException(

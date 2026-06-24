@@ -82,6 +82,7 @@ class SubjectResponse(BaseModel):
 
 class SubjectListResponse(BaseModel):
     subjects: List[SubjectResponse]
+    total: Optional[int] = None
 
 # -----------------------------------
 # USER SCHEMAS
@@ -216,6 +217,7 @@ class TaskResponse(BaseModel):
 
 class TaskListResponse(BaseModel):
     tasks: List[TaskResponse]
+    total: Optional[int] = None
 
 class TaskCreateResponse(BaseModel):
     message: str
@@ -317,6 +319,7 @@ class MilestoneResponse(BaseModel):
 
 class MilestoneListResponse(BaseModel):
     milestones: List[MilestoneResponse]
+    total: Optional[int] = None
 
 # -----------------------------------
 # PROGRESS & STATISTICS SCHEMAS
@@ -465,3 +468,37 @@ class ProfileUpdateResponse(BaseModel):
     email: EmailStr
 
     model_config = ConfigDict(from_attributes=True)
+
+class ResourceListResponse(BaseModel):
+    resources: List[ResourceResponse]
+    total: Optional[int] = None
+
+class NotificationResponse(BaseModel):
+    id: int
+    title: str
+    message: str
+    is_read: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class NotificationListResponse(BaseModel):
+    notifications: List[NotificationResponse]
+    total: Optional[int] = None
+
+class ScheduleEventDetailResponse(BaseModel):
+    id: int
+    subject_id: int
+    subject_name: str
+    subject_difficulty: str
+    day_of_week: str
+    start_time: str
+    end_time: str
+    reason: Optional[str] = None
+    session_type: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class ScheduleEventListResponse(BaseModel):
+    events: List[ScheduleEventDetailResponse]
+    total: Optional[int] = None

@@ -20,10 +20,44 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 UPLOAD_DIR = BASE_DIR / "storage" / "resources"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+from app.utils.helpers import pagination_params
+from sqlalchemy import func
+
 @router.get("/")
-async def resource_home():
+async def resource_home(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    pagination: dict = Depends(pagination_params)
+):
+    skip = pagination["skip"]
+    limit = pagination["limit"]
+    stmt = select(Resource).where(Resource.user_id == current_user.id)
+    count_stmt = select(func.count(Resource.id)).where(Resource.user_id == current_user.id)
+    
+    total = (await db.execute(count_stmt)).scalar_one()
+    
+    stmt = stmt.offset(skip).limit(limit)
+    resources_res = await db.execute(stmt)
+    resources = resources_res.scalars().all()
+    
+    result = []
+    for r in resources:
+        sub_res = await db.execute(select(Subject).where(Subject.id == r.subject_id))
+        subject = sub_res.scalars().first()
+        result.append({
+            "id": r.id,
+            "title": r.title,
+            "file_path": f"/api/resources/download/{r.id}" if r.file_path else None,
+            "link": r.link,
+            "upload_date": r.upload_date,
+            "subject_id": r.subject_id,
+            "subject_name": subject.name if subject else "Unknown"
+        })
+        
     return {
-        "message": "Resource route working"
+        "message": "Resource route working",
+        "resources": result,
+        "total": total
     }
 
 @router.post("/upload")
@@ -104,11 +138,13 @@ async def upload_resource(
 @router.get("/all")
 async def get_resources(
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    pagination: dict = Depends(pagination_params)
 ):
-    result_res = await db.execute(
-        select(Resource).where(Resource.user_id == current_user.id)
-    )
+    skip = pagination["skip"]
+    limit = pagination["limit"]
+    stmt = select(Resource).where(Resource.user_id == current_user.id).offset(skip).limit(limit)
+    result_res = await db.execute(stmt)
     resources = result_res.scalars().all()
     result = []
     for r in resources:

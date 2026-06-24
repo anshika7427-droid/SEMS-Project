@@ -1,5 +1,10 @@
 from datetime import date, datetime
 from typing import Union
+from fastapi import Query
+
+def pagination_params(skip: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=200)):
+    return {"skip": skip, "limit": limit}
+
 
 def parse_date(value: Union[str, date, datetime]) -> date:
     """Parse a date from a string in any known app format, or pass through a date/datetime."""

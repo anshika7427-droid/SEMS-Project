@@ -107,8 +107,13 @@ class TaskService:
         await db.commit()
 
     @staticmethod
-    async def list_tasks(db: AsyncSession, user_id: int) -> List[Task]:
-        result = await db.execute(select(Task).where(Task.user_id == user_id))
+    async def list_tasks(db: AsyncSession, user_id: int, skip: int = None, limit: int = None) -> List[Task]:
+        stmt = select(Task).where(Task.user_id == user_id)
+        if skip is not None:
+            stmt = stmt.offset(skip)
+        if limit is not None:
+            stmt = stmt.limit(limit)
+        result = await db.execute(stmt)
         return list(result.scalars().all())
 
     @staticmethod

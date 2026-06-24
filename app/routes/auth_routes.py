@@ -27,6 +27,8 @@ async def register(request: Request, user: UserCreate, db: AsyncSession = Depend
 @limiter.limit("5/minute")
 async def login(request: Request, user: UserLogin, db: AsyncSession = Depends(get_db)):
     db_user = await AuthService.login(db, user, request.session)
+    from app.routes.notification_routes import generate_exam_notifications
+    await generate_exam_notifications(db_user.id, db)
     return LoginResponse(
         message="Login successful",
         user_id=db_user.id,
