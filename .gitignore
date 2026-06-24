@@ -3,7 +3,18 @@ venv/
 __pycache__/
 *.pyc
 
-data/
+# Ignore local databases and user-uploaded storage files
+data/*
+!data/.gitkeep
+
+storage/*
+!storage/avatars/
+!storage/resources/
+storage/avatars/*
+!storage/avatars/.gitkeep
+storage/resources/*
+!storage/resources/.gitkeep
+
 .pytest_cache/
 .mypy_cache/
 .DS_Store

@@ -5,6 +5,8 @@ import sys
 import os
 from pathlib import Path
 
+workers = int(os.getenv("GUNICORN_WORKERS", 2))
+
 def start_server():
     print("\n🚀 Starting AI-Based Education Recommendation System (SEMS Backend)...\n")
     

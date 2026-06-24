@@ -7,6 +7,7 @@
     <title>SEMS | AI Edu System</title>
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link rel="icon" href="/static/favicon.ico" />
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@700;800&amp;display=swap"
@@ -741,18 +742,20 @@
     <script>
       function getErrorMessage(error, response) {
         console.error("Detailed error logs:", error, response);
-        
+
         function formatValue(val) {
           if (val === undefined || val === null) return null;
           if (Array.isArray(val)) {
-            return val.map(item => {
-              if (item && typeof item === 'object') {
-                return item.msg || item.message || JSON.stringify(item);
-              }
-              return String(item);
-            }).join(', ');
+            return val
+              .map((item) => {
+                if (item && typeof item === "object") {
+                  return item.msg || item.message || JSON.stringify(item);
+                }
+                return String(item);
+              })
+              .join(", ");
           }
-          if (typeof val === 'object') {
+          if (typeof val === "object") {
             return val.msg || val.message || val.detail || JSON.stringify(val);
           }
           return String(val);
@@ -771,21 +774,39 @@
         }
 
         // 3. response.detail
-        if (response && response.detail !== undefined && response.detail !== null) {
+        if (
+          response &&
+          response.detail !== undefined &&
+          response.detail !== null
+        ) {
           const msg = formatValue(response.detail);
           if (msg) return msg;
         }
-        if (error && error.response && error.response.detail !== undefined && error.response.detail !== null) {
+        if (
+          error &&
+          error.response &&
+          error.response.detail !== undefined &&
+          error.response.detail !== null
+        ) {
           const msg = formatValue(error.response.detail);
           if (msg) return msg;
         }
 
         // 4. response.message
-        if (response && response.message !== undefined && response.message !== null) {
+        if (
+          response &&
+          response.message !== undefined &&
+          response.message !== null
+        ) {
           const msg = formatValue(response.message);
           if (msg) return msg;
         }
-        if (error && error.response && error.response.message !== undefined && error.response.message !== null) {
+        if (
+          error &&
+          error.response &&
+          error.response.message !== undefined &&
+          error.response.message !== null
+        ) {
           const msg = formatValue(error.response.message);
           if (msg) return msg;
         }
@@ -793,7 +814,7 @@
         // 5. JSON.stringify(error)
         if (error) {
           try {
-            if (typeof error === 'string') return error;
+            if (typeof error === "string") return error;
             return JSON.stringify(error);
           } catch (e) {
             return String(error);
