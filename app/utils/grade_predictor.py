@@ -1,7 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from datetime import date, datetime, timedelta
-import hashlib
 from app.models import Task, Subject, Milestone, StudySession
 
 async def get_grade_prediction(user_id: int, db: AsyncSession) -> dict:
@@ -44,19 +43,26 @@ async def get_grade_prediction(user_id: int, db: AsyncSession) -> dict:
     attendance = min(100.0, 75.0 + len(study_days) * 4.0)
     
     # 4. Past Performance / Previous Grade
-    # Deterministic calculation using subject names as a seed
+    # Real past performance: average task completion rate across all subjects of the user.
+    # It represents the average completion rate of tasks assigned to each of the user's subjects.
     subjects_res = await db.execute(select(Subject).where(Subject.user_id == user_id))
     subjects = subjects_res.scalars().all()
     
-    past_performance = 78.0
-    if subjects:
-        subj_scores = []
-        for s in subjects:
-            h = int(hashlib.md5(s.name.encode('utf-8')).hexdigest(), 16)
-            quiz_score = 60 + (h % 31)
-            flashcard_score = 70 + (h % 26)
-            subj_scores.append((quiz_score + flashcard_score) / 2.0)
-        past_performance = sum(subj_scores) / len(subj_scores)
+    subject_completion_rates = []
+    for s in subjects:
+        total_stmt = select(func.count(Task.id)).where(Task.user_id == user_id, Task.subject_id == s.id)
+        done_stmt = select(func.count(Task.id)).where(Task.user_id == user_id, Task.subject_id == s.id, Task.status == "Completed")
+        
+        total_res = await db.execute(total_stmt)
+        total = total_res.scalar_one()
+        
+        done_res = await db.execute(done_stmt)
+        done = done_res.scalar_one()
+        
+        if total > 0:
+            subject_completion_rates.append(done / total * 100.0)
+            
+    past_performance = sum(subject_completion_rates) / len(subject_completion_rates) if subject_completion_rates else 70.0
         
     # 5. Exam Readiness
     exam_readiness = milestone_completion
@@ -88,6 +94,8 @@ async def get_grade_prediction(user_id: int, db: AsyncSession) -> dict:
     if total_tasks < 3:
         confidence -= 10
     if len(milestones) < 2:
+        confidence -= 10
+    if not subject_completion_rates:
         confidence -= 10
     if critical_exam:
         confidence -= 5

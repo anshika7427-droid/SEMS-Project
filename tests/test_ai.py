@@ -96,3 +96,48 @@ async def test_ai_insights_and_analytics(db):
     assert "focus_insight" in recs
     assert len(recs["subject_tips"]) > 0
     assert len(recs["recommended_links"]) > 0
+
+async def test_grade_predictor_past_performance(db):
+    from app.utils.grade_predictor import get_grade_prediction
+    from app.models import User, Subject, Task
+    import inspect
+    import app.utils.grade_predictor as gp
+
+    # 1. Assert hashlib is not in the source file of grade_predictor
+    src = inspect.getsource(gp)
+    assert "hashlib" not in src
+    assert "md5" not in src
+
+    # 2. Setup user and data
+    user = User(name="AI User", email="ai@example.com", password="pwd")
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+
+    # 3. Predict grade with no subjects
+    pred_init = await get_grade_prediction(user.id, db)
+    pred_init2 = await get_grade_prediction(user.id, db)
+    assert pred_init["predicted_score"] == pred_init2["predicted_score"]
+    assert pred_init["grade_confidence"] == 55  # Base 85 - 10 (tasks) - 10 (milestones) - 10 (no completion rates) = 55
+
+    # 4. Add subject and tasks to verify deterministic prediction based on real data
+    sub = Subject(name="Programming", difficulty="Hard", user_id=user.id)
+    db.add(sub)
+    await db.commit()
+    await db.refresh(sub)
+
+    t1 = Task(title="Task 1", priority="1", deadline=date.today(), status="Completed", subject_id=sub.id, user_id=user.id)
+    t2 = Task(title="Task 2", priority="1", deadline=date.today(), status="Pending", subject_id=sub.id, user_id=user.id)
+    db.add_all([t1, t2])
+    await db.commit()
+
+    pred_sub1 = await get_grade_prediction(user.id, db)
+    pred_sub1_again = await get_grade_prediction(user.id, db)
+    assert pred_sub1["predicted_score"] == pred_sub1_again["predicted_score"]
+    
+    # 5. Change subject name to "Chemistry" (which would have yielded a different MD5 hash)
+    sub.name = "Chemistry"
+    await db.commit()
+    
+    pred_sub2 = await get_grade_prediction(user.id, db)
+    assert pred_sub1["predicted_score"] == pred_sub2["predicted_score"]
