@@ -644,6 +644,12 @@
       </a>
     </nav>
     <script>
+      function getCsrfToken() {
+          return document.cookie.split('; ')
+              .find(row => row.startsWith('csrftoken='))
+              ?.split('=')[1];
+      }
+
       // Authentication check and logout logic
       async function checkAuth() {
         try {
@@ -674,7 +680,12 @@
       if (logoutBtn) {
         logoutBtn.addEventListener("click", async () => {
           if (confirm("Are you sure you want to log out?")) {
-            const res = await fetch("/api/auth/logout", { method: "POST" });
+            const res = await fetch("/api/auth/logout", {
+              method: "POST",
+              headers: {
+                "X-CSRFToken": getCsrfToken()
+              }
+            });
             if (res.ok) {
               window.location.href = "/";
             }
@@ -728,7 +739,8 @@
           await fetch("/api/analytics/log-session", {
             method: "POST",
             headers: {
-              "Content-Type": "application/json"
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCsrfToken()
             },
             body: JSON.stringify({
               duration_minutes: minutes,
@@ -809,6 +821,9 @@
           updateTaskStyles(this, span);
           await fetch(`/api/tasks/complete/${taskId}`, {
             method: "PUT",
+            headers: {
+              "X-CSRFToken": getCsrfToken()
+            }
           });
           // Update analytics when tasks status toggles
           await loadDashboardStats();
@@ -826,6 +841,7 @@
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              "X-CSRFToken": getCsrfToken()
             },
             body: JSON.stringify({
               title: text,
@@ -863,7 +879,10 @@
           if (todoListContainer.children.length > 0) {
             if (confirm("Are you sure you want to clear all tasks?")) {
               await fetch("/api/tasks/delete-all", {
-                method: "DELETE"
+                method: "DELETE",
+                headers: {
+                  "X-CSRFToken": getCsrfToken()
+                }
               });
               todoListContainer.innerHTML = "";
               await loadDashboardStats();
@@ -1214,7 +1233,12 @@
       // Notifications Setup and Event Listeners
       async function setupNotifications() {
         try {
-          await fetch("/api/notifications/refresh", { method: "POST" });
+          await fetch("/api/notifications/refresh", {
+            method: "POST",
+            headers: {
+              "X-CSRFToken": getCsrfToken()
+            }
+          });
         } catch (err) {
           console.error("Failed to refresh notifications", err);
         }
@@ -1242,7 +1266,12 @@
         if (markAllBtn) {
           markAllBtn.addEventListener("click", async () => {
             try {
-              const res = await fetch("/api/notifications/read-all", { method: "PUT" });
+              const res = await fetch("/api/notifications/read-all", {
+                method: "PUT",
+                headers: {
+                  "X-CSRFToken": getCsrfToken()
+                }
+              });
               if (res.ok) {
                 await updateNotificationBadge();
                 await loadNotificationList();
@@ -1322,7 +1351,12 @@
       async function markNotificationRead(id, event) {
         if (event) event.stopPropagation();
         try {
-          const res = await fetch(`/api/notifications/read/${id}`, { method: "PUT" });
+          const res = await fetch(`/api/notifications/read/${id}`, {
+            method: "PUT",
+            headers: {
+              "X-CSRFToken": getCsrfToken()
+            }
+          });
           if (res.ok) {
             await updateNotificationBadge();
             await loadNotificationList();

@@ -14,3 +14,4 @@ gunicorn>=21.2.0
 pytest-cov
 aiosqlite>=0.22.1
 pytest-asyncio>=1.4.0
+starlette-csrf>=3.0.0

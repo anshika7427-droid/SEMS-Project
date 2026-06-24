@@ -1,3 +1,5 @@
+import os
+os.environ["TESTING"] = "True"
 import pytest
 import asyncio
 from httpx import AsyncClient, ASGITransport

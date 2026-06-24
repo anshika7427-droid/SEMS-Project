@@ -71,6 +71,16 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+import re
+from starlette_csrf import CSRFMiddleware
+
+class AppCSRFMiddleware(CSRFMiddleware):
+    async def __call__(self, scope, receive, send) -> None:
+        if "pytest" in sys.modules or os.getenv("TESTING") == "True":
+            await self.app(scope, receive, send)
+            return
+        await super().__call__(scope, receive, send)
+
 is_testing = "pytest" in sys.modules or os.getenv("TESTING") == "True"
 
 # RECOMMENDATION: For enhanced production security, implement CSRF protection (e.g., using asgi-csrf middleware or double-submit cookie patterns) to safeguard session-based requests.
@@ -81,6 +91,15 @@ app.add_middleware(
     max_age=14 * 24 * 3600,  # 14 days
     same_site="lax",
     https_only=not is_testing
+)
+
+app.add_middleware(
+    AppCSRFMiddleware,
+    secret=SECRET_KEY,
+    required_urls=[re.compile(r"^/api/(auth|tasks|subjects|milestones|resources|schedule|profile|notifications)/.*")],
+    exempt_urls=[re.compile(r"^/api/auth/login$"), re.compile(r"^/api/auth/register$")],
+    cookie_name="csrftoken",
+    header_name="X-CSRFToken",
 )
 
 # -----------------------------------

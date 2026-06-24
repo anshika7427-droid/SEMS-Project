@@ -257,6 +257,12 @@
     </main>
 
     <script>
+      function getCsrfToken() {
+          return document.cookie.split('; ')
+              .find(row => row.startsWith('csrftoken='))
+              ?.split('=')[1];
+      }
+
       function getErrorMessage(error, response) {
         console.error("Detailed error logs:", error, response);
         
@@ -351,7 +357,12 @@
       if (logoutBtn) {
         logoutBtn.addEventListener("click", async () => {
           if (confirm("Are you sure you want to log out?")) {
-            const res = await fetch("/api/auth/logout", { method: "POST" });
+            const res = await fetch("/api/auth/logout", {
+              method: "POST",
+              headers: {
+                "X-CSRFToken": getCsrfToken()
+              }
+            });
             if (res.ok) {
               window.location.href = "/";
             }
@@ -472,7 +483,12 @@
       async function deleteResource(id) {
         if (confirm("Are you sure you want to delete this resource?")) {
           try {
-            const res = await fetch(`/api/resources/${id}`, { method: "DELETE" });
+            const res = await fetch(`/api/resources/${id}`, {
+              method: "DELETE",
+              headers: {
+                "X-CSRFToken": getCsrfToken()
+              }
+            });
             if (res.ok) {
               await loadResources();
             }
@@ -539,6 +555,9 @@
         try {
           const res = await fetch("/api/resources/upload", {
             method: "POST",
+            headers: {
+              "X-CSRFToken": getCsrfToken()
+            },
             body: formData
           });
 
@@ -562,7 +581,12 @@
       // Notifications Setup and Event Listeners
       async function setupNotifications() {
         try {
-          await fetch("/api/notifications/refresh", { method: "POST" });
+          await fetch("/api/notifications/refresh", {
+            method: "POST",
+            headers: {
+              "X-CSRFToken": getCsrfToken()
+            }
+          });
         } catch (err) {
           console.error("Failed to refresh notifications", err);
         }
@@ -590,7 +614,12 @@
         if (markAllBtn) {
           markAllBtn.addEventListener("click", async () => {
             try {
-              const res = await fetch("/api/notifications/read-all", { method: "PUT" });
+              const res = await fetch("/api/notifications/read-all", {
+                method: "PUT",
+                headers: {
+                  "X-CSRFToken": getCsrfToken()
+                }
+              });
               if (res.ok) {
                 await updateNotificationBadge();
                 await loadNotificationList();
@@ -670,7 +699,12 @@
       async function markNotificationRead(id, event) {
         if (event) event.stopPropagation();
         try {
-          const res = await fetch(`/api/notifications/read/${id}`, { method: "PUT" });
+          const res = await fetch(`/api/notifications/read/${id}`, {
+            method: "PUT",
+            headers: {
+              "X-CSRFToken": getCsrfToken()
+            }
+          });
           if (res.ok) {
             await updateNotificationBadge();
             await loadNotificationList();

@@ -395,6 +395,12 @@
   </div>
 
   <script>
+    function getCsrfToken() {
+        return document.cookie.split('; ')
+            .find(row => row.startsWith('csrftoken='))
+            ?.split('=')[1];
+    }
+
     let currentUserId = null;
 
     // Modal logic
@@ -631,6 +637,9 @@
       try {
         const res = await fetch("/api/profile/upload-avatar", {
           method: "POST",
+          headers: {
+            "X-CSRFToken": getCsrfToken()
+          },
           body: formData
         });
 
@@ -664,7 +673,8 @@
         const res = await fetch("/api/profile/update", {
           method: "PUT",
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCsrfToken()
           },
           body: JSON.stringify({ name, email })
         });
@@ -709,7 +719,8 @@
         const res = await fetch("/api/profile/change-password", {
           method: "PUT",
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCsrfToken()
           },
           body: JSON.stringify({
             current_password: currentPassword,
@@ -739,7 +750,12 @@
     document.getElementById('logoutBtn').addEventListener('click', () => {
       if(confirm('Are you sure you want to sign out?')) {
           localStorage.removeItem("user_id");
-          fetch("/api/auth/logout", { method: "POST" }).then(() => {
+          fetch("/api/auth/logout", {
+              method: "POST",
+              headers: {
+                "X-CSRFToken": getCsrfToken()
+              }
+          }).then(() => {
               window.location.href = "/";
           });
       }
@@ -748,7 +764,12 @@
       // Notifications Setup and Event Listeners
       async function setupNotifications() {
         try {
-          await fetch("/api/notifications/refresh", { method: "POST" });
+          await fetch("/api/notifications/refresh", {
+            method: "POST",
+            headers: {
+              "X-CSRFToken": getCsrfToken()
+            }
+          });
         } catch (err) {
           console.error("Failed to refresh notifications", err);
         }
@@ -776,7 +797,12 @@
         if (markAllBtn) {
           markAllBtn.addEventListener("click", async () => {
             try {
-              const res = await fetch("/api/notifications/read-all", { method: "PUT" });
+              const res = await fetch("/api/notifications/read-all", {
+                method: "PUT",
+                headers: {
+                  "X-CSRFToken": getCsrfToken()
+                }
+              });
               if (res.ok) {
                 await updateNotificationBadge();
                 await loadNotificationList();
@@ -856,7 +882,12 @@
       async function markNotificationRead(id, event) {
         if (event) event.stopPropagation();
         try {
-          const res = await fetch(`/api/notifications/read/${id}`, { method: "PUT" });
+          const res = await fetch(`/api/notifications/read/${id}`, {
+            method: "PUT",
+            headers: {
+              "X-CSRFToken": getCsrfToken()
+            }
+          });
           if (res.ok) {
             await updateNotificationBadge();
             await loadNotificationList();
