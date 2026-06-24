@@ -42,7 +42,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = DATABASE_URL
+    url = DATABASE_URL.replace("sqlite+aiosqlite", "sqlite")
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -62,8 +62,9 @@ def run_migrations_online() -> None:
 
     """
     from sqlalchemy import create_engine
+    sync_url = DATABASE_URL.replace("sqlite+aiosqlite", "sqlite")
     connectable = create_engine(
-        DATABASE_URL,
+        sync_url,
         poolclass=pool.NullPool,
     )
 

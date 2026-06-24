@@ -26,7 +26,7 @@ async def test_notification_routes_flow(client, db):
     })
 
     # Trigger generation manually (since it is moved out of the GET handler)
-    gen_res = await client.post("/api/notifications/generate")
+    gen_res = await client.post("/api/notifications/refresh")
     assert gen_res.status_code == 200
 
     # Get notifications again

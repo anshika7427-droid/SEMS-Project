@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, Date, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, Date, DateTime, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.database import Base
 from datetime import date, datetime
@@ -129,5 +129,9 @@ class Notification(Base):
     message = Column(String, nullable=False)
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'title', 'message', name='_user_title_msg_uc'),
+    )
 
     user = relationship("User", backref="notifications")

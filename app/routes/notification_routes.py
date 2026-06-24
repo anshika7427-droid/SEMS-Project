@@ -53,13 +53,13 @@ async def generate_exam_notifications(user_id: int, db: AsyncSession):
             
     await db.commit()
 
-@router.post("/generate")
-async def generate_notifications(
+@router.post("/refresh")
+async def refresh_notifications(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     await generate_exam_notifications(current_user.id, db)
-    return {"message": "Notifications generated successfully"}
+    return {"message": "Notifications refreshed"}
 
 @router.get("/", response_model=NotificationListResponse)
 async def get_notifications(

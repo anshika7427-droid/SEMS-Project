@@ -1213,6 +1213,12 @@
 
       // Notifications Setup and Event Listeners
       async function setupNotifications() {
+        try {
+          await fetch("/api/notifications/refresh", { method: "POST" });
+        } catch (err) {
+          console.error("Failed to refresh notifications", err);
+        }
+        
         const bell = document.getElementById("notificationBell");
         const popover = document.getElementById("notificationPopover");
         const markAllBtn = document.getElementById("markAllReadBtn");
