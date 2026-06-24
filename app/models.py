@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, Date, DateTime
 from sqlalchemy.orm import relationship
 from app.database import Base
 from datetime import date, datetime
@@ -11,7 +11,7 @@ class User(Base):
     email = Column(String, unique=True, nullable=False)
     password = Column(String, nullable=False)
     avatar_url = Column(String, nullable=True)
-    created_at = Column(String, nullable=True, default=lambda: date.today().strftime("%Y-%m-%d"))
+    created_at = Column(Date, default=date.today)
 
     # User Preferences (Routine Calibration & Intelligence Constraints)
     daily_quota = Column(Integer, default=6)
@@ -56,7 +56,7 @@ class Task(Base):
     title = Column(String, nullable=False)
     description = Column(String)
     priority = Column(String)
-    deadline = Column(String)
+    deadline = Column(Date, nullable=True)
     status = Column(String, default="Pending")
     subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="CASCADE"), nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -70,7 +70,7 @@ class Milestone(Base):
     id = Column(Integer, primary_key=True, index=True)
     subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False)
     subject_name = Column(String)
-    exam_date = Column(String, nullable=False)
+    exam_date = Column(Date, nullable=False)
     title = Column(String, nullable=True)
     completion_percentage = Column(Integer, default=0)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -85,7 +85,7 @@ class Resource(Base):
     title = Column(String, nullable=False)
     file_path = Column(String, nullable=True)
     link = Column(String, nullable=True)
-    upload_date = Column(String, nullable=False)
+    upload_date = Column(Date, nullable=False)
     subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
@@ -114,7 +114,7 @@ class StudySession(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="CASCADE"), nullable=True)
     duration_minutes = Column(Integer, nullable=False)
-    completed_at = Column(String, nullable=False)
+    completed_at = Column(DateTime, nullable=False)
     session_type = Column(String, nullable=False)
 
     user = relationship("User", back_populates="study_sessions")
@@ -128,6 +128,6 @@ class Notification(Base):
     title = Column(String, nullable=False)
     message = Column(String, nullable=False)
     is_read = Column(Boolean, default=False)
-    created_at = Column(String, nullable=False, default=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", backref="notifications")

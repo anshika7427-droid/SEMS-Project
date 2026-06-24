@@ -36,9 +36,8 @@ def get_user_analytics(user_id: int, db: Session) -> dict:
         
         # Parse completion date
         try:
-            # completed_at format: "YYYY-MM-DD HH:MM:SS" or similar
-            sess_datetime = datetime.strptime(s.completed_at.split()[0], "%Y-%m-%d")
-            sess_date = sess_datetime.date()
+            # completed_at is a DateTime object
+            sess_date = s.completed_at.date()
             session_dates.add(sess_date)
             
             # Check if within last 7 days

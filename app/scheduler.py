@@ -19,7 +19,7 @@ def calculate_priority(subject: Subject, milestones: list) -> float:
         closest_days = 999
         for m in subject_milestones:
             try:
-                exam_date = datetime.strptime(m.exam_date, "%Y-%m-%d").date()
+                exam_date = m.exam_date
                 days_left = (exam_date - today).days
                 if 0 <= days_left < closest_days:
                     closest_days = days_left

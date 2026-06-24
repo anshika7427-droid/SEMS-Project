@@ -581,15 +581,12 @@ def calculate_schedule_metrics(schedule_events: list, milestones: list, subjects
             # Proximity in days
             days_prox = 10 # Default fallback
             try:
-                exam_date_obj = datetime.strptime(m.exam_date.split()[0], "%Y-%m-%d").date()
+                exam_date_obj = m.exam_date
+                if isinstance(exam_date_obj, str):
+                    exam_date_obj = datetime.strptime(exam_date_obj.split()[0], "%Y-%m-%d").date()
                 days_prox = (exam_date_obj - current_date).days
             except Exception:
-                try:
-                    dt = datetime.strptime(m.exam_date, "%B %d")
-                    exam_date_obj = dt.date().replace(year=2026)
-                    days_prox = (exam_date_obj - current_date).days
-                except Exception:
-                    pass
+                pass
             
             if days_prox < 0:
                 days_prox = 0
@@ -803,16 +800,14 @@ def verify_consistency(schedule_events: list, detailed_analysis: dict, milestone
             logger.warning(f"Consistency Validation Failed: Block time '{time_range}' has no overlapping scheduled sessions in the timetable.")
             return False
 
-    # 4. Phase subjects order check
     def parse_mil_date(m):
         try:
-            return datetime.strptime(m.exam_date.split()[0], "%Y-%m-%d").date()
+            exam_date_obj = m.exam_date
+            if isinstance(exam_date_obj, str):
+                exam_date_obj = datetime.strptime(exam_date_obj.split()[0], "%Y-%m-%d").date()
+            return exam_date_obj
         except Exception:
-            try:
-                dt = datetime.strptime(m.exam_date, "%B %d")
-                return dt.date().replace(year=2026)
-            except Exception:
-                return date.max
+            return date.max
 
     milestones_sorted = sorted(milestones, key=parse_mil_date)
     milestone_subject_order = {m.subject_name.lower().strip(): idx for idx, m in enumerate(milestones_sorted)}
@@ -845,15 +840,9 @@ def enforce_weekend_preservation(schedule_events, milestones, daily_quota):
     upcoming_exam_subject = None
     for m in milestones:
         try:
-            exam_date = None
-            try:
-                exam_date = datetime.strptime(m.exam_date.split()[0], "%Y-%m-%d").date()
-            except Exception:
-                try:
-                    dt = datetime.strptime(m.exam_date, "%B %d")
-                    exam_date = dt.date().replace(year=2026)
-                except Exception:
-                    pass
+            exam_date = m.exam_date
+            if isinstance(exam_date, str):
+                exam_date = datetime.strptime(exam_date.split()[0], "%Y-%m-%d").date()
             if exam_date:
                 days_left = (exam_date - today).days
                 if 0 <= days_left < 5:
@@ -1091,16 +1080,14 @@ def generate_ai_schedule(
         )
     subjects_str = "\n".join(subject_details) if subject_details else "None"
     
-    # Sort milestones chronologically
     def parse_mil_date(m):
         try:
-            return datetime.strptime(m.exam_date.split()[0], "%Y-%m-%d").date()
+            exam_date_obj = m.exam_date
+            if isinstance(exam_date_obj, str):
+                exam_date_obj = datetime.strptime(exam_date_obj.split()[0], "%Y-%m-%d").date()
+            return exam_date_obj
         except Exception:
-            try:
-                dt = datetime.strptime(m.exam_date, "%B %d")
-                return dt.date().replace(year=2026)
-            except Exception:
-                return date.max
+            return date.max
 
     milestones_sorted = sorted(milestones, key=parse_mil_date)
     milestones_chronology_list = [

@@ -45,7 +45,7 @@ def get_profile(
     # Generate default join date if not present
     join_date = current_user.created_at
     if not join_date:
-        join_date = date.today().strftime("%Y-%m-%d")
+        join_date = date.today()
         current_user.created_at = join_date
         db.commit()
 

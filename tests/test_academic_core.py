@@ -1,5 +1,5 @@
 import pytest
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -244,7 +244,7 @@ def test_progress_and_statistics():
         user_id=user_a.id,
         subject_id=sub_math.id,
         duration_minutes=120,
-        completed_at="2026-06-18 10:00:00",
+        completed_at=datetime.strptime("2026-06-18 10:00:00", "%Y-%m-%d %H:%M:%S"),
         session_type="Deep Focus"
     )
     db.add(sess)

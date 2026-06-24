@@ -18,11 +18,7 @@ def generate_exam_notifications(user_id: int, db: Session):
     
     for m in milestones:
         try:
-            clean_date_str = m.exam_date.strip().split()[0] if ' ' in m.exam_date else m.exam_date.strip()
-            if 'T' in clean_date_str:
-                clean_date_str = clean_date_str.split('T')[0]
-                
-            exam_date = datetime.strptime(clean_date_str, "%Y-%m-%d").date()
+            exam_date = m.exam_date
             
             # Check if tomorrow
             if exam_date == tomorrow:

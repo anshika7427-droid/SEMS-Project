@@ -147,12 +147,12 @@ class MilestoneService:
         pending_tasks = total_tasks - completed_tasks
 
         milestones = db.query(Milestone).filter(Milestone.user_id == user_id).all()
-        today_str = date.today().strftime("%Y-%m-%d")
+        today = date.today()
 
         milestones_completed = 0
         milestones_pending = 0
         for m in milestones:
-            if m.completion_percentage == 100 or m.exam_date <= today_str:
+            if m.completion_percentage == 100 or m.exam_date <= today:
                 milestones_completed += 1
             else:
                 milestones_pending += 1
@@ -174,7 +174,7 @@ class MilestoneService:
         performance_metrics = {}
         for subj in subjects:
             subj_milestones = [m for m in milestones if m.subject_id == subj.id]
-            subj_milestones_completed = sum(1 for m in subj_milestones if m.completion_percentage == 100 or m.exam_date <= today_str)
+            subj_milestones_completed = sum(1 for m in subj_milestones if m.completion_percentage == 100 or m.exam_date <= today)
             
             # Study sessions hours grouped in-memory
             subj_sessions = sessions_by_subject.get(subj.id, [])

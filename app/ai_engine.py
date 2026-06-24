@@ -69,7 +69,7 @@ def get_ai_recommendations(user_id: int, db: Session) -> dict:
     
     for m in milestones:
         try:
-            exam_date = datetime.strptime(m.exam_date, "%Y-%m-%d").date()
+            exam_date = m.exam_date
             days_left = (exam_date - today).days
             if 0 <= days_left <= 7:
                 upcoming_milestones.append((m.subject_name, days_left))

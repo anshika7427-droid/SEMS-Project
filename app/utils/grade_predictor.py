@@ -22,8 +22,7 @@ def get_grade_prediction(user_id: int, db: Session) -> dict:
     today = date.today()
     for s in sessions:
         try:
-            date_str = s.completed_at.split()[0]
-            sess_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            sess_date = s.completed_at.date()
             if today - sess_date <= timedelta(days=7):
                 study_days.add(sess_date)
         except Exception:
@@ -50,7 +49,7 @@ def get_grade_prediction(user_id: int, db: Session) -> dict:
     critical_exam = False
     for m in milestones:
         try:
-            exam_date = datetime.strptime(m.exam_date.split()[0], "%Y-%m-%d").date()
+            exam_date = m.exam_date
             days_left = (exam_date - today).days
             if 0 <= days_left <= 3:
                 critical_exam = True

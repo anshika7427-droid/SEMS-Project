@@ -82,7 +82,7 @@ async def upload_resource(
         title=title,
         file_path=saved_file_name,
         link=link if link else None,
-        upload_date=date.today().strftime("%Y-%m-%d"),
+        upload_date=date.today(),
         subject_id=subject_id,
         user_id=current_user.id
     )

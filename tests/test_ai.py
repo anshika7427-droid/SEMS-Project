@@ -45,7 +45,7 @@ def test_scheduler_algorithm(db):
     db.commit()
 
     # Setup milestone
-    exam_date = (date.today() + timedelta(days=5)).strftime("%Y-%m-%d")
+    exam_date = date.today() + timedelta(days=5)
     milestone = Milestone(
         subject_id=math.id,
         subject_name="Math",
@@ -92,14 +92,14 @@ def test_ai_insights_and_analytics(db):
         user_id=user.id,
         subject_id=math.id,
         duration_minutes=60,
-        completed_at=today_str,
+        completed_at=datetime.strptime(today_str, "%Y-%m-%d %H:%M:%S"),
         session_type="Pomodoro"
     )
     session_yesterday = StudySession(
         user_id=user.id,
         subject_id=math.id,
         duration_minutes=45,
-        completed_at=yesterday_str,
+        completed_at=datetime.strptime(yesterday_str, "%Y-%m-%d %H:%M:%S"),
         session_type="Pomodoro"
     )
     db.add_all([session_today, session_yesterday])

@@ -104,7 +104,7 @@ class TaskCreate(BaseModel):
     title: str
     description: Optional[str] = None
     priority: str
-    deadline: str
+    deadline: date
     subject_id: Optional[int] = None
 
     @field_validator('title')
@@ -117,14 +117,17 @@ class TaskCreate(BaseModel):
             raise ValueError("Task title cannot exceed 200 characters")
         return title_val
 
-    @field_validator('deadline')
+    @field_validator('deadline', mode='before')
     @classmethod
     def validate_deadline(cls, v):
-        try:
-            parsed_date = datetime.strptime(v, "%Y-%m-%d").date()
-        except ValueError:
-            raise ValueError("Invalid deadline format, must be YYYY-MM-DD")
-        if parsed_date < date.today():
+        if isinstance(v, str):
+            try:
+                v = datetime.strptime(v, "%Y-%m-%d").date()
+            except ValueError:
+                raise ValueError("Invalid deadline format, must be YYYY-MM-DD")
+        elif isinstance(v, datetime):
+            v = v.date()
+        if v < date.today():
             raise ValueError("Deadline cannot be in the past")
         return v
 
@@ -146,7 +149,7 @@ class TaskUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     priority: Optional[str] = None
-    deadline: Optional[str] = None
+    deadline: Optional[date] = None
     status: Optional[str] = None
     subject_id: Optional[int] = None
 
@@ -162,15 +165,18 @@ class TaskUpdate(BaseModel):
             return title_val
         return v
 
-    @field_validator('deadline')
+    @field_validator('deadline', mode='before')
     @classmethod
     def validate_deadline(cls, v):
         if v is not None:
-            try:
-                parsed_date = datetime.strptime(v, "%Y-%m-%d").date()
-            except ValueError:
-                raise ValueError("Invalid deadline format, must be YYYY-MM-DD")
-            if parsed_date < date.today():
+            if isinstance(v, str):
+                try:
+                    v = datetime.strptime(v, "%Y-%m-%d").date()
+                except ValueError:
+                    raise ValueError("Invalid deadline format, must be YYYY-MM-DD")
+            elif isinstance(v, datetime):
+                v = v.date()
+            if v < date.today():
                 raise ValueError("Deadline cannot be in the past")
         return v
 
@@ -202,7 +208,7 @@ class TaskResponse(BaseModel):
     title: str
     description: Optional[str] = None
     priority: str
-    deadline: str
+    deadline: date
     status: str
     subject_id: Optional[int] = None
 
@@ -222,7 +228,7 @@ class TaskCreateResponse(BaseModel):
 class MilestoneCreate(BaseModel):
     subject_id: int
     subject_name: str
-    exam_date: str
+    exam_date: date
     title: Optional[str] = None
     completion_percentage: Optional[int] = 0
 
@@ -238,14 +244,17 @@ class MilestoneCreate(BaseModel):
             return title_val
         return v
 
-    @field_validator('exam_date')
+    @field_validator('exam_date', mode='before')
     @classmethod
     def validate_exam_date(cls, v):
-        try:
-            parsed_date = datetime.strptime(v, "%Y-%m-%d").date()
-        except ValueError:
-            raise ValueError("Invalid exam_date format, must be YYYY-MM-DD")
-        if parsed_date < date.today():
+        if isinstance(v, str):
+            try:
+                v = datetime.strptime(v, "%Y-%m-%d").date()
+            except ValueError:
+                raise ValueError("Invalid exam_date format, must be YYYY-MM-DD")
+        elif isinstance(v, datetime):
+            v = v.date()
+        if v < date.today():
             raise ValueError("Target date cannot be in the past")
         return v
 
@@ -258,7 +267,7 @@ class MilestoneCreate(BaseModel):
 
 class MilestoneUpdate(BaseModel):
     subject_id: Optional[int] = None
-    exam_date: Optional[str] = None
+    exam_date: Optional[date] = None
     title: Optional[str] = None
     completion_percentage: Optional[int] = None
 
@@ -274,15 +283,18 @@ class MilestoneUpdate(BaseModel):
             return title_val
         return v
 
-    @field_validator('exam_date')
+    @field_validator('exam_date', mode='before')
     @classmethod
     def validate_exam_date(cls, v):
         if v is not None:
-            try:
-                parsed_date = datetime.strptime(v, "%Y-%m-%d").date()
-            except ValueError:
-                raise ValueError("Invalid exam_date format, must be YYYY-MM-DD")
-            if parsed_date < date.today():
+            if isinstance(v, str):
+                try:
+                    v = datetime.strptime(v, "%Y-%m-%d").date()
+                except ValueError:
+                    raise ValueError("Invalid exam_date format, must be YYYY-MM-DD")
+            elif isinstance(v, datetime):
+                v = v.date()
+            if v < date.today():
                 raise ValueError("Target date cannot be in the past")
         return v
 
@@ -297,7 +309,7 @@ class MilestoneResponse(BaseModel):
     id: int
     subject_id: int
     subject_name: str
-    exam_date: str
+    exam_date: date
     title: Optional[str] = None
     completion_percentage: int
 
@@ -343,7 +355,7 @@ class ResourceResponse(BaseModel):
     title: str
     file_path: Optional[str] = None
     link: Optional[str] = None
-    upload_date: str
+    upload_date: date
     subject_id: int
     user_id: int
 
@@ -369,7 +381,7 @@ class ScheduleEventResponse(BaseModel):
 class StudySessionCreate(BaseModel):
     subject_id: Optional[int] = None
     duration_minutes: int
-    completed_at: str
+    completed_at: datetime
     session_type: str
 
 class StudySessionResponse(BaseModel):
@@ -377,7 +389,7 @@ class StudySessionResponse(BaseModel):
     user_id: int
     subject_id: Optional[int] = None
     duration_minutes: int
-    completed_at: str
+    completed_at: datetime
     session_type: str
 
     model_config = ConfigDict(from_attributes=True)
@@ -415,7 +427,7 @@ class ProfileResponse(BaseModel):
     id: int
     name: str
     email: str
-    created_at: Optional[str] = None
+    created_at: Optional[date] = None
     avatar_url: Optional[str] = None
     subjects_count: int
     milestones_count: int
