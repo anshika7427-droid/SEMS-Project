@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, update
+from sqlalchemy import select, func, update, delete
 from datetime import date, datetime, timedelta
 from app.database import get_db
 from app.auth import get_current_user, User
@@ -13,6 +13,18 @@ router = APIRouter()
 logger = logging.getLogger("notification_routes")
 
 async def generate_exam_notifications(user_id: int, db: AsyncSession):
+    # Auto-prune step: delete notifications older than 30 days for this user
+    try:
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        await db.execute(
+            delete(Notification).where(
+                Notification.user_id == user_id,
+                Notification.created_at < thirty_days_ago
+            )
+        )
+    except Exception as e:
+        logger.error(f"Error auto-pruning old notifications for user {user_id}: {e}")
+
     today = date.today()
     tomorrow = today + timedelta(days=1)
     
@@ -68,7 +80,7 @@ async def get_notifications(
     pagination: dict = Depends(pagination_params)
 ):
     skip = pagination["skip"]
-    limit = pagination["limit"]
+    limit = min(pagination["limit"], 50)
     
     stmt = (
         select(Notification)
@@ -144,3 +156,31 @@ async def mark_all_read(
     )
     await db.commit()
     return {"message": "All notifications marked as read"}
+
+@router.delete("/all")
+async def delete_all_notifications(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    await db.execute(delete(Notification).where(Notification.user_id == current_user.id))
+    await db.commit()
+    return {"message": "All notifications cleared"}
+
+@router.delete("/{notification_id}")
+async def delete_notification(
+    notification_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    notif_res = await db.execute(
+        select(Notification).where(
+            Notification.id == notification_id,
+            Notification.user_id == current_user.id
+        )
+    )
+    notif = notif_res.scalars().first()
+    if not notif:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    await db.delete(notif)
+    await db.commit()
+    return {"message": "Notification deleted"}

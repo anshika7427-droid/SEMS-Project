@@ -75,3 +75,36 @@ async def test_notification_routes_flow(client, db):
 
     count_res4 = await client.get("/api/notifications/unread-count")
     assert count_res4.json()["count"] == 0
+
+    # 7. Delete single notification
+    notif_to_del = Notification(user_id=user.id, title="To Delete", message="Delete this", is_read=False)
+    db.add(notif_to_del)
+    await db.commit()
+    await db.refresh(notif_to_del)
+
+    res_list = await client.get("/api/notifications/")
+    assert any(n["id"] == notif_to_del.id for n in res_list.json()["notifications"])
+
+    del_res = await client.delete(f"/api/notifications/{notif_to_del.id}")
+    assert del_res.status_code == 200
+    assert del_res.json()["message"] == "Notification deleted"
+
+    res_list2 = await client.get("/api/notifications/")
+    assert not any(n["id"] == notif_to_del.id for n in res_list2.json()["notifications"])
+
+    # Try deleting non-existent notification -> 404
+    del_bad = await client.delete("/api/notifications/99999")
+    assert del_bad.status_code == 404
+
+    # 8. Delete all notifications
+    notif1 = Notification(user_id=user.id, title="N1", message="M1", is_read=False)
+    notif2 = Notification(user_id=user.id, title="N2", message="M2", is_read=False)
+    db.add_all([notif1, notif2])
+    await db.commit()
+
+    clear_res = await client.delete("/api/notifications/all")
+    assert clear_res.status_code == 200
+    assert clear_res.json()["message"] == "All notifications cleared"
+
+    res_list3 = await client.get("/api/notifications/")
+    assert len(res_list3.json()["notifications"]) == 0
