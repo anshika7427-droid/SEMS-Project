@@ -126,8 +126,8 @@ async def test_grade_predictor_past_performance(db):
     await db.commit()
     await db.refresh(sub)
 
-    t1 = Task(title="Task 1", priority="1", deadline=date.today(), status="Completed", subject_id=sub.id, user_id=user.id)
-    t2 = Task(title="Task 2", priority="1", deadline=date.today(), status="Pending", subject_id=sub.id, user_id=user.id)
+    t1 = Task(title="Task 1", priority="Medium", deadline=date.today(), status="Completed", subject_id=sub.id, user_id=user.id)
+    t2 = Task(title="Task 2", priority="Medium", deadline=date.today(), status="Pending", subject_id=sub.id, user_id=user.id)
     db.add_all([t1, t2])
     await db.commit()
 

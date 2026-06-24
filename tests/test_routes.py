@@ -97,3 +97,68 @@ async def test_integration_flow(client):
     # 13. Try to access task endpoints (should return 401 Unauthorized)
     response = await client.get("/api/tasks/all")
     assert response.status_code == 401
+
+async def test_route_enum_validation(client):
+    # 1. Register and login
+    await client.post(
+        "/api/auth/signup",
+        json={"name": "Enum User", "email": "enum@example.com", "password": "password"}
+    )
+    await client.post(
+        "/api/auth/login",
+        json={"email": "enum@example.com", "password": "password"}
+    )
+
+    # 2. Assert 422 for invalid subject difficulty
+    resp = await client.post(
+        "/api/subjects/create",
+        json={"name": "Physics", "difficulty": "BANANA"}
+    )
+    assert resp.status_code == 422
+
+    # Create a valid subject
+    resp_sub = await client.post(
+        "/api/subjects/create",
+        json={"name": "Physics", "difficulty": "Medium"}
+    )
+    assert resp_sub.status_code == 200
+    sub_id = resp_sub.json()["id"]
+
+    # 3. Assert 422 for invalid task priority
+    resp = await client.post(
+        "/api/tasks/create",
+        json={
+            "title": "Do Physics HW",
+            "priority": "BANANA",
+            "deadline": "2026-07-01",
+            "subject_id": sub_id
+        }
+    )
+    assert resp.status_code == 422
+
+    # 4. Assert 422 for invalid task status / priority in updates
+    resp_task = await client.post(
+        "/api/tasks/create",
+        json={
+            "title": "Do Physics HW",
+            "priority": "High",
+            "deadline": "2026-07-01",
+            "subject_id": sub_id
+        }
+    )
+    assert resp_task.status_code == 200
+    task_id = resp_task.json()["task_id"]
+
+    # Update task with invalid status -> 422
+    resp_up1 = await client.put(
+        f"/api/tasks/{task_id}",
+        json={"status": "BANANA"}
+    )
+    assert resp_up1.status_code == 422
+
+    # Update task with invalid priority -> 422
+    resp_up2 = await client.put(
+        f"/api/tasks/{task_id}",
+        json={"priority": "BANANA"}
+    )
+    assert resp_up2.status_code == 422

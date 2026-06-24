@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
-from typing import Optional, List, Dict, Union
+from typing import Optional, List, Dict, Union, Literal
 from datetime import datetime, date
 
 # -----------------------------------
@@ -8,7 +8,7 @@ from datetime import datetime, date
 
 class SubjectCreate(BaseModel):
     name: str
-    difficulty: str
+    difficulty: Literal["Easy", "Medium", "Hard"]
     credits: Optional[int] = 0
     hours_per_week: Optional[int] = 0
     semester: Optional[int] = None
@@ -39,7 +39,7 @@ class SubjectCreate(BaseModel):
 
 class SubjectUpdate(BaseModel):
     name: Optional[str] = None
-    difficulty: Optional[str] = None
+    difficulty: Optional[Literal["Easy", "Medium", "Hard"]] = None
     credits: Optional[int] = None
     hours_per_week: Optional[int] = None
     semester: Optional[int] = None
@@ -104,8 +104,9 @@ class UserLogin(BaseModel):
 class TaskCreate(BaseModel):
     title: str
     description: Optional[str] = None
-    priority: str
+    priority: Literal["High", "Medium", "Low"]
     deadline: date
+    status: Optional[Literal["Pending", "In Progress", "Completed"]] = "Pending"
     subject_id: Optional[int] = None
 
     @field_validator('title')
@@ -132,26 +133,12 @@ class TaskCreate(BaseModel):
             raise ValueError("Deadline cannot be in the past")
         return v
 
-    @field_validator('priority')
-    @classmethod
-    def validate_priority(cls, v):
-        if not v:
-            raise ValueError("Priority cannot be empty")
-        try:
-            val = int(v)
-            if val < 0:
-                raise ValueError("Priority cannot be negative")
-        except ValueError as e:
-            if "Priority cannot be negative" in str(e):
-                raise e
-        return v
-
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    priority: Optional[str] = None
+    priority: Optional[Literal["High", "Medium", "Low"]] = None
     deadline: Optional[date] = None
-    status: Optional[str] = None
+    status: Optional[Literal["Pending", "In Progress", "Completed"]] = None
     subject_id: Optional[int] = None
 
     @field_validator('title')
@@ -179,29 +166,6 @@ class TaskUpdate(BaseModel):
                 v = v.date()
             if v < date.today():
                 raise ValueError("Deadline cannot be in the past")
-        return v
-
-    @field_validator('priority')
-    @classmethod
-    def validate_priority(cls, v):
-        if v is not None:
-            if not v:
-                raise ValueError("Priority cannot be empty")
-            try:
-                val = int(v)
-                if val < 0:
-                    raise ValueError("Priority cannot be negative")
-            except ValueError as e:
-                if "Priority cannot be negative" in str(e):
-                    raise e
-        return v
-
-    @field_validator('status')
-    @classmethod
-    def validate_status(cls, v):
-        if v is not None:
-            if v not in ["Pending", "Completed"]:
-                raise ValueError("Status must be either 'Pending' or 'Completed'")
         return v
 
 class TaskResponse(BaseModel):

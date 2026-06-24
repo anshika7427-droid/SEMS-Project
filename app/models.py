@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, Date, DateTime, UniqueConstraint
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, Date, DateTime, UniqueConstraint, CheckConstraint
 from sqlalchemy.orm import relationship
 from app.database import Base
 from datetime import date, datetime
@@ -36,7 +36,7 @@ class Subject(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     credits = Column(Integer, default=0)
-    difficulty = Column(String)
+    difficulty = Column(String(10), CheckConstraint("difficulty IN ('Easy', 'Medium', 'Hard')", name="ck_subject_difficulty"))
     hours_per_week = Column(Integer, default=0)
     semester = Column(Integer, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -55,9 +55,9 @@ class Task(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False)
     description = Column(String)
-    priority = Column(String)
+    priority = Column(String(10), CheckConstraint("priority IN ('High', 'Medium', 'Low')", name="ck_task_priority"), nullable=True)
     deadline = Column(Date, nullable=True)
-    status = Column(String, default="Pending")
+    status = Column(String(20), CheckConstraint("status IN ('Pending', 'In Progress', 'Completed')", name="ck_task_status"), default="Pending")
     subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="CASCADE"), nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 

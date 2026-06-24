@@ -35,6 +35,11 @@ def test_subject_validation():
         SubjectCreate(name="Math", difficulty="Medium", semester=0)
     with pytest.raises(ValueError, match="Semester must be between 1 and 20"):
         SubjectCreate(name="Math", difficulty="Medium", semester=21)
+
+    # Invalid difficulty
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        SubjectCreate(name="Math", difficulty="BANANA")
     
     # Valid SubjectCreate
     sc = SubjectCreate(name="Computer Science", difficulty="Hard", credits=4, semester=1)
@@ -43,24 +48,26 @@ def test_subject_validation():
 def test_task_validation():
     # Empty title
     with pytest.raises(ValueError, match="Task title cannot be empty or only whitespace"):
-        TaskCreate(title=" ", priority="1", deadline="2026-06-30")
+        TaskCreate(title=" ", priority="High", deadline="2026-06-30")
     
     # Invalid deadline format
     with pytest.raises(ValueError, match="Invalid deadline format, must be YYYY-MM-DD"):
-        TaskCreate(title="Do HW", priority="1", deadline="30-06-2026")
+        TaskCreate(title="Do HW", priority="High", deadline="30-06-2026")
     
-    # Negative priority value
-    with pytest.raises(ValueError, match="Priority cannot be negative"):
-        TaskCreate(title="Do HW", priority="-1", deadline="2026-06-30")
+    # Invalid priority value
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        TaskCreate(title="Do HW", priority="BANANA", deadline="2026-06-30")
 
     # Past deadline validation
     past_deadline = (date.today() - timedelta(days=1)).strftime("%Y-%m-%d")
     with pytest.raises(ValueError, match="Deadline cannot be in the past"):
-        TaskCreate(title="Do HW", priority="1", deadline=past_deadline)
+        TaskCreate(title="Do HW", priority="High", deadline=past_deadline)
 
     # Invalid status values
-    with pytest.raises(ValueError, match="Status must be either 'Pending' or 'Completed'"):
-        TaskUpdate(status="In Progress")
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        TaskUpdate(status="BANANA")
 
 def test_milestone_validation():
     # Past target dates
@@ -120,7 +127,7 @@ async def test_subject_service_operations(db):
 async def test_task_service_operations(db):
     user_a, user_b = await create_test_users(db)
 
-    task_data = TaskCreate(title="Test Task", description="Testing", priority="2", deadline="2026-12-31")
+    task_data = TaskCreate(title="Test Task", description="Testing", priority="Medium", deadline="2026-12-31")
     task = await TaskService.create_task(db, task_data, user_a.id)
     assert task.title == "Test Task"
     assert task.status == "Pending"
@@ -143,18 +150,18 @@ async def test_task_service_operations(db):
     sub_b = await SubjectService.create_subject(db, SubjectCreate(name="Sub B", difficulty="Easy"), user_b.id)
 
     # Valid subject reference
-    t_data_valid = TaskCreate(title="Valid Sub Ref", priority="1", deadline="2026-12-31", subject_id=sub_a.id)
+    t_data_valid = TaskCreate(title="Valid Sub Ref", priority="Medium", deadline="2026-12-31", subject_id=sub_a.id)
     task_valid = await TaskService.create_task(db, t_data_valid, user_a.id)
     assert task_valid.subject_id == sub_a.id
 
     # Invalid subject reference (not existing)
-    t_data_invalid_1 = TaskCreate(title="Invalid Sub Ref", priority="1", deadline="2026-12-31", subject_id=9999)
+    t_data_invalid_1 = TaskCreate(title="Invalid Sub Ref", priority="Medium", deadline="2026-12-31", subject_id=9999)
     with pytest.raises(HTTPException) as exc:
         await TaskService.create_task(db, t_data_invalid_1, user_a.id)
     assert exc.value.status_code == 400
 
     # Invalid subject reference (belongs to user B, trying to link in user A's task)
-    t_data_invalid_2 = TaskCreate(title="Cross User Sub Ref", priority="1", deadline="2026-12-31", subject_id=sub_b.id)
+    t_data_invalid_2 = TaskCreate(title="Cross User Sub Ref", priority="Medium", deadline="2026-12-31", subject_id=sub_b.id)
     with pytest.raises(HTTPException) as exc:
         await TaskService.create_task(db, t_data_invalid_2, user_a.id)
     assert exc.value.status_code == 400
@@ -176,8 +183,8 @@ async def test_progress_and_statistics(db):
     sub_phys = await SubjectService.create_subject(db, SubjectCreate(name="Physics", difficulty="Hard"), user_a.id)
 
     # Setup Tasks
-    t1 = await TaskService.create_task(db, TaskCreate(title="Math HW", priority="1", deadline="2026-06-30"), user_a.id)
-    t2 = await TaskService.create_task(db, TaskCreate(title="Physics HW", priority="2", deadline="2026-06-30"), user_a.id)
+    t1 = await TaskService.create_task(db, TaskCreate(title="Math HW", priority="Medium", deadline="2026-06-30"), user_a.id)
+    t2 = await TaskService.create_task(db, TaskCreate(title="Physics HW", priority="Medium", deadline="2026-06-30"), user_a.id)
     # Complete t1
     await TaskService.toggle_task(db, t1.id, user_a.id)
 
