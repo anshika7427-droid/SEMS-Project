@@ -19,76 +19,7 @@
     />
     <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script id="tailwind-config">
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            colors: {
-              "on-primary-container": "#f8f7ff",
-              "surface-container-low": "#f2f4f8",
-              "error-container": "#ffdad6",
-              "on-background": "#181c1f",
-              "surface-tint": "#0054d6",
-              "surface-container": "#eceef2",
-              "surface-container-lowest": "#ffffff",
-              "on-tertiary": "#ffffff",
-              "on-error-container": "#93000a",
-              "on-secondary-fixed-variant": "#852400",
-              "secondary-container": "#fe6431",
-              surface: "#f7f9fd",
-              "inverse-surface": "#2d3134",
-              "on-surface-variant": "#424656",
-              "surface-bright": "#f7f9fd",
-              "on-primary-fixed": "#001849",
-              "on-secondary": "#ffffff",
-              "tertiary-fixed": "#ffdcbf",
-              "tertiary-fixed-dim": "#ffb874",
-              "primary-fixed-dim": "#b3c5ff",
-              "on-tertiary-fixed-variant": "#6a3b00",
-              "on-primary-fixed-variant": "#003fa4",
-              primary: "#0050cb",
-              "inverse-on-surface": "#eff1f5",
-              "surface-dim": "#d8dade",
-              "on-tertiary-fixed": "#2d1600",
-              "on-secondary-fixed": "#3a0a00",
-              secondary: "#ae3100",
-              "on-primary": "#ffffff",
-              background: "#f7f9fd",
-              "outline-variant": "#c2c6d8",
-              tertiary: "#854b00",
-              "on-tertiary-container": "#fff6f1",
-              error: "#ba1a1a",
-              "surface-container-highest": "#e0e3e6",
-              "surface-container-high": "#e6e8ec",
-              "surface-variant": "#e0e3e6",
-              "secondary-fixed-dim": "#ffb59f",
-              outline: "#727687",
-              "primary-container": "#0066ff",
-              "secondary-fixed": "#ffdbd0",
-              "tertiary-container": "#a86000",
-              "on-secondary-container": "#5b1500",
-              "primary-fixed": "#dae1ff",
-              "inverse-primary": "#b3c5ff",
-              "on-surface": "#181c1f",
-              "on-error": "#ffffff",
-            },
-            borderRadius: {
-              DEFAULT: "0.5rem",
-              lg: "0.5rem",
-              xl: "0.75rem",
-              full: "9999px",
-            },
-            fontFamily: {
-              headline: ["Manrope"],
-              display: ["Manrope"],
-              body: ["Inter"],
-              label: ["Inter"],
-            },
-          },
-        },
-      };
-    </script>
+    <script src="/static/assets/js/tailwind.config.js"></script>
     <style>
       body {
         font-family: "Inter", sans-serif;
@@ -1019,7 +950,7 @@
 
       async function loadSubjects() {
         try {
-            const response = await fetch("/api/subjects/all");
+            const response = await fetch("/api/subjects/");
             if (!response.ok) {
               if (response.status === 401) {
                 window.location.href = "/";
@@ -1029,7 +960,8 @@
             const data = await response.json();
             console.log("Subjects API Data:", data);
 
-            subjects = data.map(subject => ({
+            const subjectsList = data.subjects || [];
+            subjects = subjectsList.map(subject => ({
                 id: subject.id,
                 name: subject.name,
                 credits: subject.credits,
@@ -1279,7 +1211,7 @@
 
       async function loadMilestones() {
         try {
-          const response = await fetch("/api/milestones/all");
+          const response = await fetch("/api/milestones/");
           if (!response.ok) {
             if (response.status === 401) {
               window.location.href = "/";
@@ -1289,7 +1221,8 @@
           const data = await response.json();
           console.log("Milestone API Data:", data);
 
-          milestones = data.map((m) => ({
+          const milestonesList = data.milestones || [];
+          milestones = milestonesList.map((m) => ({
             id: m.id,
             subjectId: m.subject_id.toString(),
             subjectName: m.subject_name,

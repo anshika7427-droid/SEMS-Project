@@ -71,7 +71,7 @@ def test_validate_schedule_json():
 
 
 @patch("app.services.llm_service.LLM_API_KEY", "mock_key")
-@patch("httpx.Client.post")
+@patch("httpx.AsyncClient.post")
 async def test_generate_ai_schedule_success(mock_post):
     def side_effect(*args, **kwargs):
         class MockResponse:
@@ -371,3 +371,105 @@ async def test_weekend_preservation_in_ai_schedule(mock_call):
     # The Saturday study session is kept
     sat_study_sessions_no_pres = [e for e in result_no_pres["schedule"] if e["day"] == "Saturday" and e["session_type"] == "Deep Focus"]
     assert len(sat_study_sessions_no_pres) == 1
+
+@patch("app.services.llm_service.call_llm_api")
+async def test_schedule_cache_cleanup(mock_call):
+    from app.database import DB_DIR
+    import os
+    import copy
+
+    # Mock response
+    mock_llm_response = {
+        "schedule": [
+            {
+                "day": "Monday",
+                "subject": "DBMS",
+                "hours": 2,
+                "start_time": "09:00",
+                "end_time": "11:00",
+                "session_type": "Deep Focus",
+                "reason": "Test"
+            }
+        ],
+        "detailed_analysis": {
+            "focus_title": "Daily Rhythm",
+            "focus_description": "Explanation",
+            "focus_blocks": [],
+            "phases": [],
+            "pro_tips": [],
+            "subject_allocation_reasons": {},
+            "time_slot_reasons": "reasons",
+            "milestone_reasons": "reasons",
+            "preference_reasons": "reasons"
+        },
+        "quality_scoring": {
+            "balance_score": 80,
+            "burnout_risk": 20,
+            "exam_readiness_score": 90
+        }
+    }
+    mock_call.side_effect = lambda *args, **kwargs: copy.deepcopy(mock_llm_response)
+
+    user_id = 999
+    # Create fake old cache files for this user
+    old_file_1 = DB_DIR / f"schedule_cache_{user_id}_oldhash1.json"
+    old_file_2 = DB_DIR / f"schedule_cache_{user_id}_oldhash2.json"
+    
+    with open(old_file_1, "w", encoding="utf-8") as f:
+        f.write("{}")
+    with open(old_file_2, "w", encoding="utf-8") as f:
+        f.write("{}")
+
+    assert old_file_1.exists()
+    assert old_file_2.exists()
+
+    # Create fake old cache file for ANOTHER user (should NOT be deleted)
+    other_user_file = DB_DIR / f"schedule_cache_888_otherhash.json"
+    with open(other_user_file, "w", encoding="utf-8") as f:
+        f.write("{}")
+    assert other_user_file.exists()
+
+    analytics = {"active_streak": 3, "weekly_study_hours": 4.5}
+    calibration = {
+        "daily_quota": 6,
+        "focus_period": "Morning",
+        "focus_method": "Classic Pomodoro",
+        "avoid_early_mornings": False,
+        "prioritize_critical": True,
+        "intensive_pre_exam": True,
+        "weekend_preservation": True,
+        "force_refresh": True  # force writing new cache
+    }
+
+    class MockSubject:
+        id = 1
+        name = "DBMS"
+        difficulty = "Hard"
+    class MockMilestone:
+        id = 1
+        subject_name = "DBMS"
+        exam_date = date.today() + timedelta(days=5)
+        completion_percentage = 0
+
+    await generate_ai_schedule(user_id, [MockSubject()], [MockMilestone()], analytics, calibration)
+
+    # Old cache files for user 999 should be deleted
+    assert not old_file_1.exists()
+    assert not old_file_2.exists()
+    
+    # Other user cache file should still exist
+    assert other_user_file.exists()
+    
+    # Cleanup remaining files/cleanup from tests
+    try:
+        other_user_file.unlink()
+    except Exception:
+        pass
+    
+    # Cleanup newly generated cache file
+    import glob
+    for p in DB_DIR.glob(f"schedule_cache_{user_id}_*.json"):
+        try:
+            p.unlink()
+        except Exception:
+            pass

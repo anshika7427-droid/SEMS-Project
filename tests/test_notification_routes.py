@@ -75,3 +75,75 @@ async def test_notification_routes_flow(client, db):
 
     count_res4 = await client.get("/api/notifications/unread-count")
     assert count_res4.json()["count"] == 0
+
+async def test_exam_time_notifications(client, db):
+    # 1. Sign up and login
+    await client.post("/api/auth/signup", json={"name": "Notif User 2", "email": "n2@example.com", "password": "password"})
+    await client.post("/api/auth/login", json={"email": "n2@example.com", "password": "password"})
+
+    sub_resp = await client.post("/api/subjects/create", json={"name": "History", "difficulty": "Medium"})
+    subject_id = sub_resp.json()["id"]
+    tomorrow_str = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
+
+    # A. Create a milestone with exam_time set
+    m1_resp = await client.post("/api/milestones/create", json={
+        "subject_id": subject_id,
+        "subject_name": "History",
+        "exam_date": tomorrow_str,
+        "exam_time": "02:30 PM"
+    })
+    assert m1_resp.status_code == 200
+    m1_id = m1_resp.json()["id"]
+    
+    # Verify via GET
+    m1_get = await client.get(f"/api/milestones/{m1_id}")
+    assert m1_get.status_code == 200
+    assert m1_get.json()["exam_time"] == "02:30 PM"
+
+    # B. Create a milestone with exam_time NOT set (None)
+    m2_resp = await client.post("/api/milestones/create", json={
+        "subject_id": subject_id,
+        "subject_name": "History",
+        "exam_date": tomorrow_str,
+        "exam_time": None
+    })
+    assert m2_resp.status_code == 200
+    m2_id = m2_resp.json()["id"]
+
+    # Verify via GET
+    m2_get = await client.get(f"/api/milestones/{m2_id}")
+    assert m2_get.status_code == 200
+    assert m2_get.json()["exam_time"] is None
+
+    # C. Update milestone to test update_milestone with exam_time
+    m2_update = await client.put(f"/api/milestones/{m2_id}", json={
+        "exam_time": "11:00 AM"
+    })
+    assert m2_update.status_code == 200
+    assert m2_update.json()["exam_time"] == "11:00 AM"
+
+    # Set it back to None
+    m2_update_none = await client.put(f"/api/milestones/{m2_id}", json={
+        "exam_time": None
+    })
+    assert m2_update_none.status_code == 200
+    assert m2_update_none.json()["exam_time"] is None
+
+    # Trigger generation
+    gen_res = await client.post("/api/notifications/refresh")
+    assert gen_res.status_code == 200
+
+    # Get notifications
+    res = await client.get("/api/notifications/")
+    assert res.status_code == 200
+    notifs = res.json()["notifications"]
+    
+    # We should have two notifications
+    assert len(notifs) == 2
+    
+    # Find which one is which
+    notif_with_time = [n for n in notifs if "Time: 02:30 PM" in n["message"]]
+    notif_without_time = [n for n in notifs if "Time:" not in n["message"]]
+    
+    assert len(notif_with_time) == 1
+    assert len(notif_without_time) == 1

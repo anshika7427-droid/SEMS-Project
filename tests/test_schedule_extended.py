@@ -22,7 +22,7 @@ def cleanup_cache_files():
             pass
 
 @patch("app.services.llm_service.LLM_API_KEY", "mock_key")
-@patch("httpx.Client.post")
+@patch("httpx.AsyncClient.post")
 async def test_cache_hit_schedule_generation(mock_post, db):
     # Setup mock response from Groq/LLM
     class MockResponse:
@@ -108,7 +108,7 @@ async def test_cache_hit_schedule_generation(mock_post, db):
     )
     assert res2["is_cached"] is True
     assert res2["llm_calls_count"] == 0
-    # httpx.Client.post should not be called again
+    # httpx.AsyncClient.post should not be called again
     assert mock_post.call_count == 1
 
     # Third generation with force_refresh=True (Cache Miss)
@@ -124,7 +124,7 @@ async def test_cache_hit_schedule_generation(mock_post, db):
     assert mock_post.call_count == 2
 
 @patch("app.services.llm_service.LLM_API_KEY", "mock_key")
-@patch("httpx.Client.post")
+@patch("httpx.AsyncClient.post")
 async def test_burnout_rebalancing(mock_post, db):
     # Mock LLM to return a schedule with elevated burnout risk
     class MockResponse:
@@ -334,3 +334,42 @@ async def test_generate_ai_no_subjects(client):
     assert resp.json()["events_count"] == 0
     assert resp.json()["is_ai"] is False
     assert "No subjects found" in resp.json()["message"]
+
+async def test_generate_weekly_schedule_preferences(db):
+    from app.scheduler import generate_weekly_schedule
+
+    # Setup a new user with Morning preference and avoid_early_mornings=True
+    user = User(
+        name="Pref User",
+        email="pref@example.com",
+        password="password",
+        focus_period="Morning",
+        avoid_early_mornings=True
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+
+    # Add a subject
+    sub = Subject(name="PrefMath", difficulty="Medium", user_id=user.id)
+    db.add(sub)
+    await db.commit()
+    await db.refresh(sub)
+
+    # Generate schedule
+    events = await generate_weekly_schedule(user.id, db)
+    assert len(events) > 0
+    # Every generated slot start time must be in Morning (< 12:00) and not early morning (>= 08:00)
+    for event in events:
+        assert event.start_time < "12:00"
+        assert event.start_time >= "08:00"
+
+    # Now change preference to Evening (where no slots in SLOTS default list match >= 17:00)
+    user.focus_period = "Evening"
+    user.avoid_early_mornings = False
+    await db.commit()
+
+    events_evening = await generate_weekly_schedule(user.id, db)
+    # Falling back to all slots on allowed days should occur
+    assert len(events_evening) > 0
+

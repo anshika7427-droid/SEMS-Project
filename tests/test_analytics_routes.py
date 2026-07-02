@@ -69,7 +69,11 @@ async def test_analytics_routes_flow(client, db):
     assert len(summary_data["focus_distribution"]) == 1
     assert summary_data["focus_distribution"][0]["subject"] == "Database Management System"
 
-async def test_analytics_critical_scenarios(client, db):
+from unittest.mock import patch
+
+@patch("app.services.llm_service.call_llm_api")
+async def test_analytics_critical_scenarios(mock_call, client, db):
+    mock_call.side_effect = Exception("LLM Disabled for fallback test")
     # Register/login
     await client.post("/api/auth/signup", json={"name": "Alice", "email": "alice_an@example.com", "password": "password"})
     await client.post("/api/auth/login", json={"email": "alice_an@example.com", "password": "password"})

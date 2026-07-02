@@ -128,3 +128,22 @@ async def test_resource_permissions_and_errors(client):
         files={"file": ("test.pdf", io.BytesIO(pdf_content), "application/pdf")}
     )
     assert upload_bad_sub.status_code == 400
+
+async def test_resource_size_limit(client):
+    # Sign up/login User C
+    await client.post("/api/auth/signup", json={"name": "User C", "email": "c_res@example.com", "password": "password"})
+    await client.post("/api/auth/login", json={"email": "c_res@example.com", "password": "password"})
+
+    # Create Subject
+    sub_resp = await client.post("/api/subjects/create", json={"name": "Math C", "difficulty": "Easy"})
+    subject_id = sub_resp.json()["id"]
+
+    # Upload resource with size exactly 20MB + 1 byte
+    large_content = b"0" * (20 * 1024 * 1024 + 1)
+    upload_resp = await client.post(
+        "/api/resources/upload",
+        data={"title": "Huge Notes", "subject_id": subject_id},
+        files={"file": ("math.pdf", io.BytesIO(large_content), "application/pdf")}
+    )
+    assert upload_resp.status_code == 400
+    assert "File size exceeds" in upload_resp.json()["detail"]

@@ -22,6 +22,7 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 from app.utils.helpers import pagination_params
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 
 @router.get("/")
 async def resource_home(
@@ -31,7 +32,7 @@ async def resource_home(
 ):
     skip = pagination["skip"]
     limit = pagination["limit"]
-    stmt = select(Resource).where(Resource.user_id == current_user.id)
+    stmt = select(Resource).options(joinedload(Resource.subject)).where(Resource.user_id == current_user.id)
     count_stmt = select(func.count(Resource.id)).where(Resource.user_id == current_user.id)
     
     total = (await db.execute(count_stmt)).scalar_one()
@@ -42,8 +43,6 @@ async def resource_home(
     
     result = []
     for r in resources:
-        sub_res = await db.execute(select(Subject).where(Subject.id == r.subject_id))
-        subject = sub_res.scalars().first()
         result.append({
             "id": r.id,
             "title": r.title,
@@ -51,7 +50,7 @@ async def resource_home(
             "link": r.link,
             "upload_date": r.upload_date,
             "subject_id": r.subject_id,
-            "subject_name": subject.name if subject else "Unknown"
+            "subject_name": r.subject.name if r.subject else "Unknown"
         })
         
     return {
@@ -98,6 +97,14 @@ async def upload_resource(
                 detail=f"File type not allowed. Allowed types: {', '.join(allowed_extensions).upper()}"
             )
             
+        file_bytes = await file.read()
+        if len(file_bytes) > 20 * 1024 * 1024:
+            logger.warning(f"File upload rejected: '{file.filename}' (size {len(file_bytes)} bytes) exceeds the 20MB limit.")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File size exceeds the 20MB limit."
+            )
+            
         try:
             # Prevent path traversal by extracting only the basename
             safe_filename = Path(file.filename).name
@@ -105,7 +112,7 @@ async def upload_resource(
             file_path = UPLOAD_DIR / filename
             
             with file_path.open("wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
+                buffer.write(file_bytes)
                 
             saved_file_name = filename
             logger.info(f"File uploaded successfully: {file_path}")
@@ -143,15 +150,11 @@ async def get_resources(
 ):
     skip = pagination["skip"]
     limit = pagination["limit"]
-    stmt = select(Resource).where(Resource.user_id == current_user.id).offset(skip).limit(limit)
+    stmt = select(Resource).options(joinedload(Resource.subject)).where(Resource.user_id == current_user.id).offset(skip).limit(limit)
     result_res = await db.execute(stmt)
     resources = result_res.scalars().all()
     result = []
     for r in resources:
-        sub_res = await db.execute(
-            select(Subject).where(Subject.id == r.subject_id)
-        )
-        subject = sub_res.scalars().first()
         result.append({
             "id": r.id,
             "title": r.title,
@@ -159,7 +162,7 @@ async def get_resources(
             "link": r.link,
             "upload_date": r.upload_date,
             "subject_id": r.subject_id,
-            "subject_name": subject.name if subject else "Unknown"
+            "subject_name": r.subject.name if r.subject else "Unknown"
         })
     return result
 

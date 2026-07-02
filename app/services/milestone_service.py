@@ -26,21 +26,26 @@ class MilestoneService:
         title = milestone.title.strip() if milestone.title else f"Exam - {subject.name}"
         new_milestone = Milestone(
             subject_id=milestone.subject_id,
-            subject_name=subject.name,
             exam_date=milestone.exam_date,
             title=title,
             completion_percentage=milestone.completion_percentage if milestone.completion_percentage is not None else 0,
+            exam_time=milestone.exam_time.strip() if milestone.exam_time else None,
             user_id=user_id
         )
         db.add(new_milestone)
         await db.commit()
-        await db.refresh(new_milestone)
-        return new_milestone
+        
+        from sqlalchemy.orm import joinedload
+        res = await db.execute(
+            select(Milestone).options(joinedload(Milestone.subject)).where(Milestone.id == new_milestone.id)
+        )
+        return res.scalars().first()
 
     @staticmethod
     async def get_milestone(db: AsyncSession, milestone_id: int, user_id: int) -> Milestone:
+        from sqlalchemy.orm import joinedload
         result = await db.execute(
-            select(Milestone).where(
+            select(Milestone).options(joinedload(Milestone.subject)).where(
                 Milestone.id == milestone_id,
                 Milestone.user_id == user_id
             )
@@ -72,7 +77,6 @@ class MilestoneService:
                     detail="Subject not found or does not belong to the user"
                 )
             milestone.subject_id = milestone_data.subject_id
-            milestone.subject_name = subject.name
 
         if milestone_data.title is not None:
             milestone.title = milestone_data.title.strip()
@@ -80,10 +84,15 @@ class MilestoneService:
             milestone.exam_date = milestone_data.exam_date
         if milestone_data.completion_percentage is not None:
             milestone.completion_percentage = milestone_data.completion_percentage
+        if "exam_time" in milestone_data.model_fields_set:
+            milestone.exam_time = milestone_data.exam_time.strip() if milestone_data.exam_time else None
 
         await db.commit()
-        await db.refresh(milestone)
-        return milestone
+        from sqlalchemy.orm import joinedload
+        res = await db.execute(
+            select(Milestone).options(joinedload(Milestone.subject)).where(Milestone.id == milestone_id)
+        )
+        return res.scalars().first()
 
     @staticmethod
     async def delete_milestone(db: AsyncSession, milestone_id: int, user_id: int) -> None:
@@ -104,7 +113,8 @@ class MilestoneService:
 
     @staticmethod
     async def list_milestones(db: AsyncSession, user_id: int, skip: int = None, limit: int = None) -> List[Milestone]:
-        stmt = select(Milestone).where(Milestone.user_id == user_id)
+        from sqlalchemy.orm import joinedload
+        stmt = select(Milestone).options(joinedload(Milestone.subject)).where(Milestone.user_id == user_id)
         if skip is not None:
             stmt = stmt.offset(skip)
         if limit is not None:

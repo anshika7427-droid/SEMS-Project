@@ -1,4 +1,5 @@
 import pytest
+from datetime import date, timedelta
 
 async def test_integration_flow(client):
     # 1. Sign up User A
@@ -33,22 +34,24 @@ async def test_integration_flow(client):
     subject_id = response.json()["id"]
 
     # 5. Create task for User A
+    future_date = (date.today() + timedelta(days=30)).strftime("%Y-%m-%d")
     response = await client.post(
         "/api/tasks/create",
         json={
             "title": "Maths Assignment",
             "description": "Finish chapter 1",
             "priority": "High",
-            "deadline": "2026-06-30"
+            "deadline": future_date
         }
     )
     assert response.status_code == 200
     task_id = response.json()["task_id"]
 
     # 6. Retrieve User A's tasks
-    response = await client.get("/api/tasks/all")
+    response = await client.get("/api/tasks")
     assert response.status_code == 200
-    tasks = response.json()
+    data = response.json()
+    tasks = data["tasks"]
     assert len(tasks) == 1
     assert tasks[0]["title"] == "Maths Assignment"
 
@@ -58,7 +61,7 @@ async def test_integration_flow(client):
         json={
             "subject_id": subject_id,
             "subject_name": "Maths",
-            "exam_date": "2026-06-30",
+            "exam_date": future_date,
             "title": "Midterm Exam"
         }
     )
@@ -66,9 +69,9 @@ async def test_integration_flow(client):
     milestone_id = response.json()["id"]
 
     # 8. Retrieve User A's milestones
-    response = await client.get("/api/milestones/all")
+    response = await client.get("/api/milestones")
     assert response.status_code == 200
-    assert len(response.json()) == 1
+    assert len(response.json()["milestones"]) == 1
 
     # 9. Toggle task status (Complete it)
     response = await client.put(f"/api/tasks/complete/{task_id}")
@@ -95,5 +98,5 @@ async def test_integration_flow(client):
     assert response.status_code == 200
 
     # 13. Try to access task endpoints (should return 401 Unauthorized)
-    response = await client.get("/api/tasks/all")
+    response = await client.get("/api/tasks")
     assert response.status_code == 401

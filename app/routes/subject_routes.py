@@ -31,24 +31,7 @@ async def create_subject(
             detail="Internal server error occurred while creating subject"
         )
 
-@router.get("/all", response_model=List[SubjectResponse])
-async def get_all_subjects(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-    pagination: dict = Depends(pagination_params)
-):
-    try:
-        subjects = await SubjectService.list_subjects(
-            db, current_user.id, skip=pagination["skip"], limit=pagination["limit"]
-        )
-        logger.info(f"Retrieved {len(subjects)} subjects for User ID: {current_user.id}")
-        return subjects
-    except Exception as e:
-        logger.exception(f"Unexpected error retrieving subjects: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error occurred while retrieving subjects"
-        )
+
 
 @router.get("", response_model=SubjectListResponse)
 async def list_subjects_envelope(

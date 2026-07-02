@@ -31,10 +31,13 @@ async def generate_ai_schedule_endpoint(
 ):
     user_id = current_user.id
     try:
+        from sqlalchemy.orm import joinedload
         logger.info(f"AI Study Plan requested for User ID: {user_id} with payload: {payload}")
         result_subs = await db.execute(select(Subject).where(Subject.user_id == user_id))
         subjects = list(result_subs.scalars().all())
-        result_mils = await db.execute(select(Milestone).where(Milestone.user_id == user_id))
+        result_mils = await db.execute(
+            select(Milestone).options(joinedload(Milestone.subject)).where(Milestone.user_id == user_id)
+        )
         milestones = list(result_mils.scalars().all())
         analytics = await get_user_analytics(user_id, db)
         
@@ -124,15 +127,11 @@ async def generate_ai_schedule_endpoint(
         
         day_events = defaultdict(list)
 
-        print("\n" + "=" * 60)
-        print("DEBUG WEEKEND PRESERVATION:", current_user.weekend_preservation)
-
-        if payload:
-            print("DEBUG PAYLOAD WEEKEND:", payload.weekend_preservation)
-
-        print("DEBUG ALLOWED DAYS WILL BE:",
-            [0, 1, 2, 3, 4] if current_user.weekend_preservation else [0, 1, 2, 3, 4, 5, 6])
-        print("=" * 60 + "\n")
+        logger.debug(
+            f"Weekend preservation - User: {current_user.weekend_preservation}, "
+            f"Payload: {payload.weekend_preservation if payload else None}, "
+            f"Allowed days: {[0, 1, 2, 3, 4] if current_user.weekend_preservation else [0, 1, 2, 3, 4, 5, 6]}"
+        )
 
         for item in ai_data.get("schedule", []):
             day_events[item["day"]].append(item)

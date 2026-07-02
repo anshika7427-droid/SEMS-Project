@@ -176,13 +176,13 @@ async def test_progress_and_statistics(db):
     sub_phys = await SubjectService.create_subject(db, SubjectCreate(name="Physics", difficulty="Hard"), user_a.id)
 
     # Setup Tasks
-    t1 = await TaskService.create_task(db, TaskCreate(title="Math HW", priority="1", deadline="2026-06-30"), user_a.id)
-    t2 = await TaskService.create_task(db, TaskCreate(title="Physics HW", priority="2", deadline="2026-06-30"), user_a.id)
+    future_date = (date.today() + timedelta(days=30)).strftime("%Y-%m-%d")
+    t1 = await TaskService.create_task(db, TaskCreate(title="Math HW", priority="1", deadline=future_date), user_a.id)
+    t2 = await TaskService.create_task(db, TaskCreate(title="Physics HW", priority="2", deadline=future_date), user_a.id)
     # Complete t1
     await TaskService.toggle_task(db, t1.id, user_a.id)
 
     # Setup Milestones
-    future_date = (date.today() + timedelta(days=30)).strftime("%Y-%m-%d")
     m1 = await MilestoneService.create_milestone(db, MilestoneCreate(
         subject_id=sub_math.id,
         subject_name="Math",

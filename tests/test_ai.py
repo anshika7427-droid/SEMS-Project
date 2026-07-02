@@ -23,7 +23,6 @@ async def test_scheduler_algorithm(db):
     exam_date = date.today() + timedelta(days=5)
     milestone = Milestone(
         subject_id=math.id,
-        subject_name="Math",
         exam_date=exam_date,
         user_id=user.id
     )
@@ -114,11 +113,16 @@ async def test_grade_predictor_past_performance(db):
     await db.commit()
     await db.refresh(user)
 
-    # 3. Predict grade with no subjects
+    # 3. Predict grade with no subjects/tasks/milestones
     pred_init = await get_grade_prediction(user.id, db)
     pred_init2 = await get_grade_prediction(user.id, db)
-    assert pred_init["predicted_score"] == pred_init2["predicted_score"]
-    assert pred_init["grade_confidence"] == 55  # Base 85 - 10 (tasks) - 10 (milestones) - 10 (no completion rates) = 55
+    assert pred_init["has_data"] is False
+    assert pred_init["current_score"] is None
+    assert pred_init["current_grade"] is None
+    assert pred_init["predicted_score"] is None
+    assert pred_init["predicted_grade"] is None
+    assert pred_init["grade_confidence"] == 0
+    assert pred_init["grade_tip"] == "Add subjects, tasks, and milestones to unlock your grade prediction."
 
     # 4. Add subject and tasks to verify deterministic prediction based on real data
     sub = Subject(name="Programming", difficulty="Hard", user_id=user.id)
@@ -134,6 +138,7 @@ async def test_grade_predictor_past_performance(db):
     pred_sub1 = await get_grade_prediction(user.id, db)
     pred_sub1_again = await get_grade_prediction(user.id, db)
     assert pred_sub1["predicted_score"] == pred_sub1_again["predicted_score"]
+    assert pred_sub1["has_data"] is True
     
     # 5. Change subject name to "Chemistry" (which would have yielded a different MD5 hash)
     sub.name = "Chemistry"
@@ -141,3 +146,43 @@ async def test_grade_predictor_past_performance(db):
     
     pred_sub2 = await get_grade_prediction(user.id, db)
     assert pred_sub1["predicted_score"] == pred_sub2["predicted_score"]
+    assert pred_sub2["has_data"] is True
+
+from unittest.mock import patch
+@patch("app.services.llm_service.call_llm_api")
+async def test_get_ai_recommendations_llm(mock_call, db):
+    import os
+    os.environ["TEST_AI_RECOMMENDATIONS_LLM"] = "true"
+    try:
+        # Setup test user and subject
+        user = User(name="Rec User", email="rec@example.com", password="password")
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+        sub = Subject(name="Deep Learning", difficulty="Hard", credits=3, user_id=user.id)
+        db.add(sub)
+        await db.commit()
+
+        # Mock response
+        mock_call.return_value = {
+            "focus_insight": "Spend time on deep neural networks.",
+            "subject_tips": ["Implement backpropagation from scratch."],
+            "recommended_links": [{"title": "Fast.ai Course", "link": "https://course.fast.ai"}]
+        }
+
+        # Call recommendations
+        res = await get_ai_recommendations(user.id, db)
+        assert res["focus_insight"] == "Spend time on deep neural networks."
+        assert res["subject_tips"] == ["Implement backpropagation from scratch."]
+        assert res["recommended_links"] == [{"title": "Fast.ai Course", "link": "https://course.fast.ai"}]
+
+        # Verify call_llm_api was called once
+        assert mock_call.call_count == 1
+
+        # Call again to verify cache hit (call_count should still be 1)
+        res_cached = await get_ai_recommendations(user.id, db)
+        assert res_cached == res
+        assert mock_call.call_count == 1
+    finally:
+        del os.environ["TEST_AI_RECOMMENDATIONS_LLM"]

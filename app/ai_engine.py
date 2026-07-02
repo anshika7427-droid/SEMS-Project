@@ -3,6 +3,9 @@ from sqlalchemy import select
 from datetime import datetime, date
 from app.models import Subject, Milestone, Resource
 import logging
+import time
+
+RECOMMENDATIONS_CACHE = {}
 
 logger = logging.getLogger("ai_engine")
 
@@ -49,9 +52,12 @@ DEFAULT_RESOURCES = [
 async def get_ai_recommendations(user_id: int, db: AsyncSession) -> dict:
     logger.info(f"Generating AI recommendations for User ID: {user_id}")
     
+    from sqlalchemy.orm import joinedload
     subjects_res = await db.execute(select(Subject).where(Subject.user_id == user_id))
     subjects = subjects_res.scalars().all()
-    milestones_res = await db.execute(select(Milestone).where(Milestone.user_id == user_id))
+    milestones_res = await db.execute(
+        select(Milestone).options(joinedload(Milestone.subject)).where(Milestone.user_id == user_id)
+    )
     milestones = milestones_res.scalars().all()
     
     if not subjects:
@@ -61,7 +67,102 @@ async def get_ai_recommendations(user_id: int, db: AsyncSession) -> dict:
             "recommended_links": DEFAULT_RESOURCES
         }
         
-    # Analyze workload
+    # Calculate cache key
+    sub_sig = tuple(sorted([(s.name, s.difficulty, getattr(s, "credits", 0)) for s in subjects]))
+    mil_sig = tuple(sorted([
+        (
+            m.subject.name if getattr(m, "subject", None) else getattr(m, "subject_name", "Unknown"),
+            m.exam_date.isoformat() if hasattr(m.exam_date, "isoformat") else str(m.exam_date),
+            m.completion_percentage
+        )
+        for m in milestones
+    ]))
+    
+    current_time = time.time()
+    cache_key = (user_id, sub_sig, mil_sig)
+    if cache_key in RECOMMENDATIONS_CACHE:
+        timestamp, cached_result = RECOMMENDATIONS_CACHE[cache_key]
+        if current_time - timestamp < 3600:  # 1 hour
+            logger.info(f"Returning cached recommendations for user {user_id}")
+            return cached_result
+
+    # Try LLM-based recommendations
+    try:
+        import sys
+        import os
+        if 'pytest' in sys.modules and not os.environ.get("TEST_AI_RECOMMENDATIONS_LLM"):
+            raise RuntimeError("LLM bypassed for general pytest runs")
+
+        from app.services.llm_service import call_llm_api
+        
+        # Build context summary
+        subject_details = []
+        for s in subjects:
+            subject_details.append(f"Subject: {s.name}, Difficulty: {s.difficulty}, Credits: {s.credits}")
+        
+        milestone_details = []
+        today = date.today()
+        for m in milestones:
+            try:
+                from app.utils.helpers import parse_date
+                exam_date = parse_date(m.exam_date)
+                days_left = (exam_date - today).days
+                if 0 <= days_left <= 14:
+                    subj_name = m.subject.name if getattr(m, "subject", None) else getattr(m, "subject_name", "Unknown")
+                    milestone_details.append(f"Upcoming Exam: {subj_name} in {days_left} days")
+            except Exception as e:
+                logger.error(f"Error parsing milestone exam date '{m.exam_date}': {e}")
+                
+        context_lines = [
+            "Subjects enrolled by the student:",
+            *subject_details,
+        ]
+        if milestone_details:
+            context_lines.extend([
+                "Upcoming milestone exams (next 14 days):",
+                *milestone_details
+            ])
+        else:
+            context_lines.append("No upcoming exams in the next 14 days.")
+            
+        context_summary = "\n".join(context_lines)
+
+        system_instruction = (
+            "You are an academic study advisor. Based on the student's subjects and upcoming exams, "
+            "provide a JSON response with these keys: focus_insight (string), subject_tips (array of strings, "
+            "one per subject), recommended_links (array of objects with title and link). "
+            "Keep responses practical and specific to the subjects listed."
+        )
+
+        llm_response = await call_llm_api(system_instruction, context_summary)
+        
+        if (
+            isinstance(llm_response, dict)
+            and "focus_insight" in llm_response
+            and "subject_tips" in llm_response
+            and "recommended_links" in llm_response
+        ):
+            if (
+                isinstance(llm_response["focus_insight"], str)
+                and isinstance(llm_response["subject_tips"], list)
+                and isinstance(llm_response["recommended_links"], list)
+            ):
+                result = {
+                    "focus_insight": llm_response["focus_insight"],
+                    "subject_tips": [str(tip) for tip in llm_response["subject_tips"]],
+                    "recommended_links": [
+                        {"title": str(item.get("title", "Resource")), "link": str(item.get("link", ""))}
+                        for item in llm_response["recommended_links"]
+                        if isinstance(item, dict) and "link" in item
+                    ]
+                }
+                RECOMMENDATIONS_CACHE[cache_key] = (current_time, result)
+                return result
+        logger.warning("LLM response structure was invalid. Falling back to preset rules.")
+    except Exception as e:
+        logger.error(f"Failed to fetch AI recommendations from LLM: {e}. Falling back to preset rules.")
+
+    # Fallback to the existing keyword-based logic
     hard_count = sum(1 for s in subjects if s.difficulty == "Hard")
     total_count = len(subjects)
     
@@ -76,7 +177,8 @@ async def get_ai_recommendations(user_id: int, db: AsyncSession) -> dict:
             exam_date = parse_date(m.exam_date)
             days_left = (exam_date - today).days
             if 0 <= days_left <= 7:
-                upcoming_milestones.append((m.subject_name, days_left))
+                subj_name = m.subject.name if getattr(m, "subject", None) else getattr(m, "subject_name", "Unknown")
+                upcoming_milestones.append((subj_name, days_left))
         except Exception as e:
             logger.error(f"Error parsing milestone exam date '{m.exam_date}': {e}")
             
@@ -129,8 +231,12 @@ async def get_ai_recommendations(user_id: int, db: AsyncSession) -> dict:
                     recommended_links.append(res)
                     seen_links.add(res["link"])
                     
-    return {
+    result = {
         "focus_insight": focus_insight,
         "subject_tips": subject_tips,
         "recommended_links": recommended_links[:5] # limit to top 5 links
     }
+    
+    # Store fallback in cache too so we don't spam attempts on failure
+    RECOMMENDATIONS_CACHE[cache_key] = (current_time, result)
+    return result

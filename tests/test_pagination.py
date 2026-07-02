@@ -70,12 +70,6 @@ async def test_pagination_endpoints(client, db):
     assert len(data_tasks["tasks"]) == 1
     assert data_tasks["tasks"][0]["title"] == "Task 1"
 
-    # All route /api/tasks/all
-    res_tasks_all = await client.get("/api/tasks/all?skip=1&limit=2")
-    assert res_tasks_all.status_code == 200
-    data_tasks_all = res_tasks_all.json()
-    assert len(data_tasks_all) == 2
-
     # 4. Test Subjects pagination
     # Envelope route /api/subjects/
     res_subs = await client.get("/api/subjects?skip=1&limit=1")
@@ -84,11 +78,6 @@ async def test_pagination_endpoints(client, db):
     assert data_subs["total"] == 3
     assert len(data_subs["subjects"]) == 1
 
-    # All route /api/subjects/all
-    res_subs_all = await client.get("/api/subjects/all?skip=0&limit=2")
-    assert res_subs_all.status_code == 200
-    assert len(res_subs_all.json()) == 2
-
     # 5. Test Milestones pagination
     # Envelope route /api/milestones/
     res_miles = await client.get("/api/milestones?skip=1&limit=1")
@@ -96,10 +85,6 @@ async def test_pagination_endpoints(client, db):
     data_miles = res_miles.json()
     assert data_miles["total"] == 3
     assert len(data_miles["milestones"]) == 1
-
-    # All route /api/milestones/all
-    res_miles_all = await client.get("/api/milestones/all?skip=1&limit=2")
-    assert len(res_miles_all.json()) == 2
 
     # 6. Test Notifications pagination
     res_notifs = await client.get("/api/notifications/?skip=1&limit=1")

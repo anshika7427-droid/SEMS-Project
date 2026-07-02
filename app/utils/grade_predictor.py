@@ -15,10 +15,22 @@ async def get_grade_prediction(user_id: int, db: AsyncSession) -> dict:
     
     task_completion = (completed_tasks / total_tasks * 100.0) if total_tasks > 0 else 85.0
     
-    # 2. Milestone Completion
     milestones_res = await db.execute(select(Milestone).where(Milestone.user_id == user_id))
     milestones = milestones_res.scalars().all()
     
+    if total_tasks == 0 and len(milestones) == 0:
+        return {
+            "current_score": None,
+            "current_grade": None,
+            "predicted_score": None,
+            "predicted_grade": None,
+            "grade_confidence": 0,
+            "grade_strengths": [],
+            "grade_risks": [],
+            "grade_tip": "Add subjects, tasks, and milestones to unlock your grade prediction.",
+            "has_data": False
+        }
+        
     milestone_completion = 80.0
     if milestones:
         milestone_completion = sum(m.completion_percentage for m in milestones) / len(milestones)
@@ -163,5 +175,6 @@ async def get_grade_prediction(user_id: int, db: AsyncSession) -> dict:
         "grade_confidence": confidence,
         "grade_strengths": strengths if strengths else ["Starting off strong"],
         "grade_risks": risks if risks else ["No major risks detected"],
-        "grade_tip": tip
+        "grade_tip": tip,
+        "has_data": True
     }
