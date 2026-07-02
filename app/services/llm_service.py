@@ -3,10 +3,16 @@ import logging
 import httpx
 import hashlib
 import time
+import asyncio
 from datetime import date, datetime, timedelta
 from app.config import LLM_API_KEY, LLM_MODEL, LLM_API_URL
 
 logger = logging.getLogger("llm_service")
+
+def _get_subj_name(m) -> str:
+    if getattr(m, "subject", None) is not None:
+        return m.subject.name
+    return getattr(m, "subject_name", "Unknown")
 
 def clean_json_response(content: str) -> str:
     """Cleans potential markdown JSON wrappers from LLM response."""
@@ -144,7 +150,7 @@ def validate_candidates_json(data: dict) -> bool:
                 return False
     return True
 
-def call_llm_api(system_instruction: str, user_prompt: str) -> dict:
+async def call_llm_api(system_instruction: str, user_prompt: str) -> dict:
     """Wrapper to make standard POST request to the LLM API and parse JSON response with 429 retry backoff."""
     if not LLM_API_KEY:
         logger.error("LLM_API_KEY is not configured.")
@@ -176,12 +182,12 @@ def call_llm_api(system_instruction: str, user_prompt: str) -> dict:
     backoff_factor = 2.0
     for attempt in range(max_retries):
         try:
-            with httpx.Client(timeout=25.0) as client:
-                response = client.post(url, headers=headers, json=payload)
+            async with httpx.AsyncClient(timeout=25.0) as client:
+                response = await client.post(url, headers=headers, json=payload)
                 if response.status_code == 429:
                     sleep_time = (backoff_factor ** attempt) + 1.0
                     logger.warning(f"Rate limited (429) on attempt {attempt + 1}. Retrying in {sleep_time:.1f}s...")
-                    time.sleep(sleep_time)
+                    await asyncio.sleep(sleep_time)
                     continue
                 response.raise_for_status()
                 result = response.json()
@@ -197,7 +203,7 @@ def call_llm_api(system_instruction: str, user_prompt: str) -> dict:
             if e.response.status_code == 429:
                 sleep_time = (backoff_factor ** attempt) + 1.0
                 logger.warning(f"Rate limited (429) via HTTPStatusError on attempt {attempt + 1}. Retrying in {sleep_time:.1f}s...")
-                time.sleep(sleep_time)
+                await asyncio.sleep(sleep_time)
                 continue
             logger.error(f"HTTP error occurred in call_llm_api: {e}")
             raise e
@@ -205,7 +211,7 @@ def call_llm_api(system_instruction: str, user_prompt: str) -> dict:
             logger.error(f"Error occurred in call_llm_api on attempt {attempt + 1}: {e}")
             if attempt == max_retries - 1:
                 raise e
-            time.sleep(1.0)
+            await asyncio.sleep(1.0)
     raise RuntimeError("Max retries exceeded in call_llm_api.")
 
 async def calculate_schedule_metrics(schedule_events: list, milestones: list, subjects: list, db=None) -> dict:
@@ -545,7 +551,7 @@ async def calculate_schedule_metrics(schedule_events: list, milestones: list, su
         current_date = date(2026, 6, 14)  # Current local time date context
         
         for m in milestones:
-            sub_name_clean = m.subject_name.lower().strip()
+            sub_name_clean = _get_subj_name(m).lower().strip()
             
             subj_obj = None
             for s in subjects:
@@ -628,7 +634,7 @@ async def calculate_schedule_metrics(schedule_events: list, milestones: list, su
             readiness_scores.append(m_readiness)
             
             logger.info(
-                f"Milestone Exam Readiness calculation details for {m.subject_name}:\n"
+                f"Milestone Exam Readiness calculation details for {_get_subj_name(m)}:\n"
                 f"- Exam Date: {m.exam_date} (Proximity: {days_prox} days, Modifier: {proximity_modifier:.2f})\n"
                 f"- Difficulty: {difficulty} (Target: {h_target}h, Allocated: {h_allocated}h -> Hours Score: {hours_score:.2f}%)\n"
                 f"- Performance: Completion={completion}% -> Perf Score: {perf_score:.2f}%\n"
@@ -720,7 +726,7 @@ def verify_consistency(schedule_events: list, detailed_analysis: dict, milestone
             return False
 
     # 2. Phase subjects exist in milestones
-    milestone_subjects = {m.subject_name.lower().strip() for m in milestones}
+    milestone_subjects = {_get_subj_name(m).lower().strip() for m in milestones}
     phases = detailed_analysis.get("phases", [])
     for phase in phases:
         title = phase.get("title", "").lower()
@@ -814,7 +820,7 @@ def verify_consistency(schedule_events: list, detailed_analysis: dict, milestone
             return date.max
 
     milestones_sorted = sorted(milestones, key=parse_mil_date)
-    milestone_subject_order = {m.subject_name.lower().strip(): idx for idx, m in enumerate(milestones_sorted)}
+    milestone_subject_order = {_get_subj_name(m).lower().strip(): idx for idx, m in enumerate(milestones_sorted)}
     last_idx = -1
     for phase in phases:
         phase_subj_indices = []
@@ -851,7 +857,7 @@ def enforce_weekend_preservation(schedule_events, milestones, daily_quota):
                 days_left = (exam_date - today).days
                 if 0 <= days_left < 5:
                     exam_soon = True
-                    upcoming_exam_subject = m.subject_name
+                    upcoming_exam_subject = _get_subj_name(m)
                     break
         except Exception:
             pass
@@ -1052,7 +1058,7 @@ async def generate_ai_schedule(
     
     # Generate unique cache path based on inputs
     sub_sig = sorted([(s.name.lower().strip(), s.difficulty) for s in subjects])
-    mil_sig = sorted([(m.subject_name.lower().strip(), m.exam_date.isoformat() if hasattr(m.exam_date, "isoformat") else str(m.exam_date)) for m in milestones])
+    mil_sig = sorted([(_get_subj_name(m).lower().strip(), m.exam_date.isoformat() if hasattr(m.exam_date, "isoformat") else str(m.exam_date)) for m in milestones])
     cal_sig = sorted([(str(k), str(v)) for k, v in calibration.items() if k != "force_refresh"])
     
     cache_inputs = {
@@ -1063,6 +1069,9 @@ async def generate_ai_schedule(
     }
     serialized = json.dumps(cache_inputs, sort_keys=True)
     cache_hash = hashlib.md5(serialized.encode("utf-8")).hexdigest()
+    # Cache file naming convention: schedule_cache_{user_id}_{hash}.json
+    # Cleanup policy: Only one cache file should exist per user. Old cache files for this user
+    # are deleted before writing a new one.
     cache_path = DB_DIR / f"schedule_cache_{user_id}_{cache_hash}.json"
     
     if not force_refresh and cache_path.exists():
@@ -1095,14 +1104,14 @@ async def generate_ai_schedule(
 
     milestones_sorted = sorted(milestones, key=parse_mil_date)
     milestones_chronology_list = [
-        f"- {m.subject_name} (Exam Date: {m.exam_date})"
+        f"- {_get_subj_name(m)} (Exam Date: {m.exam_date})"
         for m in milestones_sorted
     ]
     milestones_chronology_str = "\n".join(milestones_chronology_list) if milestones_chronology_list else "None"
     
     milestone_details = []
     for m in milestones_sorted:
-        milestone_details.append(f"- Exam for {m.subject_name} on {m.exam_date}")
+        milestone_details.append(f"- Exam for {_get_subj_name(m)} on {m.exam_date}")
     milestones_str = "\n".join(milestone_details) if milestone_details else "None"
     
     # Extract analytics fields
@@ -1214,7 +1223,7 @@ async def generate_ai_schedule(
         try:
             logger.info(f"Executing Single-Call LLM Generation (Attempt {attempt + 1}).")
             llm_calls_made += 1
-            schedule_data = call_llm_api(system_instruction_1, user_prompt_1)
+            schedule_data = await call_llm_api(system_instruction_1, user_prompt_1)
             
             if not validate_schedule_json(schedule_data):
                 raise ValueError("No valid schedule structure returned by LLM.")
@@ -1325,6 +1334,15 @@ async def generate_ai_schedule(
 
     # Save to Cache
     try:
+        # Before writing a new cache file, find and delete any existing cache files for this user
+        old_cache_files = DB_DIR.glob(f"schedule_cache_{user_id}_*.json")
+        for old_file in old_cache_files:
+            try:
+                old_file.unlink()
+                logger.info(f"Deleted old cache file: {old_file.name}")
+            except Exception as e:
+                logger.warning(f"Failed to delete old cache file {old_file.name}: {e}")
+
         with open(cache_path, "w", encoding="utf-8") as f:
             json.dump(result, f, indent=2)
         logger.info(f"Saved generated schedule to cache: {cache_path}")

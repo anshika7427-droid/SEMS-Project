@@ -12,11 +12,7 @@ from app.utils.helpers import pagination_params
 router = APIRouter()
 logger = logging.getLogger("task_routes")
 
-@router.get("/")
-async def tasks_home():
-    return {
-        "message": "Task route working"
-    }
+
 
 @router.post("/create", response_model=TaskCreateResponse)
 async def create_task(
@@ -40,24 +36,7 @@ async def create_task(
             detail="Internal server error occurred while creating task"
         )
 
-@router.get("/all", response_model=List[TaskResponse])
-async def get_tasks(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-    pagination: dict = Depends(pagination_params)
-):
-    try:
-        tasks = await TaskService.list_tasks(
-            db, current_user.id, skip=pagination["skip"], limit=pagination["limit"]
-        )
-        logger.info(f"Retrieved {len(tasks)} tasks for User ID: {current_user.id}")
-        return tasks
-    except Exception as e:
-        logger.exception(f"Unexpected error retrieving tasks: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error occurred while retrieving tasks"
-        )
+
 
 @router.get("", response_model=TaskListResponse)
 async def list_tasks_envelope(

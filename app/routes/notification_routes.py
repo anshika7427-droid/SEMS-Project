@@ -28,8 +28,11 @@ async def generate_exam_notifications(user_id: int, db: AsyncSession):
     today = date.today()
     tomorrow = today + timedelta(days=1)
     
-    # Fetch milestones for tomorrow
-    milestones_res = await db.execute(select(Milestone).where(Milestone.user_id == user_id))
+    from sqlalchemy.orm import joinedload
+    # Fetch milestones for tomorrow with subject loaded
+    milestones_res = await db.execute(
+        select(Milestone).options(joinedload(Milestone.subject)).where(Milestone.user_id == user_id)
+    )
     milestones = milestones_res.scalars().all()
     
     for m in milestones:
@@ -40,7 +43,11 @@ async def generate_exam_notifications(user_id: int, db: AsyncSession):
             # Check if tomorrow
             if exam_date == tomorrow:
                 title = "🔔 Upcoming Exam Tomorrow"
-                message = f"{m.subject_name} Mid Semester Exam\nDate: {exam_date.strftime('%d %b')}\nTime: 10:00 AM"
+                subj_name = m.subject.name if m.subject else "Unknown"
+                if m.exam_time:
+                    message = f"{subj_name} Mid Semester Exam\nDate: {exam_date.strftime('%d %b')}\nTime: {m.exam_time}"
+                else:
+                    message = f"{subj_name} Mid Semester Exam\nDate: {exam_date.strftime('%d %b')}"
                 
                 # Check duplicate
                 exists_res = await db.execute(

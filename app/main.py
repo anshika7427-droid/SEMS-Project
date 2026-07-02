@@ -37,6 +37,7 @@ from app.routes.subject_routes import router as subject_router
 from app.routes import milestone_routes
 from app.routes.profile_routes import router as profile_router
 from app.routes.notification_routes import router as notification_router
+from app.routes.study_session_routes import router as study_session_router
 
 # -----------------------------------
 # CREATE DATABASE TABLES
@@ -329,4 +330,10 @@ app.include_router(
     notification_router,
     prefix="/api/notifications",
     tags=["Notifications"]
+)
+
+app.include_router(
+    study_session_router,
+    prefix="/api/study-sessions",
+    tags=["Study Sessions"]
 )

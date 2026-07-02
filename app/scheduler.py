@@ -50,18 +50,14 @@ async def generate_weekly_schedule(user_id: int, db: AsyncSession):
     user = user_res.scalars().first()
 
     weekend_preservation = user.weekend_preservation if user else False
+    focus_period = user.focus_period or "Morning" if user else "Morning"
+    avoid_early_mornings = bool(user.avoid_early_mornings) if user else False
 
-    print("\n" + "=" * 70)
-    print("SCHEDULER DEBUG")
-    print("USER ID:", user_id)
-
-    if user:
-        print("DB VALUE:", user.weekend_preservation)
-    else:
-        print("USER NOT FOUND")
-
-    print("WEEKEND_PRESERVATION:", weekend_preservation)
-    print("=" * 70 + "\n")
+    logger.debug(
+        f"Scheduler debug - user_id: {user_id}, "
+        f"db_weekend_preservation: {user.weekend_preservation if user else 'USER NOT FOUND'}, "
+        f"weekend_preservation: {weekend_preservation}"
+    )
 
     logger.info(
         f"Applying weekend preservation: {weekend_preservation}"
@@ -111,7 +107,35 @@ async def generate_weekly_schedule(user_id: int, db: AsyncSession):
     available_days = [0, 1, 2, 3, 4] if preserve_weekends else [0, 1, 2, 3, 4, 5, 6]
     day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     allowed_days = [day_names[d] for d in available_days]
-    active_slots = [slot for slot in SLOTS if slot["day"] in allowed_days]
+    
+    filtered_slots = []
+    for slot in SLOTS:
+        start_time = slot["start"]
+        if focus_period == "Morning":
+            keep = start_time < "12:00"
+        elif focus_period == "Afternoon":
+            keep = "12:00" <= start_time < "17:00"
+        elif focus_period == "Evening":
+            keep = start_time >= "17:00"
+        else: # Flexible
+            keep = True
+            
+        if avoid_early_mornings and start_time < "08:00":
+            keep = False
+            
+        if keep:
+            filtered_slots.append(slot)
+            
+    active_slots = [slot for slot in filtered_slots if slot["day"] in allowed_days]
+    
+    if not active_slots:
+        logger.warning(
+            f"Active slots list is empty after filtering. Falling back to all slots on allowed days. "
+            f"Focus period: {focus_period}, Avoid early mornings: {avoid_early_mornings}"
+        )
+        active_slots = [slot for slot in SLOTS if slot["day"] in allowed_days]
+        
+    logger.info(f"Slots kept after filtering: {[s['day'] + ': ' + s['start'] for s in active_slots]}")
 
     for slot in active_slots:
         # Select from pool using round-robin index modulo pool size

@@ -41,24 +41,7 @@ async def create_milestone(
             detail="Internal server error occurred while creating milestone"
         )
 
-@router.get("/all", response_model=List[MilestoneResponse])
-async def get_all_milestones(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-    pagination: dict = Depends(pagination_params)
-):
-    try:
-        milestones = await MilestoneService.list_milestones(
-            db, current_user.id, skip=pagination["skip"], limit=pagination["limit"]
-        )
-        logger.info(f"Retrieved {len(milestones)} milestones for User ID: {current_user.id}")
-        return milestones
-    except Exception as e:
-        logger.exception(f"Unexpected error retrieving milestones: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal server error occurred while retrieving milestones"
-        )
+
 
 @router.get("", response_model=MilestoneListResponse)
 async def list_milestones_envelope(

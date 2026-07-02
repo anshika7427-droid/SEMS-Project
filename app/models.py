@@ -69,10 +69,10 @@ class Milestone(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False)
-    subject_name = Column(String)
     exam_date = Column(Date, nullable=False)
     title = Column(String, nullable=True)
     completion_percentage = Column(Integer, default=0)
+    exam_time = Column(String, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     user = relationship("User", back_populates="milestones")
