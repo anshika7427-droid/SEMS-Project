@@ -17,4 +17,17 @@ storage/resources/*
 
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.ipynb_checkpoints/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+*.log
+.vscode/
+Thumbs.db
+Desktop.ini
 .DS_Store

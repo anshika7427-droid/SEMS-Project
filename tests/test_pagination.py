@@ -19,7 +19,7 @@ async def test_pagination_endpoints(client, db):
     for i in range(3):
         await client.post("/api/tasks/create", json={
             "title": f"Task {i}",
-            "priority": "1",
+            "priority": "Medium",
             "deadline": (date.today() + timedelta(days=5)).strftime("%Y-%m-%d"),
             "subject_id": sub_ids[0]
         })

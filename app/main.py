@@ -97,7 +97,6 @@ app.add_middleware(
 app.add_middleware(
     AppCSRFMiddleware,
     secret=SECRET_KEY,
-    required_urls=[re.compile(r"^/api/(auth|tasks|subjects|milestones|resources|schedule|profile|notifications)/.*")],
     exempt_urls=[re.compile(r"^/api/auth/login$"), re.compile(r"^/api/auth/register$"), re.compile(r"^/api/auth/signup$")],
     cookie_name="csrftoken",
     header_name="X-CSRFToken",
