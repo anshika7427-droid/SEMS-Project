@@ -1,240 +1,204 @@
-# Smart Education Management System (SEMS)
+# SMART EDUCATION MANAGEMENT SYSTEM (SEMS)
 
-An AI-powered student productivity platform designed to optimize study schedules, track milestones, manage course tasks, and recommend tailored academic resources.
+> An AI-powered student success platform combining Llama 3.3 70B timetable intelligence, adaptive progress tracking, and academic workload analytics.
+
+---
+
+## Overview
+
+University students frequently face academic burnout due to disorganized study routines, unrealistic scheduling, and poor visibility into course syllabus progression. Fixed schedules fail as soon as an unexpected deadline arises, leading to compound study deficits.
+
+**SEMS** is an intelligent academic management system that builds dynamic, personalized study schedules. By evaluating subject difficulty, impending deadlines, and historical task completion rates, SEMS constructs balanced study blocks. If a cloud AI rate limit or outage occurs, the system automatically falls back to an internal deterministic scheduler to guarantee uninterrupted productivity.
+
+---
+
+## Preview
+
+![SEMS Dashboard](./screenshots/dashboard.png)
+
+---
+
+## Tech Stack
+
+### Backend & API
+- **FastAPI** — Asynchronous web framework for high-throughput academic APIs
+- **Python 3.10+** — Core application runtime
+- **Pydantic** — Request validation, payload typing, and response serialization
+- **SQLAlchemy** — Relational database modeling and query abstraction
+- **Alembic** — Database schema migration tracking
+- **Uvicorn** — Lightning-fast ASGI application server
+
+### AI & Scheduling
+- **Llama 3.3 70B** — Large language model for contextual study timetable generation
+- **Groq API** — Ultra-low latency inference engine serving the LLM
+- **Rule-Based Fallback Engine** — Algorithmic study allocation ensuring offline reliability
+
+### Database & Storage
+- **SQLite** — Local relational database persistence
+- **Local Storage** — File storage for avatars and study resources
+
+### Frontend
+- **HTML5 & CSS3** — Semantic layout structure
+- **Tailwind CSS** — Modern, responsive utility-first interface design
+- **Vanilla JavaScript** — Reactive DOM manipulation and asynchronous API communications
 
 ---
 
 ## Architecture
 
-SEMS is structured as a decoupled web application containing a robust FastAPI backend API and a responsive, interactive frontend layer.
-
-### Backend (FastAPI)
-- **Framework**: FastAPI for async endpoint handling, automatic documentation, and path operations.
-- **ORM & Database**: SQLAlchemy mapping Python objects to a local SQLite database file.
-- **Validation**: Pydantic schemas validating schemas on creation, update, and response serialize stages.
-- **Security**: 
-  - Session-based authentication using FastAPI's custom cookies wrapper.
-  - Insecure defaults protection (application fails startup if `SECRET_KEY` is not securely configured in environment).
-  - Parameterized SQLite queries preventing SQL Injection.
-  - Sanitization on filenames preventing Path Traversal vulnerabilities.
-
-### Frontend
-- **Interface**: Single-page templates built with modern Tailwind CSS (via CDN) and Google Fonts.
-- **Reactivity**: Vanilla JavaScript handlers calling JSON backend endpoints, dynamically updating dashboard progress bars, event schedules, and milestone lists.
-
----
-
-## Folder Structure
-
-```
-SEMS-Project/
-├── app/                      # Backend Application source code
-│   ├── routes/               # API Router modules defining endpoints
-│   │   ├── analytics_routes.py
-│   │   ├── auth_routes.py
-│   │   ├── milestone_routes.py
-│   │   ├── profile_routes.py
-│   │   ├── resource_routes.py
-│   │   ├── schedule_routes.py
-│   │   ├── subject_routes.py
-│   │   ├── task_routes.py
-│   │   └── user_routes.py
-│   ├── services/             # Core business logic layer
-│   │   ├── ai_service.py
-│   │   ├── auth_service.py
-│   │   ├── llm_service.py
-│   │   ├── milestone_service.py
-│   │   ├── schedule_service.py
-│   │   ├── subject_service.py
-│   │   └── task_service.py
-│   ├── utils/                # Utility helper modules
-│   │   ├── helpers.py        # Log formatting & rate calculation helper
-│   │   └── validators.py     # String & email format validation helper
-│   ├── ai_engine.py          # Workload analysis & preset resource logic
-│   ├── analytics.py          # Daily log-session tracking & streak logic
-│   ├── auth.py               # Password hashing & current user resolver
-│   ├── config.py             # Environment configuration & validation
-│   ├── database.py           # SQLite db engine & connection pool setup
-│   ├── main.py               # Main application definition & static mounts
-│   ├── models.py             # SQLAlchemy models defining database tables
-│   ├── scheduler.py          # Rule-based fallback study scheduler algorithm
-│   └── schemas.py            # Pydantic validation schemas
-├── database/                 # Directory holding runtime SQLite files
-├── frontend/                 # Static frontend templates
-│   ├── assets/               # Local images, upload resource storage
-│   └── pages/                # Served HTML views (dashboard, profiles, etc.)
-├── tests/                    # Integration and unit tests
-│   ├── test_academic_core.py # Core models and validations tests
-│   ├── test_ai.py            # Scheduler algorithms and analytics tests
-│   ├── test_ai_schedule.py   # LLM mock schedule & calibration tests
-│   ├── test_auth.py          # Authentication routes tests
-│   └── test_routes.py        # CRUD route integration flows tests
-├── requirements.txt          # Pinned project dependencies list
-├── run.py                    # Subprocess launcher script
-└── .env                      # Local configuration settings (ignored by git)
+```text
+Student User
+     ↓
+Frontend Client (Tailwind UI + Asynchronous JS Client)
+     ↓
+FastAPI Router Layer (Auth, Subjects, Tasks, Milestones, Schedule, Analytics)
+     ↓
+Business Logic Service Layer (ScheduleService, AIService, LLMService)
+     ↓
+           Study Scheduler Resolver
+          /                        \
+    [Groq API / Llama 3.3]     [Rule-Based Fallback Engine]
+          \                        /
+           Calibrated Weekly Study Blocks
+                        ↓
+             SQLAlchemy ORM Layer
+                        ↓
+                SQLite Database
 ```
 
----
-
-## Environment Variables
-
-Configure these settings inside a `.env` file in the root directory. Use `.env.example` as a template.
-
-| Variable Name | Description | Default / Example Value |
-|---|---|---|
-| `SECRET_KEY` | Hex/random string encrypting session cookies. **Must be set** (Application fails startup if empty or placeholder). | `your-secure-random-secret-key` |
-| `LLM_API_KEY` | API Key for LLM services (e.g. Groq, OpenAI). | `gsk_...` |
-| `LLM_MODEL` | Target language model for AI schedule generation. | `llama-3.3-70b` |
-| `LLM_API_URL` | Base API URL serving the target model. | `https://api.groq.com/openai/v1` |
+1. **Client Interaction**: Students manage subjects, priorities, and deadlines through the dashboard.
+2. **Scheduling Request**: The frontend calls the scheduling service with student constraints and task lists.
+3. **AI Generation & Fallback**: The platform queries Llama 3.3 via Groq. If unavailable or rate-limited, the internal algorithmic scheduler produces optimized study allocations.
+4. **Data Persistence**: Schedules, subject progress, and daily study streaks are committed via SQLAlchemy to SQLite.
 
 ---
 
-## Installation
+## Key Features
 
-### Prerequisites
-- Python 3.10 or higher.
-- Pip (Python Package Installer).
-
-### Steps
-1. **Clone the Repository**:
-   ```bash
-   git clone <repository_url>
-   cd SEMS-Project
-   ```
-
-2. **Initialize Virtual Environment**:
-   ```bash
-   python -m venv venv
-   # On Windows (PowerShell):
-   .\venv\Scripts\Activate.ps1
-   # On macOS/Linux:
-   source venv/bin/activate
-   ```
-
-3. **Install Pinned Dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Setup Environment Configuration**:
-   Create a `.env` file in the project root:
-   ```bash
-   copy .env.example .env
-   # Update the values inside .env with your LLM keys and a secure SECRET_KEY
-   ```
+- **AI-Powered Schedule Generation**: Automatically structures balanced study blocks aligned with syllabus volume and deadlines.
+- **Dynamic Recalibration**: Recovers from missed study sessions by shifting pending allocations without manual reschedule.
+- **Syllabus & Milestone Tracking**: Visual progress bars and milestones for tracking subject completion percentages.
+- **Academic Analytics**: Daily study streaks, time investment breakdowns, and workload heatmaps.
+- **Session Authentication**: Secure cookie-based authentication with bcrypt password hashing and CSRF protections.
+- **Resource Repository**: Links study materials and course notes directly to relevant curriculum topics.
 
 ---
 
-## Running the Server
+## Getting Started
 
-To start the FastAPI backend:
-
-- **Using Launcher (Windows/Any)**:
-  Runs uvicorn and opens the web application automatically in your default browser.
-  ```bash
-  python run.py
-  ```
-
-- **Using Uvicorn CLI Directly**:
-  ```bash
-  uvicorn app.main:app --reload --port 8000
-  ```
-  Once running, visit [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser.
-
----
-
-## Running Tests
-
-To verify backend routing, validations, authentication flows, and study planners:
+### 1. Clone the repository
 
 ```bash
-# Activate virtualenv first, then run:
-python -m pytest
+git clone https://github.com/anshika7427-droid/SEMS-Project.git
+cd SEMS-Project
+```
+
+### 2. Set up the Python Environment
+
+```bash
+# Create and activate virtual environment
+python -m venv venv
+
+# Windows (PowerShell):
+.\venv\Scripts\Activate.ps1
+
+# macOS / Linux:
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### 3. Configure Environment Variables
+
+Create a `.env` file in the root directory:
+
+```bash
+# Windows
+copy .env.example .env
+
+# macOS / Linux
+cp .env.example .env
+```
+
+Open `.env` and configure your settings:
+
+```env
+SECRET_KEY=your-secure-random-secret-key
+LLM_API_KEY=gsk_your_groq_api_key
+LLM_MODEL=llama-3.3-70b-versatile
+LLM_API_URL=https://api.groq.com/openai/v1
+```
+
+> **Note**: Never commit your real `.env` file or API keys to version control.
+
+### 4. Run the Application
+
+Start the server using either method:
+
+#### Option A: Quick Launcher
+
+```bash
+python run.py
+```
+
+This launches Uvicorn and opens the web application in your default browser.
+
+#### Option B: Direct Uvicorn Command
+
+```bash
+uvicorn app.main:app --reload --port 8000
+```
+
+Visit `http://localhost:8000` to use the application, and `http://localhost:8000/docs` to inspect the Swagger API documentation.
+
+### 5. Running Tests
+
+Execute the automated test suite with pytest:
+
+```bash
+pytest
 ```
 
 ---
 
-## API Summary
+## Project Structure
 
-All endpoints listed below are prefixed with `/api` unless serving static frontend HTML views.
-
-### Authentication (`/api/auth`)
-- `POST /register` & `POST /signup`: Register a new user profile.
-- `POST /login`: Generate a cookie-backed session.
-- `POST /logout`: Destroy the active user session.
-- `GET /status` & `GET /me`: Return active user identity details.
-
-### Subjects (`/api/subjects`)
-- `POST /create`: Register a new subject.
-- `GET /all` & `GET /`: Retrieve all subjects for the user.
-- `GET /{subject_id}`: Get details of a single subject.
-- `PUT /{subject_id}`: Edit subject details.
-- `DELETE /{subject_id}`: Delete a subject.
-
-### Tasks (`/api/tasks`)
-- `POST /create`: Register a task under a subject.
-- `GET /all` & `GET /`: Retrieve user tasks.
-- `GET /{task_id}`: Get details of a single task.
-- `PUT /{task_id}`: Update task properties.
-- `DELETE /{task_id}`: Remove a task.
-- `DELETE /delete-all`: Clear all tasks.
-- `PUT /toggle/{task_id}`: Complete or restore task status.
-
-### Milestones (`/api/milestones`)
-- `POST /create`: Add an upcoming deadline/exam milestone.
-- `GET /all` & `GET /`: Retrieve all active milestones.
-- `GET /{milestone_id}`: Get a milestone by ID.
-- `PUT /{milestone_id}`: Update milestone details (e.g. completion percentage).
-- `DELETE /{milestone_id}`: Delete a milestone.
-
-### Schedule Planner (`/api/schedule`)
-- `POST /generate-ai`: Generate study events using the configured LLM API.
-- `POST /generate`: Build fallback schedules using local rule-based heuristics.
-- `GET /all`: Retrieve active scheduled events.
-- `GET /analysis`: Retrieve deep schedule breakdown reports.
-- `GET /calibration` & `POST /calibration`: Read or write target study hours, optimal focus periods, and method parameters.
-- `DELETE /reset`: Wipe the calendar clear.
-
-### Profile Manager (`/api/profile`)
-- `GET /me`: Retrieve statistics and personal info.
-- `PUT /me`: Modify username or email.
-- `PUT /change-password`: Update account password.
-- `POST /avatar`: Upload user avatar image (png, jpg, webp).
-
-### Performance Analytics (`/api/analytics`)
-- `GET /summary`: Combine progress rates and AI recommendations.
-- `POST /log-session`: Log a study session (duration in minutes and type).
+```text
+SEMS-Project/
+├── app/
+│   ├── routes/                # Modular API routers (auth, subject, schedule, etc.)
+│   ├── services/              # Core business services (ai, llm, schedule, task)
+│   ├── utils/                 # Validators, helpers, and security functions
+│   ├── ai_engine.py           # Workload analysis & prioritization logic
+│   ├── analytics.py           # Study session logs and streak tracking
+│   ├── config.py              # Environment configuration loader
+│   ├── database.py            # SQLite engine setup & connection pooling
+│   ├── main.py                # FastAPI application entry & static mounts
+│   ├── models.py              # SQLAlchemy database models
+│   ├── scheduler.py           # Deterministic study scheduler fallback
+│   └── schemas.py             # Pydantic input/output schemas
+├── frontend/                  # Responsive web interface
+│   ├── assets/                # Client icons, images, and styling
+│   └── pages/                 # HTML templates (dashboard, subjects, etc.)
+├── screenshots/               # Real project preview screenshots
+│   └── dashboard.png
+├── tests/                     # Unit and integration test suite
+├── requirements.txt           # Python dependency requirements
+├── run.py                     # Convenience launcher script
+└── README.md
+```
 
 ---
 
-## Production Deployment
+## Engineering Highlights
 
-### 1. Docker & Docker Compose (Recommended)
-You can deploy the entire application using Docker. The multi-stage build packages the backend application and copies only the required runtime files using a non-root user for enhanced security.
+- **Dual-Engine Scheduling Architecture**: Prevents failure modes common in AI wrappers by pairing an LLM prompt pipeline (`llm_service.py`) with a local constraint-satisfaction scheduler (`scheduler.py`). If the Groq API call fails or times out, the user receives an algorithmically valid schedule immediately.
+- **Fail-Safe Startup Verification**: The application verifies critical environment keys (such as `SECRET_KEY`) at launch and refuses to boot with insecure defaults.
+- **Clean Service-Oriented Separation**: Keeps FastAPI route handlers lightweight by isolating business logic into dedicated services (`app/services/`), simplifying unit testing and mocking.
 
-1. Configure production environment variables in a `.env` file (ensure `SECRET_KEY` is secure and `CORS_ORIGINS` points to production domains).
-2. Start the services using the production Docker Compose file:
-   ```bash
-   docker-compose -f docker-compose.prod.yml up -d --build
-   ```
-3. Docker Compose configures named volumes (`sems_data` and `sems_storage`) to persist the SQLite database and uploaded profile avatars across container restarts.
+---
 
-### 2. Manual Production Execution
-To host manually on a production server:
-1. Set the production environment variables:
-   ```bash
-   export SECRET_KEY="a-very-long-secure-random-key"
-   export LLM_API_KEY="your-production-llm-key"
-   export CORS_ORIGINS="https://yourdomain.com"
-   export HOST="0.0.0.0"
-   export PORT="8000"
-   ```
-2. Run database migrations:
-   ```bash
-   alembic upgrade head
-   ```
-3. Run the FastAPI application using Gunicorn with Uvicorn workers:
-   ```bash
-   gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
-   ```
+## Demo
 
+Live demo coming soon.

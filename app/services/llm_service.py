@@ -9,10 +9,12 @@ from app.config import LLM_API_KEY, LLM_MODEL, LLM_API_URL
 
 logger = logging.getLogger("llm_service")
 
+
 def _get_subj_name(m) -> str:
     if getattr(m, "subject", None) is not None:
         return m.subject.name
     return getattr(m, "subject_name", "Unknown")
+
 
 def clean_json_response(content: str) -> str:
     """Cleans potential markdown JSON wrappers from LLM response."""
@@ -24,6 +26,7 @@ def clean_json_response(content: str) -> str:
     if content.endswith("```"):
         content = content[:-3]
     return content.strip()
+
 
 def validate_schedule_json(data: dict) -> bool:
     """
@@ -38,12 +41,12 @@ def validate_schedule_json(data: dict) -> bool:
     if "schedule" not in data:
         logger.warning("Validation failed: Root key 'schedule' is missing.")
         return False
-    
+
     schedule = data["schedule"]
     if not isinstance(schedule, list):
         logger.warning("Validation failed: 'schedule' is not a list.")
         return False
-        
+
     for idx, item in enumerate(schedule):
         if not isinstance(item, dict):
             logger.warning(f"Validation failed: schedule item at index {idx} is not a dictionary.")
@@ -55,7 +58,11 @@ def validate_schedule_json(data: dict) -> bool:
             logger.warning(f"Validation failed: schedule item at index {idx} is missing keys: {missing}")
             return False
         # Check types
-        if not isinstance(item["day"], str) or not isinstance(item["subject"], str) or not isinstance(item["session_type"], str):
+        if (
+            not isinstance(item["day"], str)
+            or not isinstance(item["subject"], str)
+            or not isinstance(item["session_type"], str)
+        ):
             logger.warning(f"Validation failed: 'day', 'subject' or 'session_type' at index {idx} is not a string.")
             return False
         if not isinstance(item["hours"], (int, float)):
@@ -70,58 +77,65 @@ def validate_schedule_json(data: dict) -> bool:
         if "end_time" in item and not isinstance(item["end_time"], str):
             logger.warning(f"Validation failed: 'end_time' at index {idx} is not a string.")
             return False
-            
+
     # Validate 'detailed_analysis'
     if "detailed_analysis" not in data:
         logger.warning("Validation failed: 'detailed_analysis' key is missing.")
         return False
-        
+
     da = data["detailed_analysis"]
     if not isinstance(da, dict):
         logger.warning("Validation failed: 'detailed_analysis' is not a dictionary.")
         return False
-        
+
     required_da_keys = (
-        "focus_title", 
-        "focus_description", 
-        "focus_blocks", 
-        "phases", 
+        "focus_title",
+        "focus_description",
+        "focus_blocks",
+        "phases",
         "pro_tips",
         "subject_allocation_reasons",
         "time_slot_reasons",
         "milestone_reasons",
-        "preference_reasons"
+        "preference_reasons",
     )
     if not all(k in da for k in required_da_keys):
         missing = [k for k in required_da_keys if k not in da]
         logger.warning(f"Validation failed: 'detailed_analysis' is missing keys: {missing}")
         return False
-        
-    if not isinstance(da["focus_blocks"], list) or not isinstance(da["phases"], list) or not isinstance(da["pro_tips"], list):
-        logger.warning("Validation failed: 'focus_blocks', 'phases', or 'pro_tips' inside 'detailed_analysis' is not a list.")
+
+    if (
+        not isinstance(da["focus_blocks"], list)
+        or not isinstance(da["phases"], list)
+        or not isinstance(da["pro_tips"], list)
+    ):
+        logger.warning(
+            "Validation failed: 'focus_blocks', 'phases', or 'pro_tips' inside 'detailed_analysis' is not a list."
+        )
         return False
 
     if not isinstance(da["subject_allocation_reasons"], dict):
         logger.warning("Validation failed: 'subject_allocation_reasons' is not a dictionary.")
         return False
-        
+
     # Validate 'quality_scoring'
     if "quality_scoring" not in data:
         logger.warning("Validation failed: 'quality_scoring' key is missing.")
         return False
-        
+
     qs = data["quality_scoring"]
     if not isinstance(qs, dict):
         logger.warning("Validation failed: 'quality_scoring' is not a dictionary.")
         return False
-        
+
     required_qs_keys = ("balance_score", "burnout_risk", "exam_readiness_score")
     if not all(k in qs for k in required_qs_keys):
         missing = [k for k in required_qs_keys if k not in qs]
         logger.warning(f"Validation failed: 'quality_scoring' is missing keys: {missing}")
         return False
-        
+
     return True
+
 
 def validate_candidates_json(data: dict) -> bool:
     """Validates structure of candidates JSON output."""
@@ -150,34 +164,32 @@ def validate_candidates_json(data: dict) -> bool:
                 return False
     return True
 
+
 async def call_llm_api(system_instruction: str, user_prompt: str) -> dict:
     """Wrapper to make standard POST request to the LLM API and parse JSON response with 429 retry backoff."""
     if not LLM_API_KEY:
         logger.error("LLM_API_KEY is not configured.")
         raise ValueError("LLM_API_KEY is not configured.")
-        
-    headers = {
-        "Authorization": f"Bearer {LLM_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    
+
+    headers = {"Authorization": f"Bearer {LLM_API_KEY}", "Content-Type": "application/json"}
+
     model_name = LLM_MODEL
     if "groq" in LLM_API_URL.lower() and model_name == "llama-3.3-70b":
         model_name = "llama-3.3-70b-versatile"
 
     payload = {
         "model": model_name,
-        "messages": [
-            {"role": "system", "content": system_instruction},
-            {"role": "user", "content": user_prompt}
-        ],
+        "messages": [{"role": "system", "content": system_instruction}, {"role": "user", "content": user_prompt}],
         "temperature": 0.2,
-        "response_format": {"type": "json_object"}
+        "response_format": {"type": "json_object"},
     }
-    
+
+    if "gpt-oss" in model_name:
+        payload["reasoning_effort"] = "low"
+
     url = f"{LLM_API_URL}/chat/completions"
     logger.debug(f"Sending request to LLM API: {url}")
-    
+
     max_retries = 5
     backoff_factor = 2.0
     for attempt in range(max_retries):
@@ -185,7 +197,7 @@ async def call_llm_api(system_instruction: str, user_prompt: str) -> dict:
             async with httpx.AsyncClient(timeout=25.0) as client:
                 response = await client.post(url, headers=headers, json=payload)
                 if response.status_code == 429:
-                    sleep_time = (backoff_factor ** attempt) + 1.0
+                    sleep_time = (backoff_factor**attempt) + 1.0
                     logger.warning(f"Rate limited (429) on attempt {attempt + 1}. Retrying in {sleep_time:.1f}s...")
                     await asyncio.sleep(sleep_time)
                     continue
@@ -196,13 +208,15 @@ async def call_llm_api(system_instruction: str, user_prompt: str) -> dict:
                     raise ValueError("LLM response did not contain any choices.")
                 content = choices[0].get("message", {}).get("content", "").strip()
                 logger.debug(f"Received raw LLM response: {content}")
-                
+
                 cleaned = clean_json_response(content)
                 return json.loads(cleaned)
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 429:
-                sleep_time = (backoff_factor ** attempt) + 1.0
-                logger.warning(f"Rate limited (429) via HTTPStatusError on attempt {attempt + 1}. Retrying in {sleep_time:.1f}s...")
+                sleep_time = (backoff_factor**attempt) + 1.0
+                logger.warning(
+                    f"Rate limited (429) via HTTPStatusError on attempt {attempt + 1}. Retrying in {sleep_time:.1f}s..."
+                )
                 await asyncio.sleep(sleep_time)
                 continue
             logger.error(f"HTTP error occurred in call_llm_api: {e}")
@@ -214,6 +228,7 @@ async def call_llm_api(system_instruction: str, user_prompt: str) -> dict:
             await asyncio.sleep(1.0)
     raise RuntimeError("Max retries exceeded in call_llm_api.")
 
+
 async def calculate_schedule_metrics(schedule_events: list, milestones: list, subjects: list, db=None) -> dict:
     """
     Calculates Balance Score, Burnout Risk, and Exam Readiness based on the final generated timetable,
@@ -221,12 +236,12 @@ async def calculate_schedule_metrics(schedule_events: list, milestones: list, su
     Logs all inputs and intermediate calculations.
     """
     logger.info("Starting quality metrics calculation.")
-    
+
     # 1. BALANCE SCORE CALCULATION
     balance_score = 0
     subject_balance = 0
     daily_balance = 0
-    
+
     num_subjects = len(subjects)
     if num_subjects == 0:
         balance_score = 100
@@ -250,7 +265,7 @@ async def calculate_schedule_metrics(schedule_events: list, milestones: list, su
         # Subject Coverage
         allocated_subjects = sum(1 for h in subject_hours.values() if h > 0)
         subject_coverage = allocated_subjects / num_subjects
-        
+
         # Subject Distribution (Coefficient of Variation)
         allocated_hours = [h for h in subject_hours.values() if h > 0]
         if len(allocated_hours) == 0:
@@ -260,12 +275,12 @@ async def calculate_schedule_metrics(schedule_events: list, milestones: list, su
         else:
             mean_h = sum(allocated_hours) / len(allocated_hours)
             variance = sum((x - mean_h) ** 2 for x in allocated_hours) / len(allocated_hours)
-            std_h = variance ** 0.5
+            std_h = variance**0.5
             cv_h = std_h / mean_h if mean_h > 0 else 0.0
             subject_distribution = max(0.0, 1.0 - 0.4 * cv_h)
-            
+
         subject_balance = subject_coverage * subject_distribution * 100
-        
+
         # Daily workload balance
         days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         daily_hours = {d: 0.0 for d in days}
@@ -274,20 +289,20 @@ async def calculate_schedule_metrics(schedule_events: list, milestones: list, su
             hours = float(event.get("hours", 0.0))
             if day in daily_hours:
                 daily_hours[day] += hours
-                
+
         total_weekly_hours = sum(daily_hours.values())
         if total_weekly_hours == 0:
             daily_balance = 100
         else:
             mean_d = total_weekly_hours / 7.0
             variance_d = sum((x - mean_d) ** 2 for x in daily_hours.values()) / 7.0
-            std_d = variance_d ** 0.5
+            std_d = variance_d**0.5
             cv_d = std_d / mean_d if mean_d > 0 else 0.0
             daily_balance = max(0.0, 1.0 - 0.3 * cv_d) * 100
-            
+
         balance_score = int(0.5 * subject_balance + 0.5 * daily_balance)
         balance_score = max(0, min(100, balance_score))
-        
+
         # Debug Logging for Balance Score
         logger.info(
             f"Balance Score Inputs & Calculation:\n"
@@ -347,7 +362,7 @@ async def calculate_schedule_metrics(schedule_events: list, milestones: list, su
         hours = float(event.get("hours", 0.0))
         if hours > max_block_duration:
             max_block_duration = hours
-            
+
     risk_block_duration = 10.0
     if max_block_duration > 3.0:
         risk_block_duration = 100.0
@@ -390,7 +405,7 @@ async def calculate_schedule_metrics(schedule_events: list, milestones: list, su
                 max_consecutive = current_consecutive
         else:
             current_consecutive = 0
-            
+
     risk_intensive = 10.0
     if max_consecutive == 3:
         risk_intensive = 40.0
@@ -413,7 +428,7 @@ async def calculate_schedule_metrics(schedule_events: list, milestones: list, su
                 late_sessions += 1
         except Exception as e:
             logger.debug(f"Failed to parse sleep window times ({start_time_str} - {end_time_str}): {e}")
-            
+
     risk_sleep = 10.0
     if late_sessions in (1, 2):
         risk_sleep = 45.0
@@ -431,7 +446,7 @@ async def calculate_schedule_metrics(schedule_events: list, milestones: list, su
             t_str = t_str.replace("pm", "").strip()
         elif "am" in t_str:
             t_str = t_str.replace("am", "").strip()
-            
+
         parts = t_str.split(":")
         if len(parts) == 2:
             h = int(parts[0])
@@ -442,7 +457,7 @@ async def calculate_schedule_metrics(schedule_events: list, milestones: list, su
         else:
             h = 12
             m = 0
-            
+
         if is_pm and h < 12:
             h += 12
         if not is_pm and h == 12:
@@ -457,6 +472,7 @@ async def calculate_schedule_metrics(schedule_events: list, milestones: list, su
     for day in days:
         day_events = [e for e in schedule_events if e.get("day") == day]
         if len(day_events) >= 2:
+
             def get_event_start_min(e):
                 st = e.get("start_time")
                 if not st:
@@ -466,28 +482,29 @@ async def calculate_schedule_metrics(schedule_events: list, milestones: list, su
                 except Exception as e:
                     logger.debug(f"Failed to parse event start time '{st}' into minutes: {e}")
                     return 0
+
             day_events.sort(key=get_event_start_min)
             for i in range(len(day_events) - 1):
                 e1 = day_events[i]
-                e2 = day_events[i+1]
+                e2 = day_events[i + 1]
                 try:
                     end_e1 = time_to_min(e1.get("end_time", "00:00"))
                     start_e2 = time_to_min(e2.get("start_time", "00:00"))
                     gap = start_e2 - end_e1
                     if gap < 0:
                         gap += 24 * 60
-                    
+
                     # Too few breaks / gap < 60 minutes
                     if gap < 60:
                         gap_penalty += 15
                     # Healthy break decreases risk
                     elif 60 <= gap <= 180:
                         gap_penalty -= 5
-                        
+
                     # Stacking check for Hard subjects
                     sub1_name = e1.get("subject", "").lower().strip()
                     sub2_name = e2.get("subject", "").lower().strip()
-                    
+
                     sub1_diff = "Medium"
                     for name, diff in subject_difficulty_map.items():
                         if name in sub1_name or sub1_name in name:
@@ -498,7 +515,7 @@ async def calculate_schedule_metrics(schedule_events: list, milestones: list, su
                         if name in sub2_name or sub2_name in name:
                             sub2_diff = diff
                             break
-                            
+
                     if sub1_diff == "Hard" and sub2_diff == "Hard" and gap < 60:
                         stacked_hard_penalty += 20
                 except Exception as e:
@@ -513,15 +530,15 @@ async def calculate_schedule_metrics(schedule_events: list, milestones: list, su
 
     # Base weighted burnout risk
     base_burnout = (
-        0.45 * risk_hours +
-        0.10 * risk_blocks +
-        0.10 * risk_block_duration +
-        0.10 * risk_recovery +
-        0.08 * risk_weekend +
-        0.08 * risk_intensive +
-        0.09 * risk_sleep
+        0.45 * risk_hours
+        + 0.10 * risk_blocks
+        + 0.10 * risk_block_duration
+        + 0.10 * risk_recovery
+        + 0.08 * risk_weekend
+        + 0.08 * risk_intensive
+        + 0.09 * risk_sleep
     )
-    
+
     # Apply penalties & rewards
     burnout_risk = int(base_burnout + gap_penalty + stacked_hard_penalty + balance_modifier)
     burnout_risk = max(0, min(100, burnout_risk))
@@ -549,10 +566,10 @@ async def calculate_schedule_metrics(schedule_events: list, milestones: list, su
     else:
         readiness_scores = []
         current_date = date(2026, 6, 14)  # Current local time date context
-        
+
         for m in milestones:
             sub_name_clean = _get_subj_name(m).lower().strip()
-            
+
             subj_obj = None
             for s in subjects:
                 if s.name.lower().strip() == sub_name_clean:
@@ -563,29 +580,29 @@ async def calculate_schedule_metrics(schedule_events: list, milestones: list, su
                     if s.name.lower().strip() in sub_name_clean or sub_name_clean in s.name.lower().strip():
                         subj_obj = s
                         break
-            
+
             difficulty = subj_obj.difficulty if subj_obj else "Medium"
             if not difficulty:
                 difficulty = "Medium"
-                
+
             # Hours allocated before exam for this subject
             h_allocated = 0.0
             for event in schedule_events:
                 event_sub = event.get("subject", "").lower().strip()
                 if event_sub == sub_name_clean or event_sub in sub_name_clean or sub_name_clean in event_sub:
                     h_allocated += float(event.get("hours", 0.0))
-            
+
             # Target hours needed based on difficulty
             h_target = 6.0
             if difficulty == "Hard":
                 h_target = 10.0
             elif difficulty == "Easy":
                 h_target = 4.0
-                
+
             hours_score = min(100.0, (h_allocated / h_target) * 100.0)
-            
+
             # Proximity in days
-            days_prox = 10 # Default fallback
+            days_prox = 10  # Default fallback
             try:
                 exam_date_obj = m.exam_date
                 if isinstance(exam_date_obj, str):
@@ -593,10 +610,10 @@ async def calculate_schedule_metrics(schedule_events: list, milestones: list, su
                 days_prox = (exam_date_obj - current_date).days
             except Exception:
                 pass
-            
+
             if days_prox < 0:
                 days_prox = 0
-                
+
             proximity_modifier = 1.0
             if days_prox <= 1:
                 proximity_modifier = 0.5
@@ -604,35 +621,35 @@ async def calculate_schedule_metrics(schedule_events: list, milestones: list, su
                 proximity_modifier = 0.7
             elif days_prox <= 7:
                 proximity_modifier = 0.9
-                
+
             # Performance metrics (database-backed milestone completion percentage)
             completion = m.completion_percentage if m.completion_percentage is not None else 0
             perf_score = float(completion)
-            
+
             # Completed study sessions count
             sessions_count = 0
             if db is not None and subj_obj is not None:
                 try:
                     from app.models import StudySession
                     from sqlalchemy import select, func
+
                     sessions_count_result = await db.execute(
-                        select(func.count()).select_from(StudySession).where(
-                            StudySession.user_id == m.user_id,
-                            StudySession.subject_id == subj_obj.id
-                        )
+                        select(func.count())
+                        .select_from(StudySession)
+                        .where(StudySession.user_id == m.user_id, StudySession.subject_id == subj_obj.id)
                     )
                     sessions_count = sessions_count_result.scalar_one()
                 except Exception as db_err:
                     logger.error(f"Error querying study sessions count for readiness: {db_err}")
-            
+
             session_factor = min(100.0, sessions_count * 20.0)
-            
+
             # Weighted calculation of milestone readiness
             m_readiness = 0.3 * hours_score + 0.4 * perf_score + 0.3 * session_factor
             m_readiness = m_readiness * proximity_modifier
             m_readiness = max(0.0, min(100.0, m_readiness))
             readiness_scores.append(m_readiness)
-            
+
             logger.info(
                 f"Milestone Exam Readiness calculation details for {_get_subj_name(m)}:\n"
                 f"- Exam Date: {m.exam_date} (Proximity: {days_prox} days, Modifier: {proximity_modifier:.2f})\n"
@@ -641,27 +658,24 @@ async def calculate_schedule_metrics(schedule_events: list, milestones: list, su
                 f"- Completed sessions count: {sessions_count} -> Session Factor: {session_factor:.2f}%\n"
                 f"- Calculated Milestone Readiness: {m_readiness:.2f}%"
             )
-            
+
         exam_readiness_score = int(sum(readiness_scores) / len(readiness_scores))
         exam_readiness_score = max(0, min(100, exam_readiness_score))
         logger.info(f"Final Combined Calculated Exam Readiness Score: {exam_readiness_score}%")
-        
-    return {
-        "balance_score": balance_score,
-        "burnout_risk": burnout_risk,
-        "exam_readiness_score": exam_readiness_score
-    }
+
+    return {"balance_score": balance_score, "burnout_risk": burnout_risk, "exam_readiness_score": exam_readiness_score}
+
 
 def calculate_dynamic_schedule_label(schedule_events: list) -> str:
     """
     Dynamically generates the focus schedule label based on the actual time allocation of events.
     """
     total_hours = sum(float(event.get("hours", 0.0)) for event in schedule_events)
-    
+
     morning_hours = 0.0
     afternoon_hours = 0.0
     night_hours = 0.0
-    
+
     for event in schedule_events:
         start_str = event.get("start_time", "09:00")
         hours = float(event.get("hours", 0.0))
@@ -688,15 +702,17 @@ def calculate_dynamic_schedule_label(schedule_events: list) -> str:
 
     if total_hours == 0:
         return "Standard Study Schedule"
-        
-    logger.info(f"Dynamic Label Classification - Total: {total_hours}h, Morning: {morning_hours}h, Afternoon: {afternoon_hours}h, Night/Evening: {night_hours}h")
-    
+
+    logger.info(
+        f"Dynamic Label Classification - Total: {total_hours}h, Morning: {morning_hours}h, Afternoon: {afternoon_hours}h, Night/Evening: {night_hours}h"
+    )
+
     max_hours = max(morning_hours, afternoon_hours, night_hours)
-    
+
     sorted_hours = sorted([morning_hours, afternoon_hours, night_hours], reverse=True)
     if sorted_hours[0] - sorted_hours[1] < (total_hours * 0.2):
         return f"Balanced Rhythm Focus Schedule ({total_hours:.1f} Hours/Week)"
-        
+
     if max_hours == morning_hours:
         return f"Morning Focus Schedule ({total_hours:.1f} Hours/Week)"
     elif max_hours == afternoon_hours:
@@ -704,14 +720,15 @@ def calculate_dynamic_schedule_label(schedule_events: list) -> str:
     else:
         return f"Night Focus Schedule ({total_hours:.1f} Hours/Week)"
 
+
 def verify_consistency(schedule_events: list, detailed_analysis: dict, milestones: list, subjects: list) -> bool:
     """
     Performs consistency validation to ensure study map, phases, blocks and timetables align.
     """
     logger.info("Running Consistency Validation Checks...")
-    
+
     scheduled_subjects = {event.get("subject", "").lower().strip() for event in schedule_events}
-    
+
     # 1. Study Map subjects exist in timetable
     reasons_dict = detailed_analysis.get("subject_allocation_reasons", {})
     for sub in reasons_dict.keys():
@@ -722,7 +739,9 @@ def verify_consistency(schedule_events: list, detailed_analysis: dict, milestone
                 matched = True
                 break
         if not matched:
-            logger.warning(f"Consistency Validation Failed: Subject '{sub}' in Study Map allocations does not exist in weekly timetable subjects {scheduled_subjects}")
+            logger.warning(
+                f"Consistency Validation Failed: Subject '{sub}' in Study Map allocations does not exist in weekly timetable subjects {scheduled_subjects}"
+            )
             return False
 
     # 2. Phase subjects exist in milestones
@@ -732,14 +751,16 @@ def verify_consistency(schedule_events: list, detailed_analysis: dict, milestone
         title = phase.get("title", "").lower()
         description = phase.get("description", "").lower()
         allocations = phase.get("allocations", [])
-        
+
         matched_milestone = False
         for ms in milestone_subjects:
             if ms in title or ms in description or any(ms in str(alloc).lower() for alloc in allocations):
                 matched_milestone = True
                 break
         if not matched_milestone and milestone_subjects:
-            logger.warning(f"Consistency Validation Failed: Phase '{phase.get('title')}' does not relate to any registered exam milestones {milestone_subjects}")
+            logger.warning(
+                f"Consistency Validation Failed: Phase '{phase.get('title')}' does not relate to any registered exam milestones {milestone_subjects}"
+            )
             return False
 
     # Helper function for parsing time to minutes
@@ -751,7 +772,7 @@ def verify_consistency(schedule_events: list, detailed_analysis: dict, milestone
             t_str = t_str.replace("pm", "").strip()
         elif "am" in t_str:
             t_str = t_str.replace("am", "").strip()
-            
+
         parts = t_str.split(":")
         if len(parts) == 2:
             h = int(parts[0])
@@ -759,7 +780,7 @@ def verify_consistency(schedule_events: list, detailed_analysis: dict, milestone
         else:
             h = int(parts[0])
             m = 0
-            
+
         if is_pm and h < 12:
             h += 12
         if not is_pm and h == 12:
@@ -777,7 +798,7 @@ def verify_consistency(schedule_events: list, detailed_analysis: dict, milestone
         if len(parts) != 2:
             logger.warning(f"Consistency Validation Warning: block time range format invalid: {time_range}")
             continue
-            
+
         try:
             start_block = time_to_min(parts[0])
             end_block = time_to_min(parts[1])
@@ -786,28 +807,30 @@ def verify_consistency(schedule_events: list, detailed_analysis: dict, milestone
         except Exception as te:
             logger.warning(f"Consistency Validation Warning: error parsing block time '{time_range}': {te}")
             continue
-            
+
         overlap_found = False
         for event in schedule_events:
             event_start_str = event.get("start_time", "")
             event_end_str = event.get("end_time", "")
             if not event_start_str or not event_end_str:
                 continue
-                
+
             try:
                 start_ev = time_to_min(event_start_str)
                 end_ev = time_to_min(event_end_str)
                 if end_ev < start_ev:
                     end_ev += 24 * 60
-                
+
                 if max(start_block, start_ev) < min(end_block, end_ev):
                     overlap_found = True
                     break
             except Exception:
                 continue
-                
+
         if not overlap_found and schedule_events:
-            logger.warning(f"Consistency Validation Failed: Block time '{time_range}' has no overlapping scheduled sessions in the timetable.")
+            logger.warning(
+                f"Consistency Validation Failed: Block time '{time_range}' has no overlapping scheduled sessions in the timetable."
+            )
             return False
 
     def parse_mil_date(m):
@@ -830,20 +853,25 @@ def verify_consistency(schedule_events: list, detailed_analysis: dict, milestone
         if phase_subj_indices:
             min_idx_in_phase = min(phase_subj_indices)
             if min_idx_in_phase < last_idx:
-                logger.warning(f"Consistency Validation Failed: Phase order is not chronological. Phase {phase.get('title')} is out of order.")
+                logger.warning(
+                    f"Consistency Validation Failed: Phase order is not chronological. Phase {phase.get('title')} is out of order."
+                )
                 return False
             last_idx = min_idx_in_phase
 
     logger.info("Consistency Validation Successful!")
     return True
 
+
 def enforce_weekend_preservation(schedule_events, milestones, daily_quota):
     # Filter weekday events
-    weekday_events = [e for e in schedule_events if e.get("day") in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]]
-    
+    weekday_events = [
+        e for e in schedule_events if e.get("day") in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+    ]
+
     # Filter weekend events
     weekend_events = [e for e in schedule_events if e.get("day") in ["Saturday", "Sunday"]]
-    
+
     # Check if any milestone exam is less than 5 days away
     exam_soon = False
     today = date.today()
@@ -861,10 +889,10 @@ def enforce_weekend_preservation(schedule_events, milestones, daily_quota):
                     break
         except Exception:
             pass
-            
+
     retained_weekend_study = None
     redistribute_list = []
-    
+
     for e in weekend_events:
         is_study = e.get("session_type") not in ["Rest", "Recovery", "Mindfulness", "Break", "Buffer Time"]
         if is_study:
@@ -875,19 +903,21 @@ def enforce_weekend_preservation(schedule_events, milestones, daily_quota):
                 retained_weekend_study["hours"] = 1.5
                 retained_weekend_study["start_time"] = "13:00"
                 retained_weekend_study["end_time"] = "14:30"
-                retained_weekend_study["reason"] = f"Lightweight exam preparation review for {retained_weekend_study.get('subject')}."
+                retained_weekend_study["reason"] = (
+                    f"Lightweight exam preparation review for {retained_weekend_study.get('subject')}."
+                )
             else:
                 redistribute_list.append(e)
-                
+
     # Redistribute the other weekend study hours to weekdays
     if redistribute_list:
         weekday_hours = {d: 0.0 for d in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]}
         for we in weekday_events:
             weekday_hours[we.get("day")] = weekday_hours.get(we.get("day"), 0.0) + float(we.get("hours", 0.0))
-            
+
         for e in redistribute_list:
             target_day = min(weekday_hours, key=weekday_hours.get)
-            
+
             # Try to extend existing session of same subject on that day
             found_same_subject = False
             for we in weekday_events:
@@ -903,7 +933,7 @@ def enforce_weekend_preservation(schedule_events, milestones, daily_quota):
                         pass
                     found_same_subject = True
                     break
-                    
+
             if not found_same_subject:
                 start_time = "14:00"
                 max_end_minutes = 0
@@ -923,7 +953,7 @@ def enforce_weekend_preservation(schedule_events, milestones, daily_quota):
                     new_h = (start_min // 60) % 24
                     new_m = start_min % 60
                     start_time = f"{new_h:02d}:{new_m:02d}"
-                    
+
                 try:
                     h, m = map(int, start_time.split(":"))
                     end_min = h * 60 + m + int(float(e.get("hours", 0.0)) * 60)
@@ -932,7 +962,7 @@ def enforce_weekend_preservation(schedule_events, milestones, daily_quota):
                     end_time = f"{new_h:02d}:{new_m:02d}"
                 except Exception:
                     end_time = start_time
-                    
+
                 new_event = {
                     "day": target_day,
                     "subject": e.get("subject"),
@@ -940,19 +970,19 @@ def enforce_weekend_preservation(schedule_events, milestones, daily_quota):
                     "start_time": start_time,
                     "end_time": end_time,
                     "session_type": e.get("session_type"),
-                    "reason": f"Shifted from weekend to preserve rest: {e.get('reason')}"
+                    "reason": f"Shifted from weekend to preserve rest: {e.get('reason')}",
                 }
                 weekday_events.append(new_event)
-                
+
             weekday_hours[target_day] += float(e.get("hours", 0.0))
-            
+
     # Reassemble final schedule
     final_events = []
     final_events.extend(weekday_events)
-    
+
     if retained_weekend_study:
         final_events.append(retained_weekend_study)
-        
+
     # Append the Rest/Recovery/Mindfulness blocks to Saturday and Sunday
     default_sat_blocks = [
         {
@@ -962,7 +992,7 @@ def enforce_weekend_preservation(schedule_events, milestones, daily_quota):
             "start_time": "10:00",
             "end_time": "12:00",
             "session_type": "Recovery",
-            "reason": "Protected recovery slot to prevent academic burnout."
+            "reason": "Protected recovery slot to prevent academic burnout.",
         },
         {
             "day": "Saturday",
@@ -971,8 +1001,8 @@ def enforce_weekend_preservation(schedule_events, milestones, daily_quota):
             "start_time": "15:00",
             "end_time": "16:30",
             "session_type": "Mindfulness",
-            "reason": "Mental decompression and stress management session."
-        }
+            "reason": "Mental decompression and stress management session.",
+        },
     ]
     default_sun_blocks = [
         {
@@ -982,7 +1012,7 @@ def enforce_weekend_preservation(schedule_events, milestones, daily_quota):
             "start_time": "10:00",
             "end_time": "12:00",
             "session_type": "Rest",
-            "reason": "Complete downtime to build cognitive reserves for the week ahead."
+            "reason": "Complete downtime to build cognitive reserves for the week ahead.",
         },
         {
             "day": "Sunday",
@@ -991,30 +1021,57 @@ def enforce_weekend_preservation(schedule_events, milestones, daily_quota):
             "start_time": "15:00",
             "end_time": "16:30",
             "session_type": "Recovery",
-            "reason": "Restorative relaxation block to boost mental clarity."
-        }
+            "reason": "Restorative relaxation block to boost mental clarity.",
+        },
     ]
-    
+
     final_events.extend(default_sat_blocks)
     final_events.extend(default_sun_blocks)
-    
+
     return final_events
 
+
+def normalize_schedule_data(data):
+    """Fill in missing sections so a partial reply from gpt-oss still passes validation."""
+    if not isinstance(data, dict):
+        return data
+    # Some replies nest the result under another key
+    if "schedule" not in data:
+        for v in data.values():
+            if isinstance(v, dict) and "schedule" in v:
+                data = v
+                break
+    # Make sure every schedule item has the fields the validator requires
+    for item in data.get("schedule", []):
+        if isinstance(item, dict):
+            item.setdefault("reason", "")
+            item.setdefault("session_type", "Deep Focus")
+    da = data.get("detailed_analysis")
+    if not isinstance(da, dict):
+        da = data["detailed_analysis"] = {}
+    da.setdefault("focus_title", "Weekly Study Plan")
+    da.setdefault("focus_description", "")
+    da.setdefault("focus_blocks", [])
+    da.setdefault("phases", [])
+    da.setdefault("pro_tips", [])
+    da.setdefault("subject_allocation_reasons", {})
+    da.setdefault("time_slot_reasons", "")
+    da.setdefault("milestone_reasons", "")
+    da.setdefault("preference_reasons", "")
+    data.setdefault("quality_scoring", {"balance_score": 0, "burnout_risk": 0, "exam_readiness_score": 0})
+    return data
+
+
 async def generate_ai_schedule(
-    user_id: int,
-    subjects: list,
-    milestones: list,
-    analytics: dict,
-    calibration: dict = None,
-    db = None
+    user_id: int, subjects: list, milestones: list, analytics: dict, calibration: dict = None, db=None
 ) -> dict:
     """
     Generates a personalized weekly study timetable and detailed strategic analysis in a single LLM call.
     Uses file-based caching to prevent redundant API calls.
     """
-    
+
     logger.info(f"Generating AI study plan for user {user_id} using model {LLM_MODEL}")
-    
+
     # Standardize calibration defaults
     if not calibration:
         calibration = {}
@@ -1026,54 +1083,53 @@ async def generate_ai_schedule(
         "prioritize_critical": True,
         "intensive_pre_exam": True,
         "weekend_preservation": False,
-        "force_refresh": False
+        "force_refresh": False,
     }
     for k, v in calibration_defaults.items():
         if k not in calibration or calibration[k] is None:
             calibration[k] = v
-            
+
     class CalibrationDict(dict):
         @property
         def weekend_preservation(self):
             return self.get("weekend_preservation")
-            
+
     calibration = CalibrationDict(calibration)
-    
-    logger.info(
-        f"Weekend Preservation: {calibration.weekend_preservation}"
-    )
-    
+
+    logger.info(f"Weekend Preservation: {calibration.weekend_preservation}")
+
     weekend_preservation = calibration.weekend_preservation
-    logger.info(
-        f"Applying weekend preservation: {weekend_preservation}"
-    )
-            
+    logger.info(f"Applying weekend preservation: {weekend_preservation}")
+
     force_refresh = calibration.get("force_refresh", False)
-    
+
     # ------------------------------------------
     # Cache Check
     # ------------------------------------------
     from app.database import DB_DIR
     import os
-    
+
     # Generate unique cache path based on inputs
     sub_sig = sorted([(s.name.lower().strip(), s.difficulty) for s in subjects])
-    mil_sig = sorted([(_get_subj_name(m).lower().strip(), m.exam_date.isoformat() if hasattr(m.exam_date, "isoformat") else str(m.exam_date)) for m in milestones])
+    mil_sig = sorted(
+        [
+            (
+                _get_subj_name(m).lower().strip(),
+                m.exam_date.isoformat() if hasattr(m.exam_date, "isoformat") else str(m.exam_date),
+            )
+            for m in milestones
+        ]
+    )
     cal_sig = sorted([(str(k), str(v)) for k, v in calibration.items() if k != "force_refresh"])
-    
-    cache_inputs = {
-        "user_id": user_id,
-        "subjects": sub_sig,
-        "milestones": mil_sig,
-        "calibration": cal_sig
-    }
+
+    cache_inputs = {"user_id": user_id, "subjects": sub_sig, "milestones": mil_sig, "calibration": cal_sig}
     serialized = json.dumps(cache_inputs, sort_keys=True)
     cache_hash = hashlib.md5(serialized.encode("utf-8")).hexdigest()
     # Cache file naming convention: schedule_cache_{user_id}_{hash}.json
     # Cleanup policy: Only one cache file should exist per user. Old cache files for this user
     # are deleted before writing a new one.
     cache_path = DB_DIR / f"schedule_cache_{user_id}_{cache_hash}.json"
-    
+
     if not force_refresh and cache_path.exists():
         try:
             with open(cache_path, "r", encoding="utf-8") as f:
@@ -1084,15 +1140,13 @@ async def generate_ai_schedule(
             return cached_data
         except Exception as cache_err:
             logger.error(f"Failed to read schedule cache: {cache_err}")
-            
+
     # Compile subjects list details
     subject_details = []
     for s in subjects:
-        subject_details.append(
-            f"- {s.name} (Difficulty: {s.difficulty or 'Medium'})"
-        )
+        subject_details.append(f"- {s.name} (Difficulty: {s.difficulty or 'Medium'})")
     subjects_str = "\n".join(subject_details) if subject_details else "None"
-    
+
     def parse_mil_date(m):
         try:
             exam_date_obj = m.exam_date
@@ -1103,23 +1157,20 @@ async def generate_ai_schedule(
             return date.max
 
     milestones_sorted = sorted(milestones, key=parse_mil_date)
-    milestones_chronology_list = [
-        f"- {_get_subj_name(m)} (Exam Date: {m.exam_date})"
-        for m in milestones_sorted
-    ]
+    milestones_chronology_list = [f"- {_get_subj_name(m)} (Exam Date: {m.exam_date})" for m in milestones_sorted]
     milestones_chronology_str = "\n".join(milestones_chronology_list) if milestones_chronology_list else "None"
-    
+
     milestone_details = []
     for m in milestones_sorted:
         milestone_details.append(f"- Exam for {_get_subj_name(m)} on {m.exam_date}")
     milestones_str = "\n".join(milestone_details) if milestone_details else "None"
-    
+
     # Extract analytics fields
     streak = analytics.get("active_streak", 0)
     weekly_hours = analytics.get("weekly_study_hours", 0)
-    
+
     current_date_str = date.today().strftime("%B %d, %Y")
-    
+
     # Fatigue model calculations
     fatigue_level = "Low"
     recovery_recommendation = "None"
@@ -1128,15 +1179,17 @@ async def generate_ai_schedule(
         recovery_recommendation = "High fatigue detected. Reduce daily study hours by 30%, schedule revision sessions, and insert recovery blocks."
     elif weekly_hours > 15 or streak > 3:
         fatigue_level = "Medium"
-        recovery_recommendation = "Moderate fatigue detected. Reduce daily study hours by 15% and insert recovery blocks."
-        
+        recovery_recommendation = (
+            "Moderate fatigue detected. Reduce daily study hours by 15% and insert recovery blocks."
+        )
+
     fatigue_str = (
         f"- Fatigue Level: {fatigue_level}\n"
         f"- Streak: {streak} days\n"
         f"- Weekly study: {weekly_hours} hours\n"
         f"- Recovery: {recovery_recommendation}"
     )
-    
+
     cal_str = (
         f"- Daily study quota target: {calibration.get('daily_quota', 6)} hours\n"
         f"- Optimal focus period: {calibration.get('focus_period', 'Morning')}\n"
@@ -1152,36 +1205,36 @@ async def generate_ai_schedule(
         "and generate a single, highly realistic, balanced, and sustainable weekly study schedule along with a detailed strategic analysis.\n\n"
         "You MUST respond ONLY with a valid JSON object matching the following structure exactly:\n"
         "{\n"
-        "  \"schedule\": [\n"
+        '  "schedule": [\n'
         "    {\n"
-        "      \"day\": \"Monday\",\n"
-        "      \"subject\": \"Name of Subject\",\n"
-        "      \"hours\": 1.5,\n"
-        "      \"start_time\": \"15:00\",\n"
-        "      \"end_time\": \"16:30\",\n"
-        "      \"session_type\": \"Deep Focus\",\n"
-        "      \"reason\": \"Reason including Pomodoro cycles description\"\n"
+        '      "day": "Monday",\n'
+        '      "subject": "Name of Subject",\n'
+        '      "hours": 1.5,\n'
+        '      "start_time": "15:00",\n'
+        '      "end_time": "16:30",\n'
+        '      "session_type": "Deep Focus",\n'
+        '      "reason": "Reason including Pomodoro cycles description"\n'
         "    }\n"
         "  ],\n"
-        "  \"detailed_analysis\": {\n"
-        "    \"focus_title\": \"Daily Focus Rhythm (e.g., Daily Night-Owl Schedule (6 Hours))\",\n"
-        "    \"focus_description\": \"Detailed explanation of how and why study hours are divided into blocks.\",\n"
-        "    \"focus_blocks\": [\n"
-        "      {\"block\": \"Block 1 (Afternoon)\", \"time\": \"15:00 – 16:30\", \"mode\": \"Lighter review or reading\"}\n"
+        '  "detailed_analysis": {\n'
+        '    "focus_title": "Daily Focus Rhythm (e.g., Daily Night-Owl Schedule (6 Hours))",\n'
+        '    "focus_description": "Detailed explanation of how and why study hours are divided into blocks.",\n'
+        '    "focus_blocks": [\n'
+        '      {"block": "Block 1 (Afternoon)", "time": "15:00 – 16:30", "mode": "Lighter review or reading"}\n'
         "    ],\n"
-        "    \"phases\": [\n"
-        "      {\"title\": \"Phase 1: Deep Prep\", \"description\": \"Logic of this phase\", \"allocations\": [\"Block 1: Subject (Topic)\"]}\n"
+        '    "phases": [\n'
+        '      {"title": "Phase 1: Deep Prep", "description": "Logic of this phase", "allocations": ["Block 1: Subject (Topic)"]}\n'
         "    ],\n"
-        "    \"pro_tips\": [\"Actionable academic tip\"],\n"
-        "    \"subject_allocation_reasons\": {\"SubjectName\": \"Reason explaining hour allocation\"},\n"
-        "    \"time_slot_reasons\": \"Explanation of time slots choices\",\n"
-        "    \"milestone_reasons\": \"Explanation of exam proximity effect\",\n"
-        "    \"preference_reasons\": \"Explanation of satisfying preferences\"\n"
+        '    "pro_tips": ["Actionable academic tip"],\n'
+        '    "subject_allocation_reasons": {"SubjectName": "Reason explaining hour allocation"},\n'
+        '    "time_slot_reasons": "Explanation of time slots choices",\n'
+        '    "milestone_reasons": "Explanation of exam proximity effect",\n'
+        '    "preference_reasons": "Explanation of satisfying preferences"\n'
         "  },\n"
-        "  \"quality_scoring\": {\n"
-        "    \"balance_score\": 80,\n"
-        "    \"burnout_risk\": 20,\n"
-        "    \"exam_readiness_score\": 90\n"
+        '  "quality_scoring": {\n'
+        '    "balance_score": 80,\n'
+        '    "burnout_risk": 20,\n'
+        '    "exam_readiness_score": 90\n'
         "  }\n"
         "}\n\n"
         "Strict Rules & Constraints:\n"
@@ -1218,22 +1271,26 @@ async def generate_ai_schedule(
     schedule_data = {}
     llm_calls_made = 0
     consistency_retries = 3
-    
+
     for attempt in range(consistency_retries):
         try:
             logger.info(f"Executing Single-Call LLM Generation (Attempt {attempt + 1}).")
             llm_calls_made += 1
             schedule_data = await call_llm_api(system_instruction_1, user_prompt_1)
-            
+            logger.info(
+                f"LLM returned keys: {list(schedule_data.keys()) if isinstance(schedule_data, dict) else type(schedule_data)}"
+            )
+            schedule_data = normalize_schedule_data(schedule_data)
+
             if not validate_schedule_json(schedule_data):
                 raise ValueError("No valid schedule structure returned by LLM.")
-                
+
             schedule_events = schedule_data.get("schedule", [])
             if weekend_preservation:
                 schedule_events = enforce_weekend_preservation(schedule_events, milestones, requested_hours)
                 schedule_data["schedule"] = schedule_events
             detailed_analysis = schedule_data.get("detailed_analysis", {})
-            
+
             # Check consistency of the generated map
             if verify_consistency(schedule_events, detailed_analysis, milestones, subjects):
                 break
@@ -1265,7 +1322,7 @@ async def generate_ai_schedule(
             if day not in daily_events:
                 daily_events[day] = []
             daily_events[day].append(event)
-            
+
         for day, events in daily_events.items():
             day_hours = sum(float(e.get("hours", 0.0)) for e in events)
             if day_hours > 8.0:
@@ -1274,7 +1331,7 @@ async def generate_ai_schedule(
                 latest_event["session_type"] = "Recovery"
                 latest_event["hours"] = max(0.5, latest_event.get("hours", 0.0) - 1.0)
                 latest_event["reason"] = "Converted to Recovery block to mitigate elevated burnout risk."
-                
+
                 hard_count = 0
                 for e in events:
                     sub_name = e.get("subject", "")
@@ -1288,35 +1345,37 @@ async def generate_ai_schedule(
                             hard_count = 0
                     else:
                         hard_count = 0
-                        
+
         # Recalculate metrics locally
         best_metrics = await calculate_schedule_metrics(schedule_events, milestones, subjects, db=db)
 
     # Compile transparency details
     actual_hours = sum(float(event.get("hours", 0.0)) for event in schedule_events)
     requested_hours = calibration.get("daily_quota", 6)
-    
+
     recs = []
     if best_metrics["burnout_risk"] < 35:
         recs.append("Your burnout risk is Low. You have a balanced daily load with adequate rest.")
     elif best_metrics["burnout_risk"] < 60:
         recs.append("Your burnout risk is Moderate. Ensure you take full breaks between your study blocks.")
     else:
-        recs.append("Your burnout risk is Elevated. We have automatically inserted recovery blocks and shifted hard subjects to optimize cognitive load.")
-        
+        recs.append(
+            "Your burnout risk is Elevated. We have automatically inserted recovery blocks and shifted hard subjects to optimize cognitive load."
+        )
+
     if best_metrics["exam_readiness_score"] > 80:
         recs.append("Exam readiness is high! You have allocated sufficient preparation hours before your milestones.")
     else:
         recs.append("Readiness score is average. Consider adding more study hours before upcoming milestone exams.")
-        
+
     ai_recommendation = " ".join(recs)
-    
+
     transparency_data = {
         "requested_study_hours": requested_hours,
         "actual_study_hours": actual_hours,
         "predicted_burnout_risk": best_metrics["burnout_risk"],
         "predicted_exam_readiness": best_metrics["exam_readiness_score"],
-        "ai_recommendation": ai_recommendation
+        "ai_recommendation": ai_recommendation,
     }
 
     # Force/Correct the focus schedule label
@@ -1329,7 +1388,7 @@ async def generate_ai_schedule(
         "quality_scoring": best_metrics,
         "transparency": transparency_data,
         "is_cached": False,
-        "llm_calls_count": llm_calls_made
+        "llm_calls_count": llm_calls_made,
     }
 
     # Save to Cache
@@ -1348,5 +1407,5 @@ async def generate_ai_schedule(
         logger.info(f"Saved generated schedule to cache: {cache_path}")
     except Exception as cache_save_err:
         logger.error(f"Failed to save schedule to cache: {cache_save_err}")
-        
+
     return result
